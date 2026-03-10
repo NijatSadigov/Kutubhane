@@ -57,4 +57,5 @@ type Student struct {
 	Grade      int       `json:"grade"`
 	ClassGroup string    `json:"class_group"`
 	BirthDate  time.Time `json:"birth_date"`
+	Loans      []Loan    `json:"loans" gorm:"foreignKey:StudentID;references:UserID"`
 }

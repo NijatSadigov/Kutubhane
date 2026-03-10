@@ -49,7 +49,8 @@ func Register(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Email exists"})
 	}
 
-	if input.Role == "student" {
+	switch input.Role {
+	case "student":
 		bdate, _ := time.Parse("2006-01-02", input.BirthDate)
 
 		if bdate.IsZero() {
@@ -68,7 +69,7 @@ func Register(c *fiber.Ctx) error {
 			tx.Rollback()
 			return c.Status(500).JSON(fiber.Map{"error": "Could not create student profile"})
 		}
-	} else if input.Role == "librarian" {
+	case "librarian":
 		lib := models.Librarian{UserID: user.ID, Name: input.Name, BranchID: input.BranchID}
 		tx.Create(&lib)
 	}
@@ -90,9 +91,10 @@ func Login(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"message": "User not found"})
 	}
 
-	if user.Role == "librarian" {
+	switch user.Role {
+	case "librarian":
 		database.DB.Preload("Librarian.School").Preload("Librarian.Branch").First(&user, user.ID)
-	} else if user.Role == "student" {
+	case "student":
 		database.DB.Preload("Student.Branch").First(&user, user.ID)
 	}
 

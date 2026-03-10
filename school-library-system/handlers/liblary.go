@@ -368,6 +368,8 @@ func ReturnBook(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Book returned successfully", "student_id": loan.StudentID})
 }
 
+// --- Student list ---
+
 // --- RESERVATION SYSTEM ---
 
 func GetAllReservations(c *fiber.Ctx) error {
@@ -531,18 +533,31 @@ func GetStudentStats(c *fiber.Ctx) error {
 	})
 }
 
+// --- CLASS LIST ---
 func GetClassList(c *fiber.Ctx) error {
+	// 1. SECURITY: Get the Librarian's Branch ID
+	branchID, err := getUserBranchID(c)
+	if err != nil {
+		return c.Status(401).JSON(fiber.Map{"error": err.Error()})
+	}
+
 	grade := c.Query("grade")
 	group := c.Query("group")
 	var students []models.Student
-	query := database.DB.Model(&models.Student{})
+
+	// 2. Filter students ONLY for this branch
+	query := database.DB.Model(&models.Student{}).Where("branch_id = ?", branchID)
+
 	if grade != "" {
 		query = query.Where("grade = ?", grade)
 	}
 	if group != "" {
 		query = query.Where("class_group = ?", group)
 	}
+
+	// Preload their active/past loans so we can count them
 	query.Preload("Loans").Find(&students)
+
 	return c.JSON(students)
 }
 
@@ -570,7 +585,7 @@ func GetMyLibrary(c *fiber.Ctx) error {
 		Status     string     `json:"status"`
 	}
 
-	var response []LoanDTO
+	response := []LoanDTO{}
 
 	for _, l := range loans {
 		title := "Unknown Book (Deleted)"
@@ -619,3 +634,5 @@ func BulkUploadBooks(c *fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{"message": "Bulk Upload Successful", "count": len(books)})
 }
+
+////
