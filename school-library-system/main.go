@@ -17,16 +17,31 @@ func main() {
 	// 2. Auto Migrate Models
 
 	database.DB.AutoMigrate(
-		&models.User{},
 		&models.School{},
 		&models.Branch{},
-		&models.Student{},
+		&models.User{},
 		&models.Librarian{},
+		&models.Student{},
+		&models.Publisher{},
+		&models.Author{},
+		&models.Topic{},
+		&models.Genre{},
+		&models.Frequency{},
+		&models.CopyCondition{},
+		&models.CopyStatus{},
+		&models.LoanStatus{},
+		&models.ReservationStatus{},
 		&models.Book{},
 		&models.BookCopy{},
 		&models.Loan{},
 		&models.Reservation{},
 	)
+	// 3. Seed Default Statuses for Each Branch
+	var branches []models.Branch
+	database.DB.Find(&branches)
+	for _, branch := range branches {
+		database.SeedDefaultStatusesForBranch(branch.ID)
+	}
 	// 3. Setup App
 	app := fiber.New()
 

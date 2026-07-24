@@ -23,7 +23,7 @@ func Setup(app *fiber.App) {
 	api.Get("/books/:id", handlers.GetBookDetails)
 
 	// ===========================
-	// 4. LIBRARIAN ROUTES
+	// LIBRARIAN ROUTES
 	// ===========================
 
 	// Inventory
@@ -41,17 +41,78 @@ func Setup(app *fiber.App) {
 	api.Post("/return/:id", middleware.IsLibrarian, handlers.ReturnBook)
 
 	api.Put("/loans/:id", middleware.IsLibrarian, handlers.UpdateLoan)
-
 	api.Get("/loans", middleware.IsLibrarian, handlers.GetActiveLoans)
 
+	// Reservation Operations
 	api.Get("/reservations", middleware.IsLibrarian, handlers.GetAllReservations)
 	api.Post("/reservation/:id", middleware.IsLibrarian, handlers.HandleReservation)
-
 	api.Post("/reservation/:id/issue", middleware.IsLibrarian, handlers.IssueReservation)
 
+	// Class & Student Data
 	api.Get("/class-list", middleware.IsLibrarian, handlers.GetClassList)
 
-	// ... (Admin Routes) ...
+	// ===========================
+	// SETTINGS & DYNAMIC CATEGORIES
+	// ===========================
+
+	// Authors
+	api.Get("/authors", middleware.IsLibrarian, handlers.GetAuthors)
+	api.Post("/authors", middleware.IsLibrarian, handlers.CreateAuthor)
+	api.Put("/authors/:id", middleware.IsLibrarian, handlers.UpdateAuthor)
+	api.Delete("/authors/:id", middleware.IsLibrarian, handlers.DeleteAuthor)
+
+	// Publishers
+	api.Get("/publishers", middleware.IsLibrarian, handlers.GetPublishers)
+	api.Post("/publishers", middleware.IsLibrarian, handlers.CreatePublisher)
+	api.Put("/publishers/:id", middleware.IsLibrarian, handlers.UpdatePublisher)
+	api.Delete("/publishers/:id", middleware.IsLibrarian, handlers.DeletePublisher)
+
+	// Topics
+	api.Get("/topics", middleware.IsLibrarian, handlers.GetTopics)
+	api.Post("/topics", middleware.IsLibrarian, handlers.CreateTopic)
+	api.Put("/topics/:id", middleware.IsLibrarian, handlers.UpdateTopic)
+	api.Delete("/topics/:id", middleware.IsLibrarian, handlers.DeleteTopic)
+
+	// Genres
+	api.Get("/genres", middleware.IsLibrarian, handlers.GetGenres)
+	api.Post("/genres", middleware.IsLibrarian, handlers.CreateGenre)
+	api.Put("/genres/:id", middleware.IsLibrarian, handlers.UpdateGenre)
+	api.Delete("/genres/:id", middleware.IsLibrarian, handlers.DeleteGenre)
+
+	// Frequencies
+	api.Get("/frequencies", middleware.IsLibrarian, handlers.GetFrequencies)
+	api.Post("/frequencies", middleware.IsLibrarian, handlers.CreateFrequency)
+	api.Put("/frequencies/:id", middleware.IsLibrarian, handlers.UpdateFrequency)
+	api.Delete("/frequencies/:id", middleware.IsLibrarian, handlers.DeleteFrequency)
+
+	// Copy Conditions (Physical)
+	api.Get("/copy-conditions", middleware.IsLibrarian, handlers.GetCopyConditions)
+	api.Post("/copy-conditions", middleware.IsLibrarian, handlers.CreateCopyCondition)
+	api.Put("/copy-conditions/:id", middleware.IsLibrarian, handlers.UpdateCopyCondition)
+	api.Delete("/copy-conditions/:id", middleware.IsLibrarian, handlers.DeleteCopyCondition)
+
+	// Copy Statuses (Demirbaş Durumu)
+	api.Get("/copy-statuses", middleware.IsLibrarian, handlers.GetCopyStatuses)
+	api.Post("/copy-statuses", middleware.IsLibrarian, handlers.CreateCopyStatus)
+	api.Put("/copy-statuses/:id", middleware.IsLibrarian, handlers.UpdateCopyStatus)
+	api.Delete("/copy-statuses/:id", middleware.IsLibrarian, handlers.DeleteCopyStatus)
+
+	// Loan Statuses
+	api.Get("/loan-statuses", middleware.IsLibrarian, handlers.GetLoanStatuses)
+	api.Post("/loan-statuses", middleware.IsLibrarian, handlers.CreateLoanStatus)
+	api.Put("/loan-statuses/:id", middleware.IsLibrarian, handlers.UpdateLoanStatus)
+	api.Delete("/loan-statuses/:id", middleware.IsLibrarian, handlers.DeleteLoanStatus)
+
+	// Reservation Statuses
+	api.Get("/reservation-statuses", middleware.IsLibrarian, handlers.GetReservationStatuses)
+	api.Post("/reservation-statuses", middleware.IsLibrarian, handlers.CreateReservationStatus)
+	api.Put("/reservation-statuses/:id", middleware.IsLibrarian, handlers.UpdateReservationStatus)
+	api.Delete("/reservation-statuses/:id", middleware.IsLibrarian, handlers.DeleteReservationStatus)
+
+	// ===========================
+	// ADMIN ROUTES
+	// ===========================
+
 	api.Post("/admin/school", middleware.IsAdmin, handlers.CreateSchool)
 	api.Get("/admin/school", middleware.IsAdmin, handlers.GetAllSchools)
 	api.Get("/admin/school/:id", middleware.IsAdmin, handlers.GetSchoolDetails)

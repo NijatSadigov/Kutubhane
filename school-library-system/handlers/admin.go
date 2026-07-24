@@ -34,7 +34,6 @@ func CreateSchool(c *fiber.Ctx) error {
 	return c.JSON(school)
 }
 
-// Get School with its Branches
 func GetSchoolDetails(c *fiber.Ctx) error {
 	id := c.Params("id")
 	var school models.School
@@ -51,7 +50,13 @@ func CreateBranch(c *fiber.Ctx) error {
 	if err := c.BodyParser(&branch); err != nil {
 		return c.Status(400).SendString("Invalid Input")
 	}
-	database.DB.Create(&branch)
+
+	if err := database.DB.Create(&branch).Error; err != nil {
+		return c.Status(500).SendString("Could not create branch")
+	}
+
+	database.SeedDefaultStatusesForBranch(branch.ID)
+
 	return c.JSON(branch)
 }
 
@@ -75,7 +80,25 @@ func UpdateBranch(c *fiber.Ctx) error {
 	return c.JSON(branch)
 }
 
-// --- LIBRARIAN MANAGEMENT (Updated for BranchID) ---
+func DeleteBranch(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	tx := database.DB.Begin()
+
+	tx.Model(&models.Student{}).Where("branch_id = ?", id).Update("branch_id", 0)
+
+	tx.Delete(&models.Book{}, "branch_id = ?", id)
+
+	if err := tx.Delete(&models.Branch{}, id).Error; err != nil {
+		tx.Rollback()
+		return c.Status(500).SendString("Could not delete branch")
+	}
+
+	tx.Commit()
+	return c.JSON(fiber.Map{"message": "Branch deleted. Students unlinked."})
+}
+
+// --- LIBRARIAN MANAGEMENT ---
 
 func AddLibrarian(c *fiber.Ctx) error {
 	type LibReq struct {
@@ -134,7 +157,6 @@ func RemoveLibrarian(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Librarian deleted successfully"})
 }
 
-// 1. Edit Librarian (Move to new Branch/School or Rename)
 func UpdateLibrarian(c *fiber.Ctx) error {
 	idParam := c.Params("id")
 
@@ -153,7 +175,7 @@ func UpdateLibrarian(c *fiber.Ctx) error {
 	}
 
 	var lib models.Librarian
-	if err := database.DB.First(&lib, idParam).Error; err != nil { // <--- FIXED HERE
+	if err := database.DB.First(&lib, idParam).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Librarian not found"})
 	}
 
@@ -171,24 +193,7 @@ func UpdateLibrarian(c *fiber.Ctx) error {
 	return c.JSON(lib)
 }
 
-// 2. Delete Branch
-func DeleteBranch(c *fiber.Ctx) error {
-	id := c.Params("id")
-
-	tx := database.DB.Begin()
-
-	tx.Model(&models.Student{}).Where("branch_id = ?", id).Update("branch_id", 0)
-
-	tx.Delete(&models.Book{}, "branch_id = ?", id)
-
-	if err := tx.Delete(&models.Branch{}, id).Error; err != nil {
-		tx.Rollback()
-		return c.Status(500).SendString("Could not delete branch")
-	}
-
-	tx.Commit()
-	return c.JSON(fiber.Map{"message": "Branch deleted. Students unlinked."})
-}
+// --- GENERAL QUERIES ---
 
 func DeleteSchool(c *fiber.Ctx) error {
 	id := c.Params("id")
@@ -213,6 +218,7 @@ func GetAllSchools(c *fiber.Ctx) error {
 
 	return c.JSON(schools)
 }
+
 func UpdateSchool(c *fiber.Ctx) error {
 	id := c.Params("id")
 
