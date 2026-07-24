@@ -70,7 +70,7 @@ const StudentDashboard = () => {
 
     // --- 2. ACTIONS ---
     const handleReserve = async (book) => {
-        const availableCopy = book.copies?.find(c => c.status === 'Available');
+        const availableCopy = book.copies?.find(c => c.status?.code === 'AVAILABLE');
         if (!availableCopy) {
             alert("Üzgünüz, şu anda rezerve edilecek kopya yok.");
             return;
@@ -78,9 +78,11 @@ const StudentDashboard = () => {
         if(!window.confirm(`"${book.title || book.book_title}" kitabını rezerve etmek istiyor musunuz?`)) return;
 
         try {
+            // The backend locates the copy by book + physical barcode, not by copy id.
             await api.post('/reservation', {
                 student_id: parseInt(user.id),
-                book_copy_id: availableCopy.id
+                book_id: book.id,
+                tracking_number: availableCopy.tracking_number
             });
             alert("Rezervasyon Talebi Gönderildi! 📩");
             setOpenDropdownId(null);
@@ -112,11 +114,18 @@ const StudentDashboard = () => {
                 issue_date: data.issue_date,
                 due_date: data.due_date,
                 status: data.status,
+                status_code: data.status_code,
                 raw: data // Rezervasyon için asıl kopya gerekebilir
             };
         } else {
-            // Katalog'dan geliyorsa doğrudan kullan
-            bookData = { ...data, isLibraryItem: false };
+            // Katalog'dan geliyorsa kategori nesnelerini isimlere çevir
+            bookData = {
+                ...data,
+                author: data.author?.name || "Bilinmeyen Yazar",
+                genre: data.genre?.name || "-",
+                publisher: data.publisher?.name || "-",
+                isLibraryItem: false,
+            };
         }
         
         setSelectedBook(bookData);
@@ -125,7 +134,7 @@ const StudentDashboard = () => {
     };
 
     // --- 3. FILTERING LOGIC ---
-    const uniqueGenres = ['All', ...new Set(books.map(b => b.genre).filter(Boolean))];
+    const uniqueGenres = ['All', ...new Set(books.map(b => b.genre?.name).filter(Boolean))];
     const uniqueLibraryGenres = ['All', ...new Set(myLoans.map(l => l.genre).filter(Boolean))];
 
     const getFilteredCatalog = () => {
@@ -134,12 +143,12 @@ const StudentDashboard = () => {
             const q = searchQuery.toLowerCase();
             result = result.filter(b => 
                 b.title?.toLowerCase().includes(q) || 
-                b.author?.toLowerCase().includes(q) ||
-                b.publisher?.toLowerCase().includes(q)
+                b.author?.name?.toLowerCase().includes(q) ||
+                b.publisher?.name?.toLowerCase().includes(q)
             );
         }
         if (selectedGenre !== 'All') {
-            result = result.filter(b => b.genre === selectedGenre);
+            result = result.filter(b => b.genre?.name === selectedGenre);
         }
         if (isbnFilter) {
             result = result.filter(b => b.isbn?.includes(isbnFilter));
@@ -160,10 +169,10 @@ const StudentDashboard = () => {
             result = result.filter(l => l.genre === librarySelectedGenre);
         }
         if (hideReturned) {
-            result = result.filter(l => l.status === 'Active');
+            result = result.filter(l => l.status_code === 'ACTIVE');
         } else {
-            if (loanFilter === 'Active') result = result.filter(l => l.status === 'Active');
-            if (loanFilter === 'Returned') result = result.filter(l => l.status === 'Returned');
+            if (loanFilter === 'Active') result = result.filter(l => l.status_code === 'ACTIVE');
+            if (loanFilter === 'Returned') result = result.filter(l => l.status_code === 'RETURNED');
         }
         return result.sort((a, b) => {
             const dateA = new Date(a.issue_date).getTime();
@@ -182,10 +191,10 @@ const StudentDashboard = () => {
         if (loan.book_title) return { title: loan.book_title, author: loan.author || "Bilinmeyen Yazar", genre: loan.genre, page_count: loan.page_count };
         const copy = loan.book_copy || loan.BookCopy || {};
         const book = copy.book || copy.Book || {};
-        return { 
-            title: book.title || book.Title || "Bilinmeyen Kitap", 
-            author: book.author || book.Author || "Bilinmeyen Yazar",
-            genre: book.genre || "-",
+        return {
+            title: book.title || "Bilinmeyen Kitap",
+            author: book.author?.name || "Bilinmeyen Yazar",
+            genre: book.genre?.name || "-",
             page_count: book.page_count || 0
         };
     };
@@ -197,7 +206,7 @@ const StudentDashboard = () => {
         const currentMonth = now.getMonth();
 
         const readBooks = myLoans.filter(loan => {
-            if (loan.status !== 'Returned') return false; 
+            if (loan.status_code !== 'RETURNED') return false;
             if (!loan.return_date) return false; 
             const rDate = new Date(loan.return_date);
             if (timeFrame === 'year' && rDate.getFullYear() !== currentYear) return false;
@@ -374,7 +383,7 @@ const StudentDashboard = () => {
                                     {viewMode === 'card' ? (
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                             {displayBooks.map((book) => {
-                                                const availableCount = book.copies ? book.copies.filter(c => c.status === 'Available').length : 0;
+                                                const availableCount = book.copies ? book.copies.filter(c => c.status?.code === 'AVAILABLE').length : 0;
                                                 const isAvailable = availableCount > 0;
                                                 
                                                 let badgeText = "Tükendi";
@@ -425,10 +434,10 @@ const StudentDashboard = () => {
 
                                                         <div>
                                                             <h3 className="font-bold text-gray-800 dark:text-gray-100 text-sm mb-0.5 truncate" title={book.title}>{book.title}</h3>
-                                                            <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-4 truncate">{book.author}</p>
+                                                            <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-4 truncate">{book.author?.name || '-'}</p>
                                                             
                                                             <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-700 pb-3 mb-3">
-                                                                <span className="text-[11px] text-gray-600 dark:text-gray-300 truncate mr-2">{book.publisher || 'Yayınevi Belirtilmemiş'}</span>
+                                                                <span className="text-[11px] text-gray-600 dark:text-gray-300 truncate mr-2">{book.publisher?.name || 'Yayınevi Belirtilmemiş'}</span>
                                                                 <span className="text-[10px] flex items-center gap-1 font-medium bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300 shrink-0"><Globe size={10}/> Türkçe</span>
                                                             </div>
                                                             
@@ -456,7 +465,7 @@ const StudentDashboard = () => {
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
                                                     {displayBooks.map(book => {
-                                                        const availableCount = book.copies ? book.copies.filter(c => c.status === 'Available').length : 0;
+                                                        const availableCount = book.copies ? book.copies.filter(c => c.status?.code === 'AVAILABLE').length : 0;
                                                         const isAvailable = availableCount > 0;
                                                         
                                                         let badgeText = "Tükendi";
@@ -470,10 +479,10 @@ const StudentDashboard = () => {
                                                                     {book.title}
                                                                     <div className="text-[10px] text-gray-400 font-normal mt-0.5">ISBN: {book.isbn || 'Yok'}</div>
                                                                 </td>
-                                                                <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{book.author}</td>
-                                                                <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{book.publisher || '-'}</td>
+                                                                <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{book.author?.name || '-'}</td>
+                                                                <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{book.publisher?.name || '-'}</td>
                                                                 <td className="px-6 py-4">
-                                                                    {book.genre ? <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded text-xs">{book.genre}</span> : '-'}
+                                                                    {book.genre?.name ? <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded text-xs">{book.genre.name}</span> : '-'}
                                                                 </td>
                                                                 <td className="px-6 py-4">
                                                                     <span className={`text-[10px] px-3 py-1 rounded font-bold tracking-wide ${badgeColor}`}>{badgeText}</span>
@@ -542,11 +551,11 @@ const StudentDashboard = () => {
                                             <div className="flex gap-4">
                                                 <div className="bg-white dark:bg-gray-900 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 min-w-[120px]">
                                                     <h4 className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">Aktif Ödünçler</h4>
-                                                    <p className="text-2xl font-bold text-[#E85B5B] dark:text-red-400">{myLoans.filter(l => l.status === 'Active').length}</p>
+                                                    <p className="text-2xl font-bold text-[#E85B5B] dark:text-red-400">{myLoans.filter(l => l.status_code === 'ACTIVE').length}</p>
                                                 </div>
                                                 <div className="bg-white dark:bg-gray-900 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 min-w-[120px]">
                                                     <h4 className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">İade Edilen</h4>
-                                                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{myLoans.filter(l => l.status === 'Returned').length}</p>
+                                                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{myLoans.filter(l => l.status_code === 'RETURNED').length}</p>
                                                 </div>
                                             </div>
                                             
@@ -592,11 +601,11 @@ const StudentDashboard = () => {
                                                         const issueDate = new Date(loan.issue_date);
                                                         const dueDate = new Date(loan.due_date);
                                                         const diffDays = Math.ceil((dueDate - new Date()) / (1000 * 60 * 60 * 24));
-                                                        const isOverdue = diffDays < 0 && loan.status === 'Active';
+                                                        const isOverdue = diffDays < 0 && loan.status_code === 'ACTIVE';
                                                         
                                                         let statusText = "Kullanılıyor";
                                                         let statusColor = "bg-[#FEF3C7] text-[#B45309] dark:bg-yellow-900/30 dark:text-yellow-500";
-                                                        if (loan.status === 'Returned') {
+                                                        if (loan.status_code === 'RETURNED') {
                                                             statusText = "İade Edildi";
                                                             statusColor = "bg-[#E6F4EA] text-[#059669] dark:bg-green-900/30 dark:text-green-400";
                                                         } else if (isOverdue) {
@@ -651,11 +660,11 @@ const StudentDashboard = () => {
                                                 const details = getSafeBookDetails(loan);
                                                 const dueDate = new Date(loan.due_date);
                                                 const diffDays = Math.ceil((dueDate - new Date()) / (1000 * 60 * 60 * 24));
-                                                const isOverdue = diffDays < 0 && loan.status === 'Active';
+                                                const isOverdue = diffDays < 0 && loan.status_code === 'ACTIVE';
 
                                                 let statusText = "Kullanılıyor";
                                                 let statusColor = "bg-[#FEF3C7] text-[#B45309] dark:bg-yellow-900/30 dark:text-yellow-500";
-                                                if (loan.status === 'Returned') {
+                                                if (loan.status_code === 'RETURNED') {
                                                     statusText = "İade Edildi";
                                                     statusColor = "bg-[#E6F4EA] text-[#059669] dark:bg-green-900/30 dark:text-green-400";
                                                 } else if (isOverdue) {
@@ -784,7 +793,7 @@ const StudentDashboard = () => {
                                                     <div key={book.id} className="p-4 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                                         <div>
                                                             <h4 className="font-bold text-gray-700 dark:text-gray-200 text-sm">{book.book_title}</h4>
-                                                            <p className="text-[11px] text-gray-500 dark:text-gray-400">Yazar: {book.author}</p>
+                                                            <p className="text-[11px] text-gray-500 dark:text-gray-400">Yazar: {book.author?.name || '-'}</p>
                                                         </div>
                                                         <div className="text-right">
                                                             <span className="block text-xs font-bold text-green-600 dark:text-green-400">{book.page_count} sayfa</span>
@@ -839,11 +848,11 @@ const StudentDashboard = () => {
                         {selectedBook.isLibraryItem && (
                             <div className="bg-[#E0E7FF] dark:bg-indigo-900/30 text-[#4338CA] dark:text-indigo-300 p-3 rounded-lg text-sm border border-[#BFDBFE] dark:border-indigo-800">
                                 <div className="flex justify-between font-bold mb-1">
-                                    <span>Durum: {selectedBook.status === 'Active' ? 'Aktif Ödünç' : 'İade Edildi'}</span>
+                                    <span>Durum: {selectedBook.status_code === 'ACTIVE' ? 'Aktif Ödünç' : 'İade Edildi'}</span>
                                 </div>
                                 <div className="flex justify-between text-xs">
                                     <span>Veriliş: {new Date(selectedBook.issue_date).toLocaleDateString()}</span>
-                                    {selectedBook.status === 'Active' && <span>Teslim: {new Date(selectedBook.due_date).toLocaleDateString()}</span>}
+                                    {selectedBook.status_code === 'ACTIVE' && <span>Teslim: {new Date(selectedBook.due_date).toLocaleDateString()}</span>}
                                 </div>
                             </div>
                         )}

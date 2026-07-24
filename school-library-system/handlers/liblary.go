@@ -334,6 +334,8 @@ func GetActiveLoans(c *fiber.Ctx) error {
 		Preload("Status").
 		Preload("BookCopy").
 		Preload("BookCopy.Book").
+		Preload("BookCopy.Book.Author").
+		Preload("BookCopy.Book.Genre").
 		Find(&loans).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Could not fetch loans"})
 	}
@@ -581,7 +583,8 @@ func GetMyLibrary(c *fiber.Ctx) error {
 		IssueDate  time.Time  `json:"issue_date"`
 		DueDate    time.Time  `json:"due_date"`
 		ReturnDate *time.Time `json:"return_date"`
-		Status     string     `json:"status"`
+		Status     string     `json:"status"`      // Display name, librarian-editable
+		StatusCode string     `json:"status_code"` // Fixed code the UI can branch on
 	}
 
 	response := []LoanDTO{}
@@ -604,8 +607,10 @@ func GetMyLibrary(c *fiber.Ctx) error {
 		}
 
 		statusName := "Unknown"
+		statusCode := ""
 		if l.StatusID != nil {
 			statusName = l.Status.Name
+			statusCode = l.Status.Code
 		}
 
 		response = append(response, LoanDTO{
@@ -618,6 +623,7 @@ func GetMyLibrary(c *fiber.Ctx) error {
 			DueDate:    l.DueDate,
 			ReturnDate: l.ReturnDate,
 			Status:     statusName,
+			StatusCode: statusCode,
 		})
 	}
 
@@ -642,6 +648,8 @@ func GetAllReservations(c *fiber.Ctx) error {
 		Preload("Status").
 		Preload("BookCopy").
 		Preload("BookCopy.Book").
+		Preload("BookCopy.Book.Author").
+		Preload("BookCopy.Book.Genre").
 		Find(&reservations).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Could not fetch reservations"})
 	}

@@ -15,6 +15,10 @@ func Setup(app *fiber.App) {
 
 	api := app.Group("/api", middleware.IsAuthenticated)
 
+	// ... (Session Routes) ...
+	api.Get("/user", handlers.User)
+	api.Post("/logout", handlers.Logout)
+
 	// ... (Student Routes) ...
 	api.Get("/books", handlers.GetBooks)
 	api.Get("/my-library/:id", handlers.GetMyLibrary)
