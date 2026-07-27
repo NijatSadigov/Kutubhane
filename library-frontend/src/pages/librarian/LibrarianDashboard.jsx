@@ -159,7 +159,7 @@ const LibrarianDashboard = () => {
     const handleLoan = async (e) => {
         e.preventDefault();
         const match = findCopyByTracking(loanForm.tracking_number);
-        if (!match) { alert("Bu demirbaş numarasına sahip bir kopya bulunamadı."); return; }
+        if (!match) { alert(t('msg.copyNotFound')); return; }
         try {
             await api.post('/loan', {
                 student_id: parseInt(loanForm.student_id),
@@ -167,13 +167,13 @@ const LibrarianDashboard = () => {
                 tracking_number: match.copy.tracking_number,
                 due_date: loanForm.due_date,
             });
-            alert("Kitap Başarıyla Verildi! 📖");
+            alert(t('msg.loanSuccess'));
             setLoanForm(EMPTY_LOAN_FORM);
             setStudentPickerText('');
             setIsModalOpen(false);
             fetchLoans();
             fetchBooks();
-        } catch (err) { alert("İşlem başarısız: " + (err.response?.data?.error || "Hata")); }
+        } catch (err) { alert(t('msg.opFailed') + ": " + (err.response?.data?.error || t('msg.error'))); }
     };
 
     const openEditLoan = (loan) => {
@@ -193,29 +193,29 @@ const LibrarianDashboard = () => {
                 due_date: loanEditForm.due_date,
                 description: loanEditForm.description,
             });
-            alert("Ödünç kaydı güncellendi.");
+            alert(t('msg.loanUpdated'));
             setIsModalOpen(false);
             fetchLoans();
-        } catch (err) { alert("Güncelleme başarısız: " + (err.response?.data?.error || "Hata")); }
+        } catch (err) { alert(t('msg.updateFailed') + ": " + (err.response?.data?.error || t('msg.error'))); }
     };
 
     // The backend finds the copy from the body; the :id segment is kept only for routing.
     const returnCopy = async (copyId, bookId, trackingNumber) => {
         try {
             await api.post(`/return/${copyId}`, { book_id: bookId, tracking_number: trackingNumber });
-            alert("Kitap Başarıyla İade Alındı! ✅");
+            alert(t('msg.returnSuccess'));
             setIsModalOpen(false);
             setLoanForm(EMPTY_LOAN_FORM);
             fetchLoans();
             fetchBooks();
             fetchStudents();
-        } catch (err) { alert("İade başarısız: " + (err.response?.data?.error || "Ödünç kaydı bulunamadı.")); }
+        } catch (err) { alert(t('msg.returnFailed') + ": " + (err.response?.data?.error || t('msg.copyNotFound'))); }
     };
 
     const handleQuickReturn = async (e) => {
         e.preventDefault();
         const match = findCopyByTracking(loanForm.tracking_number);
-        if (!match) { alert("Bu demirbaş numarasına sahip bir kopya bulunamadı."); return; }
+        if (!match) { alert(t('msg.copyNotFound')); return; }
         await returnCopy(match.copy.id, match.book.id, match.copy.tracking_number);
     };
 
@@ -224,18 +224,18 @@ const LibrarianDashboard = () => {
             await api.post(`/reservation/${id}`, { action: actionWord }); 
             fetchReservations(); 
             setOpenDropdownId(null);
-        } catch (err) { alert("İşlem başarısız"); }
+        } catch (err) { alert(t('msg.opFailed')); }
     };
 
     const handleIssueReservation = async (e) => {
         e.preventDefault();
         try {
             await api.post(`/reservation/${selectedResId}/issue`, { due_date: loanForm.due_date });
-            alert("Rezervasyon Onaylandı ve Kitap Verildi! ✅"); 
+            alert(t('msg.resApprovedIssued'));
             setIsModalOpen(false); 
             fetchReservations(); 
             fetchLoans();
-        } catch (err) { alert("İşlem başarısız"); }
+        } catch (err) { alert(t('msg.opFailed')); }
     };
 
     // --- 3. INVENTORY ACTIONS ---
@@ -256,7 +256,7 @@ const LibrarianDashboard = () => {
             if (modalType === 'add_book') await api.post('/books', payload);
             else await api.put(`/books/${selectedBookId}`, payload);
             setIsModalOpen(false); fetchBooks();
-        } catch (err) { alert("İşlem başarısız"); }
+        } catch (err) { alert(t('msg.opFailed')); }
     };
 
     // Upload a cover image and store its URL on the book form.
@@ -285,8 +285,8 @@ const LibrarianDashboard = () => {
     };
 
     const handleDeleteBook = async (id) => {
-        if (!window.confirm("Bu kitabı tamamen silmek istediğinize emin misiniz?")) return;
-        try { await api.delete(`/books/${id}`); fetchBooks(); setOpenDropdownId(null); } catch (err) { alert("Silme başarısız"); }
+        if (!window.confirm(t('msg.deleteBookConfirm'))) return;
+        try { await api.delete(`/books/${id}`); fetchBooks(); setOpenDropdownId(null); } catch (err) { alert(t('msg.deleteFailed')); }
     };
 
     const openEditBook = (book) => {
@@ -338,9 +338,9 @@ const LibrarianDashboard = () => {
             if (modalType === 'add_copy') await api.post('/books/copy', { ...payload, book_id: targetBookId });
             else await api.put(`/copy/${selectedCopyId}`, payload);
             setIsModalOpen(false); fetchBooks();
-        } catch (err) { alert("İşlem başarısız: " + (err.response?.data?.error || "Hata")); }
+        } catch (err) { alert(t('msg.opFailed') + ": " + (err.response?.data?.error || t('msg.error'))); }
     };
-    const handleDeleteCopy = async (id) => { if (!window.confirm("Kopyayı sil?")) return; try { await api.delete(`/copy/${id}`); fetchBooks(); } catch (err) { alert("Silme başarısız"); } };
+    const handleDeleteCopy = async (id) => { if (!window.confirm(t('msg.deleteCopyConfirm'))) return; try { await api.delete(`/copy/${id}`); fetchBooks(); } catch (err) { alert(t('msg.deleteFailed')); } };
 
     const openStudentDetails = async (student) => {
         setSelectedStudent(student);
@@ -351,7 +351,7 @@ const LibrarianDashboard = () => {
             setModalType('student_details');
             setIsModalOpen(true);
         } catch (err) {
-            alert("Öğrenci geçmişi yüklenemedi.");
+            alert(t('msg.historyFailed'));
         }
     };
 
@@ -589,7 +589,7 @@ const LibrarianDashboard = () => {
                                 <div className="mb-6">
                                     <div className="flex justify-between items-center mb-4">
                                         <button onClick={() => setIsFilterOpen(!isFilterOpen)} className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 outline-none hover:text-[#E85B5B] transition-colors">
-                                            {isFilterOpen ? <ChevronUp size={16}/> : <ChevronDown size={16}/>} Filtre
+                                            {isFilterOpen ? <ChevronUp size={16}/> : <ChevronDown size={16}/>} {t('f.title')}
                                         </button>
                                     </div>
                                     
@@ -601,45 +601,45 @@ const LibrarianDashboard = () => {
                                                 <>
                                                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
                                                         <div className="lg:col-span-2">
-                                                            <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Arama</label>
-                                                            <input type="text" placeholder={activeTab === 'inventory' ? "Kitap adı veya yazar ile ara" : "Kitap adı veya öğrenci ismi ile ara"} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                                                            <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('f.search')}</label>
+                                                            <input type="text" placeholder={activeTab === 'inventory' ? t('f.searchBook') : t('f.searchPerson')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                                                         </div>
                                                         <div>
-                                                            <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Konu</label>
+                                                            <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('fld.topicSel')}</label>
                                                             <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={selectedGenre} onChange={(e) => setSelectedGenre(e.target.value)}>
-                                                                {uniqueGenres.map(g => <option key={g} value={g}>{g === 'All' ? 'Konuya göre ara' : g}</option>)}
+                                                                {uniqueGenres.map(g => <option key={g} value={g}>{g === 'All' ? t('f.byTopic') : g}</option>)}
                                                             </select>
                                                         </div>
                                                         <div>
                                                             <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">ISBN</label>
-                                                            <input type="text" placeholder="ISBN Numarası" className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={isbnFilter} onChange={(e) => setIsbnFilter(e.target.value)} />
+                                                            <input type="text" placeholder={t('f.isbn')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={isbnFilter} onChange={(e) => setIsbnFilter(e.target.value)} />
                                                         </div>
                                                         <div>
                                                             <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Call No</label>
-                                                            <input type="text" placeholder="Call No (Örn: 10)" className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={callNoFilter} onChange={(e) => setCallNoFilter(e.target.value)} />
+                                                            <input type="text" placeholder={t('f.callNo')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={callNoFilter} onChange={(e) => setCallNoFilter(e.target.value)} />
                                                         </div>
                                                         <div>
                                                             <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">CEFR</label>
                                                             <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={cefrFilter} onChange={(e) => setCefrFilter(e.target.value)}>
-                                                                {uniqueCefr.map(v => <option key={v} value={v}>{v === 'All' ? 'CEFR (Tümü)' : v}</option>)}
+                                                                {uniqueCefr.map(v => <option key={v} value={v}>{v === 'All' ? t('f.cefrAll') : v}</option>)}
                                                             </select>
                                                         </div>
                                                     </div>
                                                     <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4">
                                                         {activeTab === 'inventory' && (
                                                             <div>
-                                                                <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Demirbaş Durumu</label>
+                                                                <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('th.copyStatus')}</label>
                                                                 <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={availabilityFilter} onChange={(e) => setAvailabilityFilter(e.target.value)}>
-                                                                    <option value="All">Tümü</option>
-                                                                    <option value="available">Müsait kopyası var</option>
-                                                                    <option value="unavailable">Müsait kopyası yok</option>
+                                                                    <option value="All">{t('common.all')}</option>
+                                                                    <option value="available">{t('f.hasAvailable')}</option>
+                                                                    <option value="unavailable">{t('f.noAvailable')}</option>
                                                                 </select>
                                                             </div>
                                                         )}
                                                         <div>
-                                                            <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Dil</label>
+                                                            <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('fld.language')}</label>
                                                             <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={languageFilter} onChange={(e) => setLanguageFilter(e.target.value)}>
-                                                                {uniqueLanguages.map(v => <option key={v} value={v}>{v === 'All' ? 'Dil (Tümü)' : v}</option>)}
+                                                                {uniqueLanguages.map(v => <option key={v} value={v}>{v === 'All' ? t('f.langAll') : v}</option>)}
                                                             </select>
                                                         </div>
                                                     </div>
@@ -648,25 +648,25 @@ const LibrarianDashboard = () => {
                                                 /* 👇 UPDATED: FILTER: ÜYELER */
                                                 <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4">
                                                     <div className="lg:col-span-2">
-                                                        <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Kişi Ara</label>
-                                                        <input type="text" placeholder="Ad Soyad" className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={studentSearch} onChange={(e) => setStudentSearch(e.target.value)} />
+                                                        <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('f.personSearch')}</label>
+                                                        <input type="text" placeholder={t('f.fullName')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={studentSearch} onChange={(e) => setStudentSearch(e.target.value)} />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Öğrenci Numarası</label>
-                                                        <input type="text" placeholder="Öğrenci No" className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={studentIdFilter} onChange={(e) => setStudentIdFilter(e.target.value)} />
+                                                        <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('f.studentNo')}</label>
+                                                        <input type="text" placeholder={t('f.studentNoPh')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={studentIdFilter} onChange={(e) => setStudentIdFilter(e.target.value)} />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Birim</label>
+                                                        <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('th.unit')}</label>
                                                         <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]">
-                                                            <option>Tümü</option>
-                                                            <option>{user?.librarian?.branch?.name || "Merkez Şube"}</option>
+                                                            <option>{t('common.all')}</option>
+                                                            <option>{user?.librarian?.branch?.name || t('f.centralBranch')}</option>
                                                         </select>
                                                     </div>
                                                     <div>
                                                         {/* 👇 UPDATED: Combined Sınıf dropdown */}
-                                                        <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Sınıf</label>
+                                                        <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('th.class')}</label>
                                                         <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={studentClass} onChange={e => setStudentClass(e.target.value)}>
-                                                            <option value="All">Tümü</option>
+                                                            <option value="All">{t('common.all')}</option>
                                                             {uniqueClasses.map(c => <option key={c} value={c}>{c.replace('-', ' ')}</option>)}
                                                         </select>
                                                     </div>
@@ -692,14 +692,14 @@ const LibrarianDashboard = () => {
                                                 <thead className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                                                     <tr>
                                                         <th className="px-4 py-4 w-10"></th>
-                                                        <th className="px-2 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Kütüphane</th>
-                                                        <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Kitap Adı</th>
-                                                        <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Yazar</th>
-                                                        <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Yayınevi</th>
-                                                        <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Konusu</th>
-                                                        <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider text-center">Demirbaş Durumu</th>
-                                                        <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider text-center">Durum</th>
-                                                        <th className="px-6 py-4 text-center font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">İşlemler</th>
+                                                        <th className="px-2 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.library')}</th>
+                                                        <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.title')}</th>
+                                                        <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.author')}</th>
+                                                        <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.publisher')}</th>
+                                                        <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.topic')}</th>
+                                                        <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider text-center">{t('th.copyStatus')}</th>
+                                                        <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider text-center">{t('th.status')}</th>
+                                                        <th className="px-6 py-4 text-center font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('common.actions')}</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
@@ -729,8 +729,8 @@ const LibrarianDashboard = () => {
                                                                     <td className="px-6 py-4 text-gray-600 dark:text-gray-400 text-xs">{book.author?.name || '-'}</td>
                                                                     <td className="px-6 py-4 text-gray-600 dark:text-gray-400 text-xs">{book.publisher?.name || '-'}</td>
                                                                     <td className="px-6 py-4 text-gray-600 dark:text-gray-400 text-xs">{book.genre?.name || '-'}</td>
-                                                                    <td className="px-6 py-4 text-center text-gray-800 dark:text-gray-200 font-bold text-[11px]">{availableCopies} / {totalCopies} Müsait</td>
-                                                                    <td className="px-6 py-4 text-center text-gray-800 dark:text-gray-200 font-bold text-[11px]">{loanedCopies} / {totalCopies} Ödünçte</td>
+                                                                    <td className="px-6 py-4 text-center text-gray-800 dark:text-gray-200 font-bold text-[11px]">{availableCopies} / {totalCopies} {t('st.available')}</td>
+                                                                    <td className="px-6 py-4 text-center text-gray-800 dark:text-gray-200 font-bold text-[11px]">{loanedCopies} / {totalCopies} {t('st.onLoan')}</td>
                                                                     
                                                                     <td className="px-6 py-4 text-center relative">
                                                                         <div className="flex items-center justify-center gap-3">
@@ -747,8 +747,8 @@ const LibrarianDashboard = () => {
 
                                                                         {openDropdownId === `inv-${book.id}` && (
                                                                             <div className="absolute right-10 top-0 mt-6 flex flex-col gap-1.5 z-50 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-600 animate-in fade-in zoom-in-95 duration-100 w-40" onClick={(e) => e.stopPropagation()}>
-                                                                                <button onClick={() => { setModalType('issue_loan_modal'); setTargetBookId(book.id); setLoanForm(EMPTY_LOAN_FORM); setStudentPickerText(''); setIsModalOpen(true); setOpenDropdownId(null); }} className="bg-[#C2E0C6] border border-[#A3D3A8] text-[#1E5631] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#A3D3A8] transition-colors w-full">Kitabı Ver</button>
-                                                                                <button onClick={() => { setModalType('return_book_modal'); setIsModalOpen(true); setOpenDropdownId(null); }} className="bg-[#FCE7F3] border border-[#FBCFE8] text-[#9D174D] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#FBCFE8] transition-colors w-full">Kitabı Geri Al</button>
+                                                                                <button onClick={() => { setModalType('issue_loan_modal'); setTargetBookId(book.id); setLoanForm(EMPTY_LOAN_FORM); setStudentPickerText(''); setIsModalOpen(true); setOpenDropdownId(null); }} className="bg-[#C2E0C6] border border-[#A3D3A8] text-[#1E5631] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#A3D3A8] transition-colors w-full">{t('b.giveBook')}</button>
+                                                                                <button onClick={() => { setModalType('return_book_modal'); setIsModalOpen(true); setOpenDropdownId(null); }} className="bg-[#FCE7F3] border border-[#FBCFE8] text-[#9D174D] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#FBCFE8] transition-colors w-full">{t('b.takeBack')}</button>
                                                                                 <button onClick={() => openAddCopy(book.id)} className="bg-[#FEF3C7] border border-[#FDE68A] text-[#B45309] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#FDE68A] transition-colors w-full">Yeni Kopya Ekle</button>
                                                                                 <button onClick={() => handleDeleteBook(book.id)} className="bg-red-100 border border-red-200 text-red-700 text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-red-200 transition-colors w-full mt-2">Sil</button>
                                                                             </div>
@@ -767,10 +767,10 @@ const LibrarianDashboard = () => {
                                                                                 <table className="w-full text-left text-xs">
                                                                                     <thead className="bg-gray-50 dark:bg-gray-800/80 text-gray-500 dark:text-gray-400">
                                                                                             <tr>
-                                                                                            <th className="px-4 py-2 font-semibold">Demirbaş No</th>
-                                                                                            <th className="px-4 py-2 font-semibold">Demirbaş Durumu (Müsaitlik)</th>
-                                                                                            <th className="px-4 py-2 font-semibold">Durum (Fiziksel)</th>
-                                                                                            <th className="px-4 py-2 font-semibold text-right">İşlemler</th>
+                                                                                            <th className="px-4 py-2 font-semibold">{t('th.trackingNo')}</th>
+                                                                                            <th className="px-4 py-2 font-semibold">{t('th.copyAvail')}</th>
+                                                                                            <th className="px-4 py-2 font-semibold">{t('th.physical')}</th>
+                                                                                            <th className="px-4 py-2 font-semibold text-right">{t('common.actions')}</th>
                                                                                         </tr>
                                                                                     </thead>
                                                                                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -782,7 +782,7 @@ const LibrarianDashboard = () => {
                                                                                                 </td>
                                                                                                 <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{copy.condition?.name || '-'}</td>
                                                                                                 <td className="px-4 py-3 text-right">
-                                                                                                    <button onClick={() => openEditCopy(copy)} className="text-blue-500 hover:text-blue-700 mr-3 font-medium">Düzenle</button>
+                                                                                                    <button onClick={() => openEditCopy(copy)} className="text-blue-500 hover:text-blue-700 mr-3 font-medium">{t('common.edit')}</button>
                                                                                                     <button onClick={() => handleDeleteCopy(copy.id)} className="text-red-500 hover:text-red-700 font-medium">Sil</button>
                                                                                                 </td>
                                                                                             </tr>
@@ -799,14 +799,14 @@ const LibrarianDashboard = () => {
                                                             </Fragment>
                                                         );
                                                     })}
-                                                    {currentBooks.length === 0 && <tr><td colSpan="9" className="p-8 text-center text-gray-400">Kayıt bulunamadı.</td></tr>}
+                                                    {currentBooks.length === 0 && <tr><td colSpan="9" className="p-8 text-center text-gray-400">{t('msg.noRecords')}</td></tr>}
                                                 </tbody>
                                             </table>
                                         </div>
 
                                         <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-xl gap-4">
                                             <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                                                <span>Sayfa başına göster:</span>
+                                                <span>{t('msg.perPage')}</span>
                                                 <select 
                                                     value={itemsPerPage} 
                                                     onChange={(e) => setItemsPerPage(Number(e.target.value))}
@@ -821,7 +821,7 @@ const LibrarianDashboard = () => {
                                             
                                             <div className="flex items-center gap-4 text-sm">
                                                 <span className="text-gray-500 dark:text-gray-400 hidden sm:block">
-                                                    Toplam <strong className="text-gray-700 dark:text-gray-200">{processedBooks.length}</strong> kayıttan <strong className="text-gray-700 dark:text-gray-200">{processedBooks.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, processedBooks.length)}</strong> arası
+                                                    {t('msg.pageSummary', { total: processedBooks.length, from: processedBooks.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1, to: Math.min(currentPage * itemsPerPage, processedBooks.length) })}
                                                 </span>
                                                 
                                                 <div className="flex items-center gap-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm">
@@ -854,12 +854,12 @@ const LibrarianDashboard = () => {
                                         <table className="w-full text-left text-sm whitespace-nowrap">
                                             <thead className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                                                 <tr>
-                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Kitap Adı</th>
+                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.title')}</th>
                                                     <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Kopya ID</th>
-                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Öğrenci</th>
+                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.student')}</th>
                                                     <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Talep Tarihi</th>
                                                     <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider text-center">Durum</th>
-                                                    <th className="px-6 py-4 text-center font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">İşlem</th>
+                                                    <th className="px-6 py-4 text-center font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.action')}</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
@@ -874,7 +874,7 @@ const LibrarianDashboard = () => {
                                                             <td className="px-6 py-4 text-gray-600 dark:text-gray-400 text-xs">{new Date(res.request_date).toLocaleDateString()}</td>
                                                             <td className="px-6 py-4 text-center">
                                                                 <span className={`px-3 py-1 rounded text-[10px] font-bold tracking-wide ${isPending ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
-                                                                    {isPending ? 'Onay Bekliyor' : 'Onaylandı (Teslim Bekleniyor)'}
+                                                                    {isPending ? t('st.pendingApproval') : t('st.approvedWaiting')}
                                                                 </span>
                                                             </td>
                                                             <td className="px-6 py-4 text-center relative">
@@ -894,8 +894,8 @@ const LibrarianDashboard = () => {
                                                                             </>
                                                                         ) : (
                                                                             <>
-                                                                                <button onClick={() => { setSelectedResId(res.id); setModalType('issue_res'); setIsModalOpen(true); setOpenDropdownId(null); }} className="bg-[#E0E7FF] border border-[#BFDBFE] text-[#4338CA] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#C7D2FE] transition-colors w-full">Kitabı Ver</button>
-                                                                                <button onClick={() => handleReservationAction(res.id, 'Rejected')} className="bg-[#FFEDD5] border border-[#FDBA74] text-[#C2410C] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#FDBA74] transition-colors w-full">İptal Et</button>
+                                                                                <button onClick={() => { setSelectedResId(res.id); setModalType('issue_res'); setIsModalOpen(true); setOpenDropdownId(null); }} className="bg-[#E0E7FF] border border-[#BFDBFE] text-[#4338CA] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#C7D2FE] transition-colors w-full">{t('b.giveBook')}</button>
+                                                                                <button onClick={() => handleReservationAction(res.id, 'Rejected')} className="bg-[#FFEDD5] border border-[#FDBA74] text-[#C2410C] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#FDBA74] transition-colors w-full">{t('b.reject')}</button>
                                                                             </>
                                                                         )}
                                                                     </div>
@@ -904,7 +904,7 @@ const LibrarianDashboard = () => {
                                                         </tr>
                                                     );
                                                 })}
-                                                {processedReservations.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-gray-400">Aktif rezervasyon bulunamadı.</td></tr>}
+                                                {processedReservations.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-gray-400">{t('msg.noReservations')}</td></tr>}
                                             </tbody>
                                         </table>
                                     </div>
@@ -916,18 +916,18 @@ const LibrarianDashboard = () => {
                                         {overdueCount > 0 && (
                                             <div className="bg-red-50 dark:bg-red-900/20 px-6 py-3 border-b border-red-100 dark:border-red-900/50 flex items-center gap-3 text-red-700 dark:text-red-400 animate-pulse">
                                                 <AlertTriangle size={18} />
-                                                <span className="font-bold text-sm">Dikkat! İadesi geciken {overdueCount} kitap var.</span> 
+                                                <span className="font-bold text-sm">{t('msg.overdueWarn', { n: overdueCount })}</span>
                                             </div>
                                         )}
                                         <table className="w-full text-left text-sm whitespace-nowrap">
                                             <thead className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                                                 <tr>
                                                     <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Kopya ID</th>
-                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Kitap Adı</th>
-                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Öğrenci (ID)</th>
-                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Veriliş Tarihi</th>
-                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Teslim Tarihi</th>
-                                                    <th className="px-6 py-4 text-center font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">İşlemler</th>
+                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.title')}</th>
+                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.studentId')}</th>
+                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.issueDate')}</th>
+                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.dueDate')}</th>
+                                                    <th className="px-6 py-4 text-center font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('common.actions')}</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
@@ -941,7 +941,7 @@ const LibrarianDashboard = () => {
                                                             <td className="px-6 py-4 text-gray-600 dark:text-gray-400 text-xs">{new Date(loan.issue_date).toLocaleDateString()}</td>
                                                             <td className={`px-6 py-4 font-bold text-xs ${isOverdue ? 'text-red-600' : 'text-gray-600 dark:text-gray-400'}`}>
                                                                 {new Date(loan.due_date).toLocaleDateString()}
-                                                                {isOverdue && <span className="ml-2 bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-[10px]">GECİKTİ</span>}
+                                                                {isOverdue && <span className="ml-2 bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-[10px]">{t('st.overdue')}</span>}
                                                             </td>
                                                             <td className="px-6 py-4 text-center relative">
                                                                 <button 
@@ -953,15 +953,15 @@ const LibrarianDashboard = () => {
                                                                 
                                                                 {openDropdownId === `loan-${loan.id}` && (
                                                                     <div className="absolute right-10 top-0 mt-6 flex flex-col gap-1.5 z-50 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-100 w-36" onClick={(e) => e.stopPropagation()}>
-                                                                        <button onClick={() => returnCopy(loan.book_copy_id, loan.book_copy?.book_id, loan.book_copy?.tracking_number)} className="bg-[#FCE7F3] border border-[#FBCFE8] text-[#9D174D] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#FBCFE8] transition-colors w-full">Kitabı İade Al</button>
-                                                                        <button onClick={() => openEditLoan(loan)} className="bg-[#DBEAFE] border border-[#BFDBFE] text-[#1E40AF] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#BFDBFE] transition-colors w-full">Düzenle</button>
+                                                                        <button onClick={() => returnCopy(loan.book_copy_id, loan.book_copy?.book_id, loan.book_copy?.tracking_number)} className="bg-[#FCE7F3] border border-[#FBCFE8] text-[#9D174D] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#FBCFE8] transition-colors w-full">{t('b.returnBook')}</button>
+                                                                        <button onClick={() => openEditLoan(loan)} className="bg-[#DBEAFE] border border-[#BFDBFE] text-[#1E40AF] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#BFDBFE] transition-colors w-full">{t('common.edit')}</button>
                                                                     </div>
                                                                 )}
                                                             </td>
                                                         </tr>
                                                     );
                                                 })}
-                                                {processedLoans.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-gray-400">Aktif ödünç bulunamadı.</td></tr>}
+                                                {processedLoans.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-gray-400">{t('msg.noLoans')}</td></tr>}
                                             </tbody>
                                         </table>
                                     </div>
@@ -973,13 +973,13 @@ const LibrarianDashboard = () => {
                                         <table className="w-full text-left text-sm whitespace-nowrap">
                                             <thead className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                                                 <tr>
-                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Kişi</th>
+                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.person')}</th>
                                                     <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Birim</th>
                                                     {/* Changed Header */}
-                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Sınıf</th>
-                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Kişi Türü</th>
-                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider text-center">Kullanılan Kitap Sayısı</th>
-                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider text-right">İşlemler</th>
+                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.class')}</th>
+                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.personType')}</th>
+                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider text-center">{t('th.booksUsed')}</th>
+                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider text-right">{t('common.actions')}</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
@@ -992,10 +992,10 @@ const LibrarianDashboard = () => {
                                                                 <div className="font-bold text-gray-800 dark:text-gray-200 text-xs">{student.name}</div>
                                                                 <div className="text-[10px] text-gray-400 mt-0.5">No: {student.user_id}</div>
                                                             </td>
-                                                            <td className="px-6 py-4 text-gray-600 dark:text-gray-400 text-xs">{user?.librarian?.branch?.name || "Merkez Şube"}</td>
+                                                            <td className="px-6 py-4 text-gray-600 dark:text-gray-400 text-xs">{user?.librarian?.branch?.name || t('f.centralBranch')}</td>
                                                             {/* Changed cell: combines grade and class_group */}
                                                             <td className="px-6 py-4 text-gray-600 dark:text-gray-400 text-xs">{student.grade} {student.class_group}</td>
-                                                            <td className="px-6 py-4 text-gray-600 dark:text-gray-400 text-xs">Öğrenci</td>
+                                                            <td className="px-6 py-4 text-gray-600 dark:text-gray-400 text-xs">{t('st.student')}</td>
                                                             <td className="px-6 py-4 text-center font-bold text-gray-800 dark:text-gray-200 text-sm">{activeLoansCount}</td>
                                                             <td className="px-6 py-4 text-right">
                                                                 <button 
@@ -1008,7 +1008,7 @@ const LibrarianDashboard = () => {
                                                         </tr>
                                                     );
                                                 })}
-                                                {processedStudents.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-gray-400">Öğrenci bulunamadı.</td></tr>}
+                                                {processedStudents.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-gray-400">{t('msg.noStudents')}</td></tr>}
                                             </tbody>
                                         </table>
                                     </div>
@@ -1022,47 +1022,47 @@ const LibrarianDashboard = () => {
             {/* --- MODALS --- */}
 
             {/* Edit / Add Book Modal */}
-            <Modal isOpen={isModalOpen && (modalType === 'add_book' || modalType === 'edit_book')} onClose={() => setIsModalOpen(false)} title={modalType === 'add_book' ? "Yeni Kitap Ekle" : "Kitabı Düzenle"} maxWidth="max-w-2xl">
+            <Modal isOpen={isModalOpen && (modalType === 'add_book' || modalType === 'edit_book')} onClose={() => setIsModalOpen(false)} title={modalType === 'add_book' ? t('md.addBook') : t('md.editBook')} maxWidth="max-w-2xl">
                 <form onSubmit={handleBookSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
                     <div>
-                        <label className={labelCls}>Kitap Adı</label>
-                        <input type="text" placeholder="Kitap Adı" className={inputCls} value={bookForm.title} onChange={e => setBookForm({ ...bookForm, title: e.target.value })} required />
+                        <label className={labelCls}>{t('th.title')}</label>
+                        <input type="text" placeholder={t('th.title')} className={inputCls} value={bookForm.title} onChange={e => setBookForm({ ...bookForm, title: e.target.value })} required />
                     </div>
 
                     {/* Categories are managed under the Ayarlar tab and referenced here by id. */}
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className={labelCls}>Yazar</label>
+                            <label className={labelCls}>{t('th.author')}</label>
                             <select className={inputCls} value={bookForm.author_id} onChange={e => setBookForm({ ...bookForm, author_id: e.target.value })}>
-                                <option value="">Seçiniz</option>
+                                <option value="">{t('common.select')}</option>
                                 {categories.authors.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className={labelCls}>Yayınevi</label>
+                            <label className={labelCls}>{t('th.publisher')}</label>
                             <select className={inputCls} value={bookForm.publisher_id} onChange={e => setBookForm({ ...bookForm, publisher_id: e.target.value })}>
-                                <option value="">Seçiniz</option>
+                                <option value="">{t('common.select')}</option>
                                 {categories.publishers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className={labelCls}>Konu</label>
+                            <label className={labelCls}>{t('fld.topicSel')}</label>
                             <select className={inputCls} value={bookForm.topic_id} onChange={e => setBookForm({ ...bookForm, topic_id: e.target.value })}>
-                                <option value="">Seçiniz</option>
+                                <option value="">{t('common.select')}</option>
                                 {categories.topics.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className={labelCls}>Tür</label>
+                            <label className={labelCls}>{t('fld.genre')}</label>
                             <select className={inputCls} value={bookForm.genre_id} onChange={e => setBookForm({ ...bookForm, genre_id: e.target.value })}>
-                                <option value="">Seçiniz</option>
+                                <option value="">{t('common.select')}</option>
                                 {categories.genres.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className={labelCls}>Periyot</label>
+                            <label className={labelCls}>{t('fld.frequency')}</label>
                             <select className={inputCls} value={bookForm.frequency_id} onChange={e => setBookForm({ ...bookForm, frequency_id: e.target.value })}>
-                                <option value="">Seçiniz</option>
+                                <option value="">{t('common.select')}</option>
                                 {categories.frequencies.map(f => <option key={f.id} value={f.id}>{f.type}</option>)}
                             </select>
                         </div>
@@ -1075,24 +1075,24 @@ const LibrarianDashboard = () => {
                             <input type="text" placeholder="ISBN" className={inputCls} value={bookForm.isbn} onChange={e => setBookForm({ ...bookForm, isbn: e.target.value })} />
                         </div>
                         <div>
-                            <label className={labelCls}>Yayın Yılı</label>
-                            <input type="number" placeholder="Yıl" className={inputCls} value={bookForm.publication_year} onChange={e => setBookForm({ ...bookForm, publication_year: e.target.value })} />
+                            <label className={labelCls}>{t('fld.pubYear')}</label>
+                            <input type="number" placeholder={t('ph.year')} className={inputCls} value={bookForm.publication_year} onChange={e => setBookForm({ ...bookForm, publication_year: e.target.value })} />
                         </div>
                         <div>
-                            <label className={labelCls}>Dil</label>
-                            <input type="text" placeholder="Örn: Türkçe" className={inputCls} value={bookForm.language} onChange={e => setBookForm({ ...bookForm, language: e.target.value })} />
+                            <label className={labelCls}>{t('fld.language')}</label>
+                            <input type="text" placeholder={t('ph.langExample')} className={inputCls} value={bookForm.language} onChange={e => setBookForm({ ...bookForm, language: e.target.value })} />
                         </div>
                         <div>
-                            <label className={labelCls}>CEFR Seviyesi</label>
-                            <input type="text" placeholder="Örn: B1" className={inputCls} value={bookForm.cefr_level} onChange={e => setBookForm({ ...bookForm, cefr_level: e.target.value })} />
+                            <label className={labelCls}>{t('fld.cefr')}</label>
+                            <input type="text" placeholder={t('ph.cefrExample')} className={inputCls} value={bookForm.cefr_level} onChange={e => setBookForm({ ...bookForm, cefr_level: e.target.value })} />
                         </div>
                         <div>
-                            <label className={labelCls}>Baskı</label>
-                            <input type="text" placeholder="Örn: 3. Baskı" className={inputCls} value={bookForm.edition} onChange={e => setBookForm({ ...bookForm, edition: e.target.value })} />
+                            <label className={labelCls}>{t('fld.edition')}</label>
+                            <input type="text" placeholder={t('ph.editionExample')} className={inputCls} value={bookForm.edition} onChange={e => setBookForm({ ...bookForm, edition: e.target.value })} />
                         </div>
                         <div>
-                            <label className={labelCls}>Sayfa Sayısı</label>
-                            <input type="number" placeholder="Sayfa Sayısı" className={inputCls} value={bookForm.page_count} onChange={e => setBookForm({ ...bookForm, page_count: e.target.value })} />
+                            <label className={labelCls}>{t('fld.pageCount')}</label>
+                            <input type="number" placeholder={t('fld.pageCount')} className={inputCls} value={bookForm.page_count} onChange={e => setBookForm({ ...bookForm, page_count: e.target.value })} />
                         </div>
                     </div>
 
@@ -1116,12 +1116,12 @@ const LibrarianDashboard = () => {
                         </div>
                     </div>
                     <div>
-                        <label className={labelCls}>Fiziksel Açıklama</label>
-                        <input type="text" placeholder="Örn: 21 cm, ciltli" className={inputCls} value={bookForm.physical_description} onChange={e => setBookForm({ ...bookForm, physical_description: e.target.value })} />
+                        <label className={labelCls}>{t('fld.physical')}</label>
+                        <input type="text" placeholder={t('ph.physicalExample')} className={inputCls} value={bookForm.physical_description} onChange={e => setBookForm({ ...bookForm, physical_description: e.target.value })} />
                     </div>
                     <div>
-                        <label className={labelCls}>Ek Notlar</label>
-                        <textarea rows={2} placeholder="Ek Notlar" className={inputCls} value={bookForm.additional_notes} onChange={e => setBookForm({ ...bookForm, additional_notes: e.target.value })} />
+                        <label className={labelCls}>{t('fld.notes')}</label>
+                        <textarea rows={2} placeholder={t('fld.notes')} className={inputCls} value={bookForm.additional_notes} onChange={e => setBookForm({ ...bookForm, additional_notes: e.target.value })} />
                     </div>
 
                     <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
@@ -1141,21 +1141,21 @@ const LibrarianDashboard = () => {
                         )}
                     </div>
 
-                    <button className="w-full bg-[#E85B5B] hover:bg-red-600 text-white py-2 rounded font-bold transition-colors">Kaydet</button>
+                    <button className="w-full bg-[#E85B5B] hover:bg-red-600 text-white py-2 rounded font-bold transition-colors">{t('common.save')}</button>
                 </form>
             </Modal>
 
             {/* Direct Issue Loan Modal */}
-            <Modal isOpen={isModalOpen && (modalType === 'issue_loan_modal' || modalType === 'issue_res')} onClose={() => setIsModalOpen(false)} title={modalType === 'issue_res' ? "Rezervasyonu Onayla ve Kitabı Ver" : "Öğrenciye Kitap Ver"}>
+            <Modal isOpen={isModalOpen && (modalType === 'issue_loan_modal' || modalType === 'issue_res')} onClose={() => setIsModalOpen(false)} title={modalType === 'issue_res' ? t('md.issueRes') : t('md.issueLoan')}>
                 <form onSubmit={modalType === 'issue_res' ? handleIssueReservation : handleLoan} className="space-y-4">
                     {modalType === 'issue_loan_modal' && (
                         <>
                             <div>
-                                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Öğrenci</label>
+                                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('th.student')}</label>
                                 <input
                                     type="text"
                                     list="student-picker-list"
-                                    placeholder="İsim veya numara ile ara..."
+                                    placeholder={t('ph.searchStudent')}
                                     className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white"
                                     value={studentPickerText}
                                     onChange={e => {
@@ -1175,24 +1175,24 @@ const LibrarianDashboard = () => {
                                     ))}
                                 </datalist>
                                 {loanForm.student_id
-                                    ? <span className="text-xs text-green-600 mt-1 block">Seçilen: {students.find(s => s.user_id === loanForm.student_id)?.name}</span>
-                                    : <span className="text-xs text-gray-400 mt-1 block">*Listeden bir öğrenci seçin.</span>}
+                                    ? <span className="text-xs text-green-600 mt-1 block">{t('misc.selected')}: {students.find(s => s.user_id === loanForm.student_id)?.name}</span>
+                                    : <span className="text-xs text-gray-400 mt-1 block">{t('misc.selectStudentHint')}</span>}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Verilecek Demirbaş No</label>
-                                <input type="text" placeholder="Örn: 2024-0142" className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white" value={loanForm.tracking_number} onChange={e => setLoanForm({ ...loanForm, tracking_number: e.target.value })} required />
-                                <span className="text-xs text-gray-400 mt-1 block">*Kitabın üzerindeki demirbaş / barkod numarasını girin.</span>
+                                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('fld.issueTrackingNo')}</label>
+                                <input type="text" placeholder={t('ph.trackingExample')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white" value={loanForm.tracking_number} onChange={e => setLoanForm({ ...loanForm, tracking_number: e.target.value })} required />
+                                <span className="text-xs text-gray-400 mt-1 block">{t('misc.trackingHint')}</span>
                             </div>
                         </>
                     )}
                     {modalType === 'issue_res' && (
-                        <p className="text-gray-600 dark:text-gray-400 text-sm">Öğrenci kitabı teslim almaya geldi. Lütfen son teslim tarihini belirleyin.</p>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm">{t('misc.studentPickup')}</p>
                     )}
                     <div>
-                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Son Teslim Tarihi</label>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('fld.dueDate')}</label>
                         <input type="date" className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white" value={loanForm.due_date} onChange={e => setLoanForm({...loanForm, due_date: e.target.value})} required/>
                     </div>
-                    <button className="w-full bg-[#1E5631] hover:bg-green-800 text-white py-2 rounded font-bold transition-colors">Onayla ve Ver</button>
+                    <button className="w-full bg-[#1E5631] hover:bg-green-800 text-white py-2 rounded font-bold transition-colors">{t('b.approveGive')}</button>
                 </form>
             </Modal>
 
@@ -1211,66 +1211,66 @@ const LibrarianDashboard = () => {
             />
 
             {/* Edit Loan Modal */}
-            <Modal isOpen={isModalOpen && modalType === 'edit_loan'} onClose={() => setIsModalOpen(false)} title="Ödünç Kaydını Düzenle">
+            <Modal isOpen={isModalOpen && modalType === 'edit_loan'} onClose={() => setIsModalOpen(false)} title={t('md.editLoan')}>
                 <form onSubmit={handleLoanEdit} className="space-y-4">
                     <div>
                         <label className={labelCls}>Son Teslim Tarihi</label>
                         <input type="date" className={inputCls} value={loanEditForm.due_date} onChange={e => setLoanEditForm({ ...loanEditForm, due_date: e.target.value })} required />
                     </div>
                     <div>
-                        <label className={labelCls}>Açıklama / Not</label>
-                        <textarea rows={3} placeholder="Örn: Süre uzatıldı" className={inputCls} value={loanEditForm.description} onChange={e => setLoanEditForm({ ...loanEditForm, description: e.target.value })} />
+                        <label className={labelCls}>{t('fld.descNote')}</label>
+                        <textarea rows={3} placeholder={t('ph.extendedNote')} className={inputCls} value={loanEditForm.description} onChange={e => setLoanEditForm({ ...loanEditForm, description: e.target.value })} />
                     </div>
-                    <button className="w-full bg-[#1E40AF] hover:bg-blue-800 text-white py-2 rounded font-bold transition-colors">Kaydet</button>
+                    <button className="w-full bg-[#1E40AF] hover:bg-blue-800 text-white py-2 rounded font-bold transition-colors">{t('common.save')}</button>
                 </form>
             </Modal>
 
             {/* Return Book Modal */}
-            <Modal isOpen={isModalOpen && modalType === 'return_book_modal'} onClose={() => setIsModalOpen(false)} title="Kitabı İade Al">
+            <Modal isOpen={isModalOpen && modalType === 'return_book_modal'} onClose={() => setIsModalOpen(false)} title={t('b.returnBook')}>
                 <form onSubmit={handleQuickReturn} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Demirbaş No</label>
-                        <input type="text" placeholder="Örn: 2024-0142" className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white" value={loanForm.tracking_number} onChange={e => setLoanForm({ ...loanForm, tracking_number: e.target.value })} required />
-                        <span className="text-xs text-gray-400 mt-1 block">*Öğrencinin getirdiği kitabın üzerindeki demirbaş numarasını girin.</span>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('th.trackingNo')}</label>
+                        <input type="text" placeholder={t('ph.trackingExample')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white" value={loanForm.tracking_number} onChange={e => setLoanForm({ ...loanForm, tracking_number: e.target.value })} required />
+                        <span className="text-xs text-gray-400 mt-1 block">{t('misc.returnHint')}</span>
                     </div>
-                    <button className="w-full bg-[#9D174D] hover:bg-pink-800 text-white py-2 rounded font-bold transition-colors">İade İşlemini Tamamla</button>
+                    <button className="w-full bg-[#9D174D] hover:bg-pink-800 text-white py-2 rounded font-bold transition-colors">{t('b.completeReturn')}</button>
                 </form>
             </Modal>
 
             {/* Add / Edit Copy Modal */}
-            <Modal isOpen={isModalOpen && (modalType === 'add_copy' || modalType === 'edit_copy')} onClose={() => setIsModalOpen(false)} title={modalType === 'add_copy' ? "Kopya Ekle" : "Kopya Düzenle"}>
+            <Modal isOpen={isModalOpen && (modalType === 'add_copy' || modalType === 'edit_copy')} onClose={() => setIsModalOpen(false)} title={modalType === 'add_copy' ? t('md.addCopy') : t('md.editCopy')}>
                 <form onSubmit={handleCopySubmit} className="space-y-4">
                     {/* Each copy is one physical item identified by its barcode, so copies are
                         added one at a time rather than by quantity. */}
                     <div>
-                        <label className={labelCls}>Demirbaş / Barkod No</label>
-                        <input type="text" placeholder="Örn: 2024-0142" className={inputCls} value={copyForm.tracking_number} onChange={e => setCopyForm({ ...copyForm, tracking_number: e.target.value })} required />
+                        <label className={labelCls}>{t('fld.trackingBarcode')}</label>
+                        <input type="text" placeholder={t('ph.trackingExample')} className={inputCls} value={copyForm.tracking_number} onChange={e => setCopyForm({ ...copyForm, tracking_number: e.target.value })} required />
                     </div>
                     <div>
-                        <label className={labelCls}>Fiziksel Durum</label>
+                        <label className={labelCls}>{t('fld.condition')}</label>
                         <select className={inputCls} value={copyForm.condition_id} onChange={e => setCopyForm({ ...copyForm, condition_id: e.target.value })}>
-                            <option value="">Seçiniz</option>
+                            <option value="">{t('common.select')}</option>
                             {categories.conditions.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                     </div>
                     <div>
-                        <label className={labelCls}>Demirbaş Durumu</label>
+                        <label className={labelCls}>{t('th.copyStatus')}</label>
                         <select className={inputCls} value={copyForm.status_id} onChange={e => setCopyForm({ ...copyForm, status_id: e.target.value })}>
-                            <option value="">Seçiniz</option>
+                            <option value="">{t('common.select')}</option>
                             {categories.copyStatuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
                     </div>
                     {categories.conditions.length === 0 && (
                         <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                            Fiziksel durum listesi boş. Ayarlar sekmesinden ekleyebilirsiniz.
+                            {t('msg.conditionsEmpty')}
                         </p>
                     )}
-                    <button className="w-full bg-[#1E5631] hover:bg-green-800 text-white py-2 rounded font-bold transition-colors">Kaydet</button>
+                    <button className="w-full bg-[#1E5631] hover:bg-green-800 text-white py-2 rounded font-bold transition-colors">{t('common.save')}</button>
                 </form>
             </Modal>
 
             {/* Student Details / Reading History Modal with Time Filter */}
-            <Modal isOpen={isModalOpen && modalType === 'student_details'} onClose={() => setIsModalOpen(false)} title="Öğrenci Okuma Geçmişi" maxWidth="max-w-3xl">
+            <Modal isOpen={isModalOpen && modalType === 'student_details'} onClose={() => setIsModalOpen(false)} title={t('md.studentHistory')} maxWidth="max-w-3xl">
                 {selectedStudent && (() => {
                     const now = new Date();
                     const filteredStudentLoans = studentLoans.filter(loan => {
@@ -1291,7 +1291,7 @@ const LibrarianDashboard = () => {
                             <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                 <div>
                                     <h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg">{selectedStudent.name}</h3>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">ID: {selectedStudent.user_id} • Sınıf: {selectedStudent.grade} {selectedStudent.class_group}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">ID: {selectedStudent.user_id} • {t('th.class')}: {selectedStudent.grade} {selectedStudent.class_group}</p>
                                 </div>
                                 <div className="flex items-center gap-4 w-full sm:w-auto">
                                     <select 
@@ -1299,14 +1299,14 @@ const LibrarianDashboard = () => {
                                         value={studentHistoryTimeFrame}
                                         onChange={(e) => setStudentHistoryTimeFrame(e.target.value)}
                                     >
-                                        <option value="all">Tüm Zamanlar</option>
-                                        <option value="year">Bu Yıl</option>
-                                        <option value="month">Bu Ay</option>
+                                        <option value="all">{t('misc.allTime')}</option>
+                                        <option value="year">{t('misc.thisYear')}</option>
+                                        <option value="month">{t('misc.thisMonth')}</option>
                                     </select>
                                     
                                     <div className="text-right border-l border-gray-200 dark:border-gray-600 pl-4">
                                         <span className="block text-xl font-bold text-[#E85B5B]">{filteredStudentLoans.length}</span>
-                                        <span className="text-[10px] text-gray-400 uppercase whitespace-nowrap">Toplam İşlem</span>
+                                        <span className="text-[10px] text-gray-400 uppercase whitespace-nowrap">{t('misc.totalTx')}</span>
                                     </div>
                                 </div>
                             </div>
@@ -1315,10 +1315,10 @@ const LibrarianDashboard = () => {
                                 <table className="w-full text-left text-sm whitespace-nowrap">
                                     <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 sticky top-0 shadow-sm">
                                         <tr>
-                                            <th className="px-4 py-3 font-semibold text-xs">Kitap Adı</th>
-                                            <th className="px-4 py-3 font-semibold text-xs">Veriliş</th>
-                                            <th className="px-4 py-3 font-semibold text-xs">İade</th>
-                                            <th className="px-4 py-3 font-semibold text-xs text-right">Durum</th>
+                                            <th className="px-4 py-3 font-semibold text-xs">{t('th.title')}</th>
+                                            <th className="px-4 py-3 font-semibold text-xs">{t('th.issue')}</th>
+                                            <th className="px-4 py-3 font-semibold text-xs">{t('th.return')}</th>
+                                            <th className="px-4 py-3 font-semibold text-xs text-right">{t('th.status')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
@@ -1329,12 +1329,12 @@ const LibrarianDashboard = () => {
                                                 <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">{loan.return_date ? new Date(loan.return_date).toLocaleDateString() : '-'}</td>
                                                 <td className="px-4 py-3 text-right">
                                                     <span className={`text-[10px] px-2 py-1 rounded font-bold ${loan.status?.code === 'ACTIVE' ? 'bg-[#FEF3C7] text-[#B45309]' : 'bg-[#E6F4EA] text-[#059669]'}`}>
-                                                        {loan.status?.code === 'ACTIVE' ? 'Kullanılıyor' : 'İade Edildi'}
+                                                        {loan.status?.code === 'ACTIVE' ? t('st.inUse') : t('st.returned')}
                                                     </span>
                                                 </td>
                                             </tr>
                                         ))}
-                                        {filteredStudentLoans.length === 0 && <tr><td colSpan="4" className="p-6 text-center text-gray-400 text-xs">Bu döneme ait işlem bulunmamaktadır.</td></tr>}
+                                        {filteredStudentLoans.length === 0 && <tr><td colSpan="4" className="p-6 text-center text-gray-400 text-xs">{t('msg.noPeriod')}</td></tr>}
                                     </tbody>
                                 </table>
                             </div>
