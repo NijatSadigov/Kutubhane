@@ -3,11 +3,14 @@ package middleware
 import (
 	"strings"
 
+	"school-library-system/config"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const SecretKey = "secret"
+// SecretKey is sourced from JWT_SECRET (see config package), not hardcoded.
+var SecretKey = config.JWTSecret
 
 func IsAuthenticated(c *fiber.Ctx) error {
 	tokenString := c.Cookies("jwt")

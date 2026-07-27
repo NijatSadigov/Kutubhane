@@ -1,0 +1,17 @@
+# Secrets — never commit real credentials (.env.example is the template)
+.env
+*.env
+!.env.example
+
+# Go build output
+school-library-system/school-library-system
+school-library-system/school-library-system.exe
+
+# Node
+node_modules/
+library-frontend/dist/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store

@@ -130,6 +130,4 @@ func Setup(app *fiber.App) {
 	api.Post("/admin/librarian", middleware.IsAdmin, handlers.AddLibrarian)
 	api.Put("/admin/librarian/:id", middleware.IsAdmin, handlers.UpdateLibrarian)
 	api.Delete("/admin/librarian/:id", middleware.IsAdmin, handlers.RemoveLibrarian)
-
-	app.Get("/debug/librarians", handlers.DebugLibrarians)
 }

@@ -3,6 +3,8 @@ package database
 import (
 	"log"
 
+	"school-library-system/config"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -12,7 +14,7 @@ var DB *gorm.DB
 
 func Connect() {
 
-	dsn := "host=localhost user=postgres password=2334 dbname=school_library port=5432 sslmode=disable"
+	dsn := config.DatabaseDSN
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"school-library-system/config"
 	"school-library-system/database"
 	"school-library-system/models"
 	"time"
@@ -10,7 +11,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const SecretKey = "secret"
+// SecretKey is sourced from JWT_SECRET (see config package), not hardcoded.
+var SecretKey = config.JWTSecret
 
 // --- REGISTER ---
 type RegisterInput struct {
@@ -142,9 +144,4 @@ func User(c *fiber.Ctx) error {
 
 func Logout(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "success"})
-}
-func DebugLibrarians(c *fiber.Ctx) error {
-	var libs []models.Librarian
-	database.DB.Preload("School").Preload("Branch").Find(&libs)
-	return c.JSON(libs)
 }
