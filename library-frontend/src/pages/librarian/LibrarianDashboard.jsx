@@ -71,6 +71,9 @@ const LibrarianDashboard = () => {
     const [selectedGenre, setSelectedGenre] = useState('All');
     const [callNoFilter, setCallNoFilter] = useState('');
     const [isbnFilter, setIsbnFilter] = useState('');
+    const [cefrFilter, setCefrFilter] = useState('All');
+    const [languageFilter, setLanguageFilter] = useState('All');
+    const [availabilityFilter, setAvailabilityFilter] = useState('All');
 
     // 👇 NEW: Merged Student Class filter (e.g., '7-A')
     const [studentSearch, setStudentSearch] = useState('');
@@ -100,7 +103,7 @@ const LibrarianDashboard = () => {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchQuery, selectedGenre, callNoFilter, isbnFilter, itemsPerPage, studentSearch, studentIdFilter, studentClass]);
+    }, [searchQuery, selectedGenre, callNoFilter, isbnFilter, cefrFilter, languageFilter, availabilityFilter, itemsPerPage, studentSearch, studentIdFilter, studentClass]);
 
     const fetchBooks = async () => { try { const res = await api.get('/books'); setBooks(res.data); } catch (err) { console.error(err); } };
     const fetchLoans = async () => { try { const res = await api.get('/loans'); setLoans(res.data); } catch (err) { console.error(err); } };
@@ -287,6 +290,9 @@ const LibrarianDashboard = () => {
 
     // --- 4. FILTERING LOGIC ---
     const uniqueGenres = ['All', ...new Set(books.map(b => b.genre?.name).filter(Boolean))];
+    const uniqueCefr = ['All', ...new Set(books.map(b => b.cefr_level).filter(Boolean))];
+    const uniqueLanguages = ['All', ...new Set(books.map(b => b.language).filter(Boolean))];
+    const bookHasAvailableCopy = (b) => b.copies?.some(c => c.status?.code === 'AVAILABLE');
     
     // 👇 NEW: Extract and sort combined classes (e.g. '7-A', '8-B') safely
     const uniqueClasses = [...new Set(
@@ -305,6 +311,10 @@ const LibrarianDashboard = () => {
         if (selectedGenre !== 'All' && b.genre?.name !== selectedGenre) return false;
         if (callNoFilter && !b.call_no?.toLowerCase().includes(callNoFilter.toLowerCase())) return false;
         if (isbnFilter && !(b.isbn || "").toLowerCase().includes(isbnFilter.toLowerCase())) return false;
+        if (cefrFilter !== 'All' && b.cefr_level !== cefrFilter) return false;
+        if (languageFilter !== 'All' && b.language !== languageFilter) return false;
+        if (availabilityFilter === 'available' && !bookHasAvailableCopy(b)) return false;
+        if (availabilityFilter === 'unavailable' && bookHasAvailableCopy(b)) return false;
         return true;
     });
 
@@ -321,6 +331,8 @@ const LibrarianDashboard = () => {
         }
         if (selectedGenre !== 'All' && r.book_copy?.book?.genre?.name !== selectedGenre) return false;
         if (callNoFilter && !r.book_copy?.book?.call_no?.toLowerCase().includes(callNoFilter.toLowerCase())) return false;
+        if (cefrFilter !== 'All' && r.book_copy?.book?.cefr_level !== cefrFilter) return false;
+        if (languageFilter !== 'All' && r.book_copy?.book?.language !== languageFilter) return false;
         return true;
     });
 
@@ -334,6 +346,8 @@ const LibrarianDashboard = () => {
         }
         if (selectedGenre !== 'All' && l.book_copy?.book?.genre?.name !== selectedGenre) return false;
         if (callNoFilter && !l.book_copy?.book?.call_no?.toLowerCase().includes(callNoFilter.toLowerCase())) return false;
+        if (cefrFilter !== 'All' && l.book_copy?.book?.cefr_level !== cefrFilter) return false;
+        if (languageFilter !== 'All' && l.book_copy?.book?.language !== languageFilter) return false;
         return true;
     }).sort((a, b) => new Date(b.issue_date) - new Date(a.issue_date));
 
@@ -495,25 +509,27 @@ const LibrarianDashboard = () => {
                                                         </div>
                                                         <div>
                                                             <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">CEFR</label>
-                                                            <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]"><option>CEFR</option></select>
+                                                            <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={cefrFilter} onChange={(e) => setCefrFilter(e.target.value)}>
+                                                                {uniqueCefr.map(v => <option key={v} value={v}>{v === 'All' ? 'CEFR (Tümü)' : v}</option>)}
+                                                            </select>
                                                         </div>
                                                     </div>
                                                     <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                                        <div>
-                                                            <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Demirbaş Durumu</label>
-                                                            <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]"><option>Demirbaş Durumu</option></select>
-                                                        </div>
+                                                        {activeTab === 'inventory' && (
+                                                            <div>
+                                                                <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Demirbaş Durumu</label>
+                                                                <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={availabilityFilter} onChange={(e) => setAvailabilityFilter(e.target.value)}>
+                                                                    <option value="All">Tümü</option>
+                                                                    <option value="available">Müsait kopyası var</option>
+                                                                    <option value="unavailable">Müsait kopyası yok</option>
+                                                                </select>
+                                                            </div>
+                                                        )}
                                                         <div>
                                                             <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Dil</label>
-                                                            <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]"><option>Dil Seçiniz</option></select>
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Durum</label>
-                                                            <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]"><option>Durum</option></select>
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Teslim Tarihi</label>
-                                                            <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]"><option>Teslim Tarihi</option></select>
+                                                            <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={languageFilter} onChange={(e) => setLanguageFilter(e.target.value)}>
+                                                                {uniqueLanguages.map(v => <option key={v} value={v}>{v === 'All' ? 'Dil (Tümü)' : v}</option>)}
+                                                            </select>
                                                         </div>
                                                     </div>
                                                 </>
