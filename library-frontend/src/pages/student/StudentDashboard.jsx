@@ -4,13 +4,19 @@ import { AuthContext } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Search, Book, Calendar, Clock, Bookmark, Filter, Layers, User, BarChart2, BookOpen, PieChart, Award, Home, ChevronDown, ChevronUp, Mail, Bell, Moon, Sun, MoreHorizontal, Globe, ChevronLeft, CheckSquare, Square } from 'lucide-react';
 import Modal from '../../components/Modal'; // <-- EKLENDI: Modal Bileseni
+import HomeView from '../../components/HomeView';
+import LanguageSwitcher from '../../components/LanguageSwitcher';
+import ProfileModal, { displayName } from '../ProfileModal';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 const StudentDashboard = () => {
     const { user, logout } = useContext(AuthContext);
     const navigate = useNavigate();
+    const { t } = useTranslation();
 
     // UI State
-    const [activeTab, setActiveTab] = useState('catalog');
+    const [activeTab, setActiveTab] = useState('home');
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const [isDark, setIsDark] = useState(false); 
     const [viewMode, setViewMode] = useState('card');
@@ -250,7 +256,18 @@ const StudentDashboard = () => {
         return gradient.slice(0, -2) + ')';
     };
 
-    if (loading) return <div className="p-10 text-center text-gray-500 dark:text-gray-400">Yükleniyor...</div>;
+    // Overview data for the Anasayfa (home) view.
+    const studentHomeStats = [
+        { key: 'active', label: t('home.myActiveLoans'), value: myLoans.filter(l => l.status_code === 'ACTIVE').length, accent: 'text-[#E85B5B] dark:text-red-400' },
+        { key: 'read', label: t('home.myReadBooks'), value: myLoans.filter(l => l.status_code === 'RETURNED').length, accent: 'text-green-600 dark:text-green-400' },
+        { key: 'catalog', label: t('home.totalBooks'), value: books.length },
+    ];
+    const studentHomeActions = [
+        { label: t('home.goToCatalog'), onClick: () => setActiveTab('catalog') },
+        { label: t('home.goToMyBooks'), onClick: () => setActiveTab('mylibrary') },
+    ];
+
+    if (loading) return <div className="p-10 text-center text-gray-500 dark:text-gray-400">{t('common.loading')}</div>;
 
     return (
         <div className={isDark ? 'dark' : ''}>
@@ -263,17 +280,34 @@ const StudentDashboard = () => {
                         <span className="text-2xl font-bold text-[#E85B5B] hidden">e12</span>
                     </div>
                     
-                    <nav className="flex-1 px-4 py-6 flex flex-col gap-2">
-                        <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                            <Home size={18} /> Anasayfa
-                        </button>
-                        <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium bg-[#E85B5B] text-white rounded-xl shadow-md shadow-red-200 dark:shadow-none">
-                            <BookOpen size={18} /> Kütüphane
-                        </button>
-                        
-                        <div className="mt-auto">
+                    <nav className="flex-1 px-4 py-6 flex flex-col gap-1">
+                        {[
+                            { id: 'home', icon: Home, label: t('nav.home') },
+                            { id: 'catalog', icon: BookOpen, label: t('nav.library') },
+                            { id: 'mylibrary', icon: Book, label: t('nav.myBooks') },
+                            { id: 'stats', icon: BarChart2, label: t('tab.stats') },
+                        ].map(item => {
+                            const Icon = item.icon;
+                            const active = activeTab === item.id;
+                            return (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setActiveTab(item.id)}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${active
+                                        ? 'bg-[#E85B5B] text-white shadow-md shadow-red-200 dark:shadow-none'
+                                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                                >
+                                    <Icon size={18} /> {item.label}
+                                </button>
+                            );
+                        })}
+
+                        <div className="mt-auto flex flex-col gap-1">
+                            <button onClick={() => setIsProfileOpen(true)} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                <User size={18} /> {t('nav.profile')}
+                            </button>
                             <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 rounded-xl hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                                <LogOut size={18} /> Çıkış Yap
+                                <LogOut size={18} /> {t('auth.logout')}
                             </button>
                         </div>
                     </nav>
@@ -291,21 +325,20 @@ const StudentDashboard = () => {
                         
                         <div className="flex items-center gap-6">
                             <div className="flex items-center gap-4 text-gray-400 dark:text-gray-500">
-                                <Mail size={20} className="hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer transition-colors" />
-                                <Bell size={20} className="hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer transition-colors" />
+                                <LanguageSwitcher />
                                 <button onClick={() => setIsDark(!isDark)} className="hover:text-indigo-500 dark:hover:text-yellow-400 transition-colors outline-none">
                                     {isDark ? <Sun size={20} /> : <Moon size={20} />}
                                 </button>
                             </div>
-                            <div className="flex items-center gap-3 pl-4 border-l border-gray-200 dark:border-gray-800">
+                            <button onClick={() => setIsProfileOpen(true)} className="flex items-center gap-3 pl-4 border-l border-gray-200 dark:border-gray-800 outline-none group" title={t('nav.profile')}>
                                 <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center font-bold uppercase">
-                                    {user?.name?.charAt(0) || 'A'}
+                                    {displayName(user)?.charAt(0) || 'A'}
                                 </div>
                                 <div className="text-right hidden sm:block">
-                                    <p className="text-sm font-bold text-gray-800 dark:text-gray-100 leading-tight">{user?.name || "Öğrenci"}</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">{user?.email || "ogrenci@e12.com.tr"}</p>
+                                    <p className="text-sm font-bold text-gray-800 dark:text-gray-100 leading-tight group-hover:text-[#E85B5B] transition-colors">{displayName(user) || t('role.student')}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">{user?.email}</p>
                                 </div>
-                            </div>
+                            </button>
                         </div>
                     </header>
 
@@ -313,18 +346,24 @@ const StudentDashboard = () => {
                     <main className="flex-1 overflow-y-auto p-8">
                         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 min-h-full transition-colors duration-200">
                             
+                            {/* Home / overview */}
+                            {activeTab === 'home' && (
+                                <HomeView welcomeName={displayName(user)} stats={studentHomeStats} actions={studentHomeActions} />
+                            )}
+
                             {/* Tabs */}
+                            {activeTab !== 'home' && (
                             <div className="px-8 pt-6 border-b border-gray-100 dark:border-gray-800 flex gap-8 relative">
                                 <button onClick={() => setActiveTab('catalog')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'catalog' ? 'text-[#E85B5B]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
-                                    Kütüphane
+                                    {t('tab.catalog')}
                                     {activeTab === 'catalog' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#E85B5B] rounded-t-full"></div>}
                                 </button>
                                 <button onClick={() => setActiveTab('mylibrary')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'mylibrary' ? 'text-[#E85B5B]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
-                                    Kitaplarım
+                                    {t('tab.myLibrary')}
                                     {activeTab === 'mylibrary' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#E85B5B] rounded-t-full"></div>}
                                 </button>
                                 <button onClick={() => setActiveTab('stats')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'stats' ? 'text-[#E85B5B]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
-                                    İstatistiklerim
+                                    {t('tab.stats')}
                                     {activeTab === 'stats' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#E85B5B] rounded-t-full"></div>}
                                 </button>
 
@@ -340,6 +379,7 @@ const StudentDashboard = () => {
                                     </div>
                                 )}
                             </div>
+                            )}
 
                             {/* === TAB 1: CATALOG === */}
                             {activeTab === 'catalog' && (
@@ -815,6 +855,8 @@ const StudentDashboard = () => {
             </div>
 
             {/* 👇 EKLENDI: Kitap Detay Modalı */}
+            <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+
             <Modal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} title="Kitap Detayları">
                 {selectedBook && (
                     <div className="flex flex-col gap-4">

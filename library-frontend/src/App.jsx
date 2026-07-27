@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { LanguageProvider } from './i18n/LanguageContext';
 import ProtectedRoute from './components/ProtectedRoute'; 
 import Register from './pages/Register'; 
 import Login from './pages/Login';
@@ -8,6 +9,7 @@ import LibrarianDashboard from './pages/librarian/LibrarianDashboard';
 import StudentDashboard from './pages/student/StudentDashBoard';
 function App() {
   return (
+    <LanguageProvider>
     <AuthProvider>
       <Router>
         <Routes>
@@ -51,6 +53,7 @@ function App() {
         </Routes>
       </Router>
     </AuthProvider>
+    </LanguageProvider>
   );
 }
 

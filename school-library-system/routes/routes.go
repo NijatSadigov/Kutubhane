@@ -18,6 +18,7 @@ func Setup(app *fiber.App) {
 	// ... (Session Routes) ...
 	api.Get("/user", handlers.User)
 	api.Post("/logout", handlers.Logout)
+	api.Put("/profile", handlers.UpdateProfile)
 
 	// ... (Student Routes) ...
 	api.Get("/books", handlers.GetBooks)

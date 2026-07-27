@@ -2,9 +2,12 @@ import { useState } from 'react';
 import api from '../api/axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserPlus, School, Calendar, Users, GraduationCap } from 'lucide-react';
+import LanguageSwitcher from '../components/LanguageSwitcher';
+import { useTranslation } from '../i18n/LanguageContext';
 
 const Register = () => {
     const navigate = useNavigate();
+    const { t } = useTranslation();
     
     const [formData, setFormData] = useState({
         name: '',
@@ -43,23 +46,24 @@ const Register = () => {
             };
             
             await api.post('/register', payload);
-            alert("Registration Successful! Please login.");
+            alert(t('auth.registerSuccess'));
             navigate('/login');
         } catch (err) {
             console.error(err);
-            setError(err.response?.data?.message || err.response?.data?.error || "Registration failed");
+            setError(err.response?.data?.message || err.response?.data?.error || t('auth.registerFailed'));
         }
     };
 
     return (
         <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 py-10">
+            <div className="absolute top-4 right-4"><LanguageSwitcher /></div>
             <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
                 <div className="text-center mb-6">
                     <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                         <UserPlus className="text-blue-600" size={32} />
                     </div>
-                    <h2 className="text-2xl font-bold text-gray-800">Student Registration</h2>
-                    <p className="text-gray-500">Create your library account</p>
+                    <h2 className="text-2xl font-bold text-gray-800">{t('auth.registerTitle')}</h2>
+                    <p className="text-gray-500">{t('auth.registerSubtitle')}</p>
                 </div>
 
                 {error && <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-sm text-center">{error}</div>}
@@ -68,21 +72,21 @@ const Register = () => {
                     
                     {/* --- LOGIN INFO --- */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.fullName')}</label>
                         <input name="name" type="text" required 
                             className="w-full border border-gray-300 px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="e.g. Ali Yilmaz" onChange={handleChange} />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.email')}</label>
                         <input name="email" type="email" required 
                             className="w-full border border-gray-300 px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="student@school.com" onChange={handleChange} />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.password')}</label>
                         <input name="password" type="password" required 
                             className="w-full border border-gray-300 px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="••••••••" onChange={handleChange} />
@@ -92,7 +96,7 @@ const Register = () => {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                                <GraduationCap size={14} className="text-gray-400"/> Grade
+                                <GraduationCap size={14} className="text-gray-400"/> {t('auth.grade')}
                             </label>
                             <input name="grade" type="number" required min="1" max="12"
                                 className="w-full border border-gray-300 px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
@@ -100,7 +104,7 @@ const Register = () => {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                                <Users size={14} className="text-gray-400"/> Group
+                                <Users size={14} className="text-gray-400"/> {t('auth.classGroup')}
                             </label>
                             <input name="class_group" type="text" required 
                                 className="w-full border border-gray-300 px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
@@ -110,7 +114,7 @@ const Register = () => {
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                            <Calendar size={14} className="text-gray-400"/> Date of Birth
+                            <Calendar size={14} className="text-gray-400"/> {t('auth.birthDate')}
                         </label>
                         <input name="birth_date" type="date" required 
                             className="w-full border border-gray-300 px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
@@ -120,8 +124,8 @@ const Register = () => {
                     {/* --- SCHOOL INFO --- */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                            Branch ID 
-                            <span className="text-xs text-gray-400 font-normal">(Ask your librarian)</span>
+                            {t('auth.branchId')}
+                            <span className="text-xs text-gray-400 font-normal">{t('auth.branchHint')}</span>
                         </label>
                         <div className="relative">
                             <School className="absolute left-3 top-2.5 text-gray-400" size={18} />
@@ -132,14 +136,14 @@ const Register = () => {
                     </div>
 
                     <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition-colors mt-4">
-                        Create Account
+                        {t('auth.createAccount')}
                     </button>
                 </form>
 
                 <div className="mt-6 text-center text-sm text-gray-600">
-                    Already have an account?{' '}
+                    {t('auth.haveAccount')}{' '}
                     <Link to="/login" className="text-blue-600 font-bold hover:underline">
-                        Login here
+                        {t('auth.loginHere')}
                     </Link>
                 </div>
             </div>

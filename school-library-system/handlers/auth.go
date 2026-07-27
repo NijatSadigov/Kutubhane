@@ -145,3 +145,65 @@ func User(c *fiber.Ctx) error {
 func Logout(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "success"})
 }
+
+// UpdateProfile lets the logged-in user edit their own name, email and password.
+// The current password is always required to authorize any change.
+func UpdateProfile(c *fiber.Ctx) error {
+	claimsID := c.Locals("user_id")
+	if claimsID == nil {
+		return c.Status(401).JSON(fiber.Map{"message": "Unauthenticated"})
+	}
+	var userID uint
+	if v, ok := claimsID.(float64); ok {
+		userID = uint(v)
+	} else if v, ok := claimsID.(int); ok {
+		userID = uint(v)
+	}
+
+	type Req struct {
+		Name            string `json:"name"`
+		Email           string `json:"email"`
+		NewPassword     string `json:"new_password"`
+		CurrentPassword string `json:"current_password"`
+	}
+	var req Req
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
+	}
+
+	// Require the current password before allowing any change.
+	if err := bcrypt.CompareHashAndPassword(user.Password, []byte(req.CurrentPassword)); err != nil {
+		return c.Status(403).JSON(fiber.Map{"error": "Current password is incorrect"})
+	}
+
+	if req.Email != "" && req.Email != user.Email {
+		var count int64
+		database.DB.Model(&models.User{}).Where("email = ? AND id <> ?", req.Email, user.ID).Count(&count)
+		if count > 0 {
+			return c.Status(400).JSON(fiber.Map{"error": "This email is already in use"})
+		}
+		user.Email = req.Email
+	}
+	if req.NewPassword != "" {
+		hash, _ := bcrypt.GenerateFromPassword([]byte(req.NewPassword), 14)
+		user.Password = hash
+	}
+	database.DB.Save(&user)
+
+	// Name lives on the role profile (admins have no name row, so it's a no-op there).
+	if req.Name != "" {
+		switch user.Role {
+		case "librarian":
+			database.DB.Model(&models.Librarian{}).Where("user_id = ?", user.ID).Update("name", req.Name)
+		case "student":
+			database.DB.Model(&models.Student{}).Where("user_id = ?", user.ID).Update("name", req.Name)
+		}
+	}
+
+	return c.JSON(fiber.Map{"message": "Profile updated"})
+}

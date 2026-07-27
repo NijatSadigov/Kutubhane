@@ -2,10 +2,14 @@ import { useEffect, useState, useContext, Fragment } from 'react';
 import api from '../../api/axios';
 import { AuthContext } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, BookOpen, Bell, Plus, Search, CheckCircle, XCircle, ArrowRight, ChevronDown, ChevronUp, ChevronRight, Edit2, Trash2, Settings, School, Clock, Calendar, Undo2, AlertTriangle, Filter, Layers, Home, Mail, Moon, Sun, MoreHorizontal, ChevronLeft, FileText, Users, Info } from 'lucide-react';
+import { LogOut, BookOpen, Bell, Plus, Search, CheckCircle, XCircle, ArrowRight, ChevronDown, ChevronUp, ChevronRight, Edit2, Trash2, Settings, School, Clock, Calendar, Undo2, AlertTriangle, Filter, Layers, Home, Mail, Moon, Sun, MoreHorizontal, ChevronLeft, FileText, Users, Info, User as UserIcon } from 'lucide-react';
 import Modal from '../../components/Modal';
 import SettingsPanel from './SettingsPanel';
 import BulkUploadModal from './BulkUploadModal';
+import HomeView from '../../components/HomeView';
+import LanguageSwitcher from '../../components/LanguageSwitcher';
+import ProfileModal, { displayName } from '../ProfileModal';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 // Books and copies now reference category rows by id, so empty selects must be sent as
 // null (not "") for the backend's *uint fields, and numeric inputs as real numbers.
@@ -29,9 +33,11 @@ const labelCls = "block text-[11px] font-bold text-gray-500 dark:text-gray-400 m
 const LibrarianDashboard = () => {
     const { user, logout } = useContext(AuthContext);
     const navigate = useNavigate();
+    const { t } = useTranslation();
 
     // UI State
-    const [activeTab, setActiveTab] = useState('inventory');
+    const [activeTab, setActiveTab] = useState('home');
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const [isDark, setIsDark] = useState(false);
     const [isFilterOpen, setIsFilterOpen] = useState(true);
@@ -394,7 +400,25 @@ const LibrarianDashboard = () => {
 
     const overdueCount = loans.filter(l => l.status?.code === 'ACTIVE' && new Date(l.due_date) < new Date()).length;
 
-    if (loading) return <div className="p-10 text-center text-gray-500 dark:text-gray-400">Yükleniyor...</div>;
+    // Overview data for the Anasayfa (home) view.
+    const totalCopies = books.reduce((sum, b) => sum + (b.copies?.length || 0), 0);
+    const availableCopiesCount = books.reduce((sum, b) => sum + (b.copies?.filter(c => c.status?.code === 'AVAILABLE').length || 0), 0);
+    const pendingReservationsCount = reservations.filter(r => r.status?.code === 'PENDING').length;
+    const homeStats = [
+        { key: 'books', label: t('home.totalBooks'), value: books.length },
+        { key: 'copies', label: t('home.totalCopies'), value: totalCopies },
+        { key: 'available', label: t('home.availableCopies'), value: availableCopiesCount, accent: 'text-green-600 dark:text-green-400' },
+        { key: 'loans', label: t('home.activeLoans'), value: loans.length },
+        { key: 'reservations', label: t('home.pendingReservations'), value: pendingReservationsCount },
+        { key: 'overdue', label: t('home.overdue'), value: overdueCount, accent: 'text-red-600 dark:text-red-400' },
+        { key: 'members', label: t('home.members'), value: students.length },
+    ];
+    const homeActions = [
+        { label: t('home.goToCatalog'), onClick: () => setActiveTab('inventory') },
+        { label: t('home.goToManagement'), onClick: () => setActiveTab('settings') },
+    ];
+
+    if (loading) return <div className="p-10 text-center text-gray-500 dark:text-gray-400">{t('common.loading')}</div>;
 
     return (
         <div className={isDark ? 'dark' : ''}>
@@ -407,28 +431,39 @@ const LibrarianDashboard = () => {
                         <span className="text-2xl font-bold text-[#E85B5B] hidden">e12</span>
                     </div>
                     
-                    <nav className="flex-1 px-4 py-6 flex flex-col gap-2">
-                        <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                            <Home size={18} /> Anasayfa
-                        </button>
-                        
-                        <div className="mt-4 mb-2 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center justify-between">
-                            Kütüphane <ChevronDown size={14}/>
-                        </div>
-                        
-                        <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium bg-[#E85B5B] text-white rounded-xl shadow-md shadow-red-200 dark:shadow-none">
-                            <BookOpen size={18} /> Kütüphanem
-                        </button>
-                        <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                            <FileText size={18} /> Kitaplarım
-                        </button>
-                        <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                            <Settings size={18} /> Kütüphane Yönetim
-                        </button>
+                    <nav className="flex-1 px-4 py-6 flex flex-col gap-1">
+                        {(() => {
+                            const navItems = [
+                                { id: 'home', icon: Home, label: t('nav.home') },
+                                { id: 'inventory', icon: BookOpen, label: t('nav.books') },
+                                { id: 'reservations', icon: Bell, label: t('nav.reservations') },
+                                { id: 'loans', icon: FileText, label: t('nav.loans') },
+                                { id: 'members', icon: Users, label: t('nav.members') },
+                                { id: 'settings', icon: Settings, label: t('nav.management') },
+                            ];
+                            return navItems.map(item => {
+                                const Icon = item.icon;
+                                const active = activeTab === item.id;
+                                return (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => setActiveTab(item.id)}
+                                        className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${active
+                                            ? 'bg-[#E85B5B] text-white shadow-md shadow-red-200 dark:shadow-none'
+                                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                                    >
+                                        <Icon size={18} /> {item.label}
+                                    </button>
+                                );
+                            });
+                        })()}
 
-                        <div className="mt-auto">
+                        <div className="mt-auto flex flex-col gap-1">
+                            <button onClick={() => setIsProfileOpen(true)} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                <UserIcon size={18} /> {t('nav.profile')}
+                            </button>
                             <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 rounded-xl hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                                <LogOut size={18} /> Çıkış Yap
+                                <LogOut size={18} /> {t('auth.logout')}
                             </button>
                         </div>
                     </nav>
@@ -440,27 +475,25 @@ const LibrarianDashboard = () => {
                     {/* Top Header */}
                     <header className="h-20 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-8 z-10 transition-colors duration-200">
                         <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 font-medium text-sm">
-                            Anasayfa
+                            {{ home: t('nav.home'), inventory: t('tab.books'), reservations: t('tab.reservations'), loans: t('tab.loans'), members: t('tab.members'), settings: t('nav.management') }[activeTab]}
                         </div>
                         
                         <div className="flex items-center gap-6">
                             <div className="flex items-center gap-4 text-gray-400 dark:text-gray-500">
-                                <Mail size={20} className="hover:text-gray-600 cursor-pointer" />
-                                <Bell size={20} className="hover:text-gray-600 cursor-pointer" />
+                                <LanguageSwitcher />
                                 <button onClick={() => setIsDark(!isDark)} className="hover:text-indigo-500 outline-none">
                                     {isDark ? <Sun size={20} /> : <Moon size={20} />}
                                 </button>
                             </div>
-                            <div className="flex items-center gap-3 pl-4 border-l border-gray-200 dark:border-gray-800">
+                            <button onClick={() => setIsProfileOpen(true)} className="flex items-center gap-3 pl-4 border-l border-gray-200 dark:border-gray-800 outline-none group" title={t('nav.profile')}>
                                 <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center font-bold uppercase">
-                                    {user?.name?.charAt(0) || 'P'}
+                                    {displayName(user)?.charAt(0) || 'P'}
                                 </div>
                                 <div className="text-right hidden sm:block">
-                                    <p className="text-sm font-bold text-gray-800 dark:text-gray-100 leading-tight">{user?.name || "Personel"}</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">{user?.email || "personel@e12.com.tr"}</p>
-                                    <p className="text-[10px] font-bold text-[#E85B5B] mt-0.5 uppercase tracking-wide">Kütüphane ID: {user?.librarian?.branch_id || '-'}</p>
+                                    <p className="text-sm font-bold text-gray-800 dark:text-gray-100 leading-tight group-hover:text-[#E85B5B] transition-colors">{displayName(user) || t('role.librarian')}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">{user?.email}</p>
                                 </div>
-                            </div>
+                            </button>
                         </div>
                     </header>
 
@@ -468,26 +501,32 @@ const LibrarianDashboard = () => {
                     <main className="flex-1 overflow-y-auto p-8">
                         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 min-h-full transition-colors duration-200">
                             
+                            {/* Home / overview */}
+                            {activeTab === 'home' && (
+                                <HomeView welcomeName={displayName(user)} stats={homeStats} actions={homeActions} />
+                            )}
+
                             {/* Tabs */}
+                            {activeTab !== 'home' && (
                             <div className="px-8 pt-6 border-b border-gray-100 dark:border-gray-800 flex gap-8 relative">
                                 <button onClick={() => setActiveTab('inventory')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'inventory' ? 'text-[#E85B5B]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
-                                    Kitaplar
+                                    {t('tab.books')}
                                     {activeTab === 'inventory' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#E85B5B] rounded-t-full"></div>}
                                 </button>
                                 <button onClick={() => setActiveTab('reservations')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'reservations' ? 'text-[#E85B5B]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
-                                    Rezerve Edilen Kitaplar
+                                    {t('tab.reservations')}
                                     {activeTab === 'reservations' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#E85B5B] rounded-t-full"></div>}
                                 </button>
                                 <button onClick={() => setActiveTab('loans')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'loans' ? 'text-[#E85B5B]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
-                                    Verilen Kitaplar
+                                    {t('tab.loans')}
                                     {activeTab === 'loans' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#E85B5B] rounded-t-full"></div>}
                                 </button>
                                 <button onClick={() => setActiveTab('members')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'members' ? 'text-[#E85B5B]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
-                                    Üyeler
+                                    {t('tab.members')}
                                     {activeTab === 'members' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#E85B5B] rounded-t-full"></div>}
                                 </button>
                                 <button onClick={() => setActiveTab('settings')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'settings' ? 'text-[#E85B5B]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
-                                    Ayarlar
+                                    {t('tab.settings')}
                                     {activeTab === 'settings' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#E85B5B] rounded-t-full"></div>}
                                 </button>
 
@@ -495,18 +534,19 @@ const LibrarianDashboard = () => {
                                 {activeTab === 'inventory' && (
                                     <div className="absolute right-8 bottom-3 flex gap-2">
                                         <button onClick={() => setIsBulkOpen(true)} className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center gap-1">
-                                            <FileText size={14} /> Toplu Yükle
+                                            <FileText size={14} /> {t('bulk.button')}
                                         </button>
                                         <button onClick={() => { setModalType('add_book'); setBookForm(EMPTY_BOOK_FORM); setIsModalOpen(true); }} className="bg-[#E85B5B] text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-red-600 transition-colors flex items-center gap-1">
-                                            <Plus size={14} /> Yeni Kitap Ekle
+                                            <Plus size={14} /> {t('book.addNew')}
                                         </button>
                                     </div>
                                 )}
                             </div>
+                            )}
 
-                            <div className="p-8">
+                            <div className={activeTab === 'home' ? 'hidden' : 'p-8'}>
                                 {/* Universal Filter Block (not relevant to Ayarlar) */}
-                                {activeTab !== 'settings' && (
+                                {activeTab !== 'settings' && activeTab !== 'home' && (
                                 <div className="mb-6">
                                     <div className="flex justify-between items-center mb-4">
                                         <button onClick={() => setIsFilterOpen(!isFilterOpen)} className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 outline-none hover:text-[#E85B5B] transition-colors">
@@ -1094,6 +1134,9 @@ const LibrarianDashboard = () => {
                     <button className="w-full bg-[#1E5631] hover:bg-green-800 text-white py-2 rounded font-bold transition-colors">Onayla ve Ver</button>
                 </form>
             </Modal>
+
+            {/* Profile Modal */}
+            <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
 
             {/* Bulk Upload Modal */}
             <BulkUploadModal

@@ -2,13 +2,17 @@ import { useEffect, useState, useContext } from 'react';
 import api from '../../api/axios';
 import { AuthContext } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Plus, School, MapPin, Users, Trash2, Edit2 } from 'lucide-react';
+import { LogOut, Plus, School, MapPin, Users, Trash2, Edit2, User as UserIcon } from 'lucide-react';
 import Modal from '../../components/Modal';
+import LanguageSwitcher from '../../components/LanguageSwitcher';
+import ProfileModal from '../ProfileModal';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 const AdminDashboard = () => {
     const { user, logout } = useContext(AuthContext);
+    const { t } = useTranslation();
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-    
     const navigate = useNavigate();
 
     const [schools, setSchools] = useState([]);
@@ -151,14 +155,22 @@ const AdminDashboard = () => {
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                            <School className="text-blue-600" /> Admin Control
+                            <School className="text-blue-600" /> {t('role.admin')}
                         </h1>
-                        <button onClick={handleLogout} className="flex items-center gap-2 text-gray-500 hover:text-red-600 transition-colors text-sm font-medium">
-                            <LogOut size={18} /> Logout
-                        </button>
+                        <div className="flex items-center gap-5">
+                            <LanguageSwitcher />
+                            <button onClick={() => setIsProfileOpen(true)} className="flex items-center gap-2 text-gray-500 hover:text-blue-600 transition-colors text-sm font-medium">
+                                <UserIcon size={18} /> {t('nav.profile')}
+                            </button>
+                            <button onClick={handleLogout} className="flex items-center gap-2 text-gray-500 hover:text-red-600 transition-colors text-sm font-medium">
+                                <LogOut size={18} /> {t('auth.logout')}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
 
             {/* Content */}
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">

@@ -62,8 +62,20 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    // Re-fetch the current user after a profile change so the UI reflects it.
+    const refreshUser = async () => {
+        try {
+            const res = await api.get('/user');
+            setUser(res.data);
+            localStorage.setItem('user', JSON.stringify(res.data));
+            return res.data;
+        } catch (err) {
+            console.error("refreshUser failed", err);
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, logout, loading, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );
