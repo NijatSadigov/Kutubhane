@@ -36,6 +36,7 @@ func main() {
 		&models.BookCopy{},
 		&models.Loan{},
 		&models.Reservation{},
+		&models.RegistrationToken{},
 	)
 	// 3. Seed Default Statuses for Each Branch
 	var branches []models.Branch

@@ -175,3 +175,18 @@ type ReservationStatus struct {
 	Name     string `json:"name"`
 	Code     string `json:"code"` // "PENDING", "APPROVED", "REJECTED", "COMPLETED"
 }
+
+// RegistrationToken is a branch-scoped invite that students use to self-register
+// instead of typing a branch id. It carries an expiry and can be revoked — much
+// like an API token.
+type RegistrationToken struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	BranchID  uint      `json:"branch_id"`
+	Branch    Branch    `json:"branch" gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Token     string    `json:"token" gorm:"uniqueIndex"`
+	Label     string    `json:"label"` // optional note, e.g. "7-A sınıfı 2024"
+	ExpiresAt time.Time `json:"expires_at"`
+	Revoked   bool      `json:"revoked" gorm:"default:false"`
+	UseCount  int       `json:"use_count" gorm:"default:0"`
+	CreatedAt time.Time `json:"created_at"`
+}

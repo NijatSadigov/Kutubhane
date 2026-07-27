@@ -1,24 +1,48 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { useNavigate, Link } from 'react-router-dom';
-import { UserPlus, School, Calendar, Users, GraduationCap } from 'lucide-react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { UserPlus, Calendar, Users, GraduationCap, KeyRound, CheckCircle } from 'lucide-react';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useTranslation } from '../i18n/LanguageContext';
 
 const Register = () => {
     const navigate = useNavigate();
     const { t } = useTranslation();
-    
+    const [searchParams] = useSearchParams();
+
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         password: '',
-        branch_id: '',
+        token: '',
         grade: '',
         class_group: '',
         birth_date: ''
     });
     const [error, setError] = useState('');
+    // Result of validating the token: null = unchecked, {valid, branch_name} otherwise
+    const [tokenInfo, setTokenInfo] = useState(null);
+
+    // Validate a token (from the ?token= link or manual entry) and show the library.
+    const validateToken = async (token) => {
+        if (!token) { setTokenInfo(null); return; }
+        try {
+            const res = await api.get(`/registration-tokens/validate/${token}`);
+            setTokenInfo(res.data);
+        } catch (err) {
+            setTokenInfo({ valid: false, error: err.response?.data?.error });
+        }
+    };
+
+    // On mount, pick up a token from the URL (?token=...) and validate it.
+    useEffect(() => {
+        const urlToken = searchParams.get('token');
+        if (urlToken) {
+            setFormData(f => ({ ...f, token: urlToken }));
+            validateToken(urlToken);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -27,24 +51,16 @@ const Register = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            // 👇 FIX: Construct payload manually to match Go Backend JSON tags
-            const payload = { 
+            const payload = {
                 name: formData.name,
                 email: formData.email,
                 password: formData.password,
-                
-                // 1. ADD MISSING ROLE
-                role: 'student', 
-
-                // 2. Format Numbers
-                branch_id: parseInt(formData.branch_id),
+                role: 'student',
+                token: formData.token.trim(),
                 grade: parseInt(formData.grade),
-                
-                // 3. Fix Key Names (snake_case -> camelCase) & Date Format
-                classGroup: formData.class_group, 
+                classGroup: formData.class_group,
                 birthDate: new Date(formData.birth_date).toISOString()
             };
-            
             await api.post('/register', payload);
             alert(t('auth.registerSuccess'));
             navigate('/login');
@@ -121,18 +137,28 @@ const Register = () => {
                             onChange={handleChange} />
                     </div>
 
-                    {/* --- SCHOOL INFO --- */}
+                    {/* --- REGISTRATION TOKEN --- */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                            {t('auth.branchId')}
-                            <span className="text-xs text-gray-400 font-normal">{t('auth.branchHint')}</span>
+                            {t('regtoken.enterToken')}
+                            <span className="text-xs text-gray-400 font-normal">{t('regtoken.tokenHint')}</span>
                         </label>
                         <div className="relative">
-                            <School className="absolute left-3 top-2.5 text-gray-400" size={18} />
-                            <input name="branch_id" type="number" required 
-                                className="w-full border border-gray-300 pl-10 pr-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                placeholder="e.g. 1" onChange={handleChange} />
+                            <KeyRound className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                            <input name="token" type="text" required
+                                className="w-full border border-gray-300 pl-10 pr-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm"
+                                placeholder="reg_..." value={formData.token}
+                                onChange={handleChange}
+                                onBlur={(e) => validateToken(e.target.value.trim())} />
                         </div>
+                        {tokenInfo?.valid && (
+                            <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                                <CheckCircle size={13} /> {t('regtoken.registerTo')}: <span className="font-bold">{tokenInfo.branch_name}</span>
+                            </p>
+                        )}
+                        {tokenInfo && !tokenInfo.valid && (
+                            <p className="text-xs text-red-500 mt-1">{tokenInfo.error || t('regtoken.invalidToken')}</p>
+                        )}
                     </div>
 
                     <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition-colors mt-4">

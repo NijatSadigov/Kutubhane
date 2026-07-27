@@ -6,6 +6,7 @@ import { LogOut, BookOpen, Bell, Plus, Search, CheckCircle, XCircle, ArrowRight,
 import Modal from '../../components/Modal';
 import SettingsPanel from './SettingsPanel';
 import BulkUploadModal from './BulkUploadModal';
+import RegistrationTokensModal from './RegistrationTokensModal';
 import HomeView from '../../components/HomeView';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 import ProfileModal, { displayName } from '../ProfileModal';
@@ -73,6 +74,7 @@ const LibrarianDashboard = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalType, setModalType] = useState('');
     const [isBulkOpen, setIsBulkOpen] = useState(false);
+    const [isTokensOpen, setIsTokensOpen] = useState(false);
     const [selectedResId, setSelectedResId] = useState(null);
     
     // Selected Student details for Modal
@@ -568,6 +570,13 @@ const LibrarianDashboard = () => {
                                         </button>
                                         <button onClick={() => { setModalType('add_book'); setBookForm(EMPTY_BOOK_FORM); setEbookName(''); setIsModalOpen(true); }} className="bg-[#E85B5B] text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-red-600 transition-colors flex items-center gap-1">
                                             <Plus size={14} /> {t('book.addNew')}
+                                        </button>
+                                    </div>
+                                )}
+                                {activeTab === 'members' && (
+                                    <div className="absolute right-8 bottom-3">
+                                        <button onClick={() => setIsTokensOpen(true)} className="bg-[#E85B5B] text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-red-600 transition-colors flex items-center gap-1">
+                                            <Mail size={14} /> {t('regtoken.button')}
                                         </button>
                                     </div>
                                 )}
@@ -1189,6 +1198,9 @@ const LibrarianDashboard = () => {
 
             {/* Profile Modal */}
             <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+
+            {/* Registration Tokens Modal */}
+            <RegistrationTokensModal isOpen={isTokensOpen} onClose={() => setIsTokensOpen(false)} />
 
             {/* Bulk Upload Modal */}
             <BulkUploadModal

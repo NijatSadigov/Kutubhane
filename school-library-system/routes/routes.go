@@ -12,6 +12,7 @@ func Setup(app *fiber.App) {
 	// ... (Public Routes) ...
 	app.Post("/api/register", handlers.Register)
 	app.Post("/api/login", handlers.Login)
+	app.Get("/api/registration-tokens/validate/:token", handlers.ValidateRegistrationToken)
 
 	api := app.Group("/api", middleware.IsAuthenticated)
 
@@ -58,6 +59,11 @@ func Setup(app *fiber.App) {
 
 	// Class & Student Data
 	api.Get("/class-list", middleware.IsLibrarian, handlers.GetClassList)
+
+	// Registration tokens (invite links)
+	api.Get("/registration-tokens", middleware.IsLibrarian, handlers.GetRegistrationTokens)
+	api.Post("/registration-tokens", middleware.IsLibrarian, handlers.CreateRegistrationToken)
+	api.Delete("/registration-tokens/:id", middleware.IsLibrarian, handlers.DeleteRegistrationToken)
 
 	// ===========================
 	// SETTINGS & DYNAMIC CATEGORIES

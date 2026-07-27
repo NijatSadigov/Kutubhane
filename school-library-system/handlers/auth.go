@@ -21,6 +21,7 @@ type RegisterInput struct {
 	Name       string `json:"name"`
 	Role       string `json:"role"`
 	BranchID   uint   `json:"branch_id"`
+	Token      string `json:"token"` // registration token; resolves the branch for students
 	Grade      int    `json:"grade"`
 	ClassGroup string `json:"classGroup"`
 	BirthDate  string `json:"birthDate"`
@@ -35,6 +36,20 @@ func Register(c *fiber.Ctx) error {
 
 	if input.Role == "" {
 		input.Role = "student"
+	}
+
+	// Students register via a token (invite link), which resolves their branch.
+	if input.Role == "student" && input.Token != "" {
+		branchID, err := resolveRegistrationToken(input.Token)
+		if err != nil {
+			if fe, ok := err.(*fiber.Error); ok {
+				return c.Status(fe.Code).JSON(fiber.Map{"error": fe.Message})
+			}
+			return c.Status(400).JSON(fiber.Map{"error": "Invalid registration token"})
+		}
+		input.BranchID = branchID
+	} else if input.Role == "student" && input.BranchID == 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "A registration link or token is required"})
 	}
 
 	hashedPwd, _ := bcrypt.GenerateFromPassword([]byte(input.Password), 14)
