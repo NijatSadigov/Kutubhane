@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"school-library-system/database"
 	"school-library-system/models"
 	"school-library-system/routes"
@@ -42,8 +43,14 @@ func main() {
 	for _, branch := range branches {
 		database.SeedDefaultStatusesForBranch(branch.ID)
 	}
-	// 3. Setup App
-	app := fiber.New()
+	// 3. Ensure upload directories exist
+	os.MkdirAll("uploads/covers", 0o755)
+	os.MkdirAll("uploads/ebooks", 0o755)
+
+	// 4. Setup App — larger body limit so book cover images and e-book PDFs fit.
+	app := fiber.New(fiber.Config{
+		BodyLimit: 30 * 1024 * 1024, // 30 MB
+	})
 
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     "http://localhost:5180,http://localhost:5173",
@@ -51,6 +58,9 @@ func main() {
 		AllowCredentials: true,
 		AllowMethods:     "GET, POST, HEAD, PUT, DELETE, PATCH",
 	}))
+
+	// Serve uploaded covers and e-books statically (public; names are unguessable).
+	app.Static("/uploads", "./uploads")
 
 	routes.Setup(app)
 

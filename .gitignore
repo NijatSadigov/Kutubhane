@@ -7,6 +7,9 @@
 school-library-system/school-library-system
 school-library-system/school-library-system.exe
 
+# Uploaded files (covers, e-books) — user content, not source
+school-library-system/uploads/
+
 # Node
 node_modules/
 library-frontend/dist/

@@ -1,5 +1,5 @@
 import { useEffect, useState, useContext, Fragment } from 'react';
-import api from '../../api/axios';
+import api, { assetUrl, uploadFile } from '../../api/axios';
 import { AuthContext } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, BookOpen, Bell, Plus, Search, CheckCircle, XCircle, ArrowRight, ChevronDown, ChevronUp, ChevronRight, Edit2, Trash2, Settings, School, Clock, Calendar, Undo2, AlertTriangle, Filter, Layers, Home, Mail, Moon, Sun, MoreHorizontal, ChevronLeft, FileText, Users, Info, User as UserIcon } from 'lucide-react';
@@ -38,6 +38,9 @@ const LibrarianDashboard = () => {
     // UI State
     const [activeTab, setActiveTab] = useState('home');
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [coverUploading, setCoverUploading] = useState(false);
+    const [ebookUploading, setEbookUploading] = useState(false);
+    const [ebookName, setEbookName] = useState('');
     const [loading, setLoading] = useState(true);
     const [isDark, setIsDark] = useState(false);
     const [isFilterOpen, setIsFilterOpen] = useState(true);
@@ -246,11 +249,37 @@ const LibrarianDashboard = () => {
                 topic_id: toId(bookForm.topic_id),
                 genre_id: toId(bookForm.genre_id),
                 frequency_id: toId(bookForm.frequency_id),
+                has_ebook: !!bookForm.ebook_url, // derived: a book has an e-book if a PDF is attached
             };
             if (modalType === 'add_book') await api.post('/books', payload);
             else await api.put(`/books/${selectedBookId}`, payload);
             setIsModalOpen(false); fetchBooks();
         } catch (err) { alert("İşlem başarısız"); }
+    };
+
+    // Upload a cover image and store its URL on the book form.
+    const handleCoverUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setCoverUploading(true);
+        try {
+            const { url } = await uploadFile('cover', file);
+            setBookForm(f => ({ ...f, cover_url: url }));
+        } catch (err) { alert(t('upload.failed') + ': ' + (err.response?.data?.error || 'Error')); }
+        finally { setCoverUploading(false); e.target.value = ''; }
+    };
+
+    // Upload an e-book PDF and store its URL on the book form.
+    const handleEbookUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setEbookUploading(true);
+        try {
+            const { url, filename } = await uploadFile('ebook', file);
+            setBookForm(f => ({ ...f, ebook_url: url, has_ebook: true }));
+            setEbookName(filename || '');
+        } catch (err) { alert(t('upload.failed') + ': ' + (err.response?.data?.error || 'Error')); }
+        finally { setEbookUploading(false); e.target.value = ''; }
     };
 
     const handleDeleteBook = async (id) => {
@@ -270,6 +299,7 @@ const LibrarianDashboard = () => {
             topic_id: book.topic_id ?? '', genre_id: book.genre_id ?? '', frequency_id: book.frequency_id ?? '',
             has_ebook: book.has_ebook || false, ebook_url: book.ebook_url || '',
         });
+        setEbookName('');
         setIsModalOpen(true);
         setOpenDropdownId(null);
     };
@@ -536,7 +566,7 @@ const LibrarianDashboard = () => {
                                         <button onClick={() => setIsBulkOpen(true)} className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center gap-1">
                                             <FileText size={14} /> {t('bulk.button')}
                                         </button>
-                                        <button onClick={() => { setModalType('add_book'); setBookForm(EMPTY_BOOK_FORM); setIsModalOpen(true); }} className="bg-[#E85B5B] text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-red-600 transition-colors flex items-center gap-1">
+                                        <button onClick={() => { setModalType('add_book'); setBookForm(EMPTY_BOOK_FORM); setEbookName(''); setIsModalOpen(true); }} className="bg-[#E85B5B] text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-red-600 transition-colors flex items-center gap-1">
                                             <Plus size={14} /> {t('book.addNew')}
                                         </button>
                                     </div>
@@ -1058,8 +1088,23 @@ const LibrarianDashboard = () => {
                     </div>
 
                     <div>
-                        <label className={labelCls}>Kapak Görseli (URL)</label>
-                        <input type="text" placeholder="https://..." className={inputCls} value={bookForm.cover_url} onChange={e => setBookForm({ ...bookForm, cover_url: e.target.value })} />
+                        <label className={labelCls}>{t('cover.label')}</label>
+                        <div className="flex items-center gap-4">
+                            <div className="w-20 h-28 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center overflow-hidden shrink-0">
+                                {bookForm.cover_url
+                                    ? <img src={assetUrl(bookForm.cover_url)} alt="" className="w-full h-full object-cover" />
+                                    : <BookOpen size={24} className="text-gray-300 dark:text-gray-600" />}
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <label className="cursor-pointer bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-bold transition-colors inline-flex items-center gap-2 w-fit">
+                                    <Plus size={14} /> {coverUploading ? t('common.loading') : (bookForm.cover_url ? t('cover.change') : t('cover.upload'))}
+                                    <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} disabled={coverUploading} />
+                                </label>
+                                {bookForm.cover_url && (
+                                    <button type="button" onClick={() => setBookForm({ ...bookForm, cover_url: '' })} className="text-xs text-red-500 hover:text-red-700 w-fit">{t('cover.remove')}</button>
+                                )}
+                            </div>
+                        </div>
                     </div>
                     <div>
                         <label className={labelCls}>Fiziksel Açıklama</label>
@@ -1071,12 +1116,19 @@ const LibrarianDashboard = () => {
                     </div>
 
                     <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
-                        <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 font-medium">
-                            <input type="checkbox" className="accent-[#E85B5B]" checked={bookForm.has_ebook} onChange={e => setBookForm({ ...bookForm, has_ebook: e.target.checked })} />
-                            E-Kitap mevcut
-                        </label>
-                        {bookForm.has_ebook && (
-                            <input type="text" placeholder="E-Kitap URL" className={`${inputCls} mt-2`} value={bookForm.ebook_url} onChange={e => setBookForm({ ...bookForm, ebook_url: e.target.value })} />
+                        <label className={labelCls}>{t('ebook.label')}</label>
+                        {bookForm.ebook_url ? (
+                            <div className="flex items-center justify-between gap-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                                <a href={assetUrl(bookForm.ebook_url)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-[#E85B5B] font-medium truncate">
+                                    <FileText size={16} /> {ebookName || t('ebook.attached')}
+                                </a>
+                                <button type="button" onClick={() => { setBookForm({ ...bookForm, ebook_url: '', has_ebook: false }); setEbookName(''); }} className="text-xs text-red-500 hover:text-red-700 shrink-0">{t('cover.remove')}</button>
+                            </div>
+                        ) : (
+                            <label className="cursor-pointer bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-bold transition-colors inline-flex items-center gap-2 w-fit">
+                                <FileText size={14} /> {ebookUploading ? t('common.loading') : t('ebook.upload')}
+                                <input type="file" accept="application/pdf,.pdf" className="hidden" onChange={handleEbookUpload} disabled={ebookUploading} />
+                            </label>
                         )}
                     </div>
 

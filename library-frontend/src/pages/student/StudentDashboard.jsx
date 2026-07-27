@@ -1,8 +1,8 @@
 import { useEffect, useState, useContext } from 'react';
-import api from '../../api/axios';
+import api, { assetUrl } from '../../api/axios';
 import { AuthContext } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Search, Book, Calendar, Clock, Bookmark, Filter, Layers, User, BarChart2, BookOpen, PieChart, Award, Home, ChevronDown, ChevronUp, Mail, Bell, Moon, Sun, MoreHorizontal, Globe, ChevronLeft, CheckSquare, Square } from 'lucide-react';
+import { LogOut, Search, Book, Calendar, Clock, Bookmark, Filter, Layers, User, BarChart2, BookOpen, PieChart, Award, Home, ChevronDown, ChevronUp, Mail, Bell, Moon, Sun, MoreHorizontal, Globe, ChevronLeft, CheckSquare, Square, FileText } from 'lucide-react';
 import Modal from '../../components/Modal'; // <-- EKLENDI: Modal Bileseni
 import HomeView from '../../components/HomeView';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
@@ -464,7 +464,7 @@ const StudentDashboard = () => {
 
                                                         <div className="h-40 border border-gray-300 dark:border-gray-600 rounded mb-4 relative overflow-hidden bg-[#F9FAFB] dark:bg-gray-700 flex items-center justify-center">
                                                             {book.cover_url && (
-                                                                <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover absolute inset-0 z-10" onError={(e) => { e.target.style.display = 'none'; }} />
+                                                                <img src={assetUrl(book.cover_url)} alt={book.title} className="w-full h-full object-cover absolute inset-0 z-10" onError={(e) => { e.target.style.display = 'none'; }} />
                                                             )}
                                                             <svg className="absolute inset-0 w-full h-full text-gray-300 dark:text-gray-600 z-0" viewBox="0 0 100 100" preserveAspectRatio="none">
                                                                 <line x1="0" y1="0" x2="100" y2="100" stroke="currentColor" strokeWidth="1"/>
@@ -736,7 +736,7 @@ const StudentDashboard = () => {
                                                         </div>
 
                                                         <div className="h-40 border border-gray-300 dark:border-gray-600 rounded mb-4 relative overflow-hidden bg-[#F9FAFB] dark:bg-gray-700 flex items-center justify-center">
-                                                            {details.cover_url && <img src={details.cover_url} alt={details.title} className="w-full h-full object-cover absolute inset-0 z-10" onError={(e) => { e.target.style.display = 'none'; }}/>}
+                                                            {details.cover_url && <img src={assetUrl(details.cover_url)} alt={details.title} className="w-full h-full object-cover absolute inset-0 z-10" onError={(e) => { e.target.style.display = 'none'; }}/>}
                                                             <svg className="absolute inset-0 w-full h-full text-gray-300 dark:text-gray-600 z-0" viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="0" y1="0" x2="100" y2="100" stroke="currentColor" strokeWidth="1"/><line x1="100" y1="0" x2="0" y2="100" stroke="currentColor" strokeWidth="1"/></svg>
                                                         </div>
 
@@ -864,7 +864,7 @@ const StudentDashboard = () => {
                             {/* Left: Book Cover Placeholder */}
                             <div className="w-32 h-44 border border-gray-200 dark:border-gray-700 rounded-lg flex-shrink-0 bg-gray-50 dark:bg-gray-800 flex items-center justify-center relative overflow-hidden">
                                 {selectedBook.cover_url && (
-                                    <img src={selectedBook.cover_url} alt={selectedBook.title} className="w-full h-full object-cover absolute inset-0 z-10" onError={(e) => { e.target.style.display = 'none'; }} />
+                                    <img src={assetUrl(selectedBook.cover_url)} alt={selectedBook.title} className="w-full h-full object-cover absolute inset-0 z-10" onError={(e) => { e.target.style.display = 'none'; }} />
                                 )}
                                 <svg className="absolute inset-0 w-full h-full text-gray-300 dark:text-gray-600 z-0" viewBox="0 0 100 100" preserveAspectRatio="none">
                                     <line x1="0" y1="0" x2="100" y2="100" stroke="currentColor" strokeWidth="1"/>
@@ -899,9 +899,21 @@ const StudentDashboard = () => {
                             </div>
                         )}
 
+                        {/* E-Book read/download */}
+                        {selectedBook.has_ebook && selectedBook.ebook_url && (
+                            <a
+                                href={assetUrl(selectedBook.ebook_url)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full mt-2 bg-[#1E5631] hover:bg-green-800 text-white font-bold py-2.5 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2"
+                            >
+                                <FileText size={18} /> {t('ebook.view')}
+                            </a>
+                        )}
+
                         {/* Action Buttons */}
                         {!selectedBook.isLibraryItem && (
-                            <button 
+                            <button
                                 onClick={() => handleReserve(selectedBook)}
                                 className="w-full mt-2 bg-[#E85B5B] hover:bg-red-600 text-white font-bold py-2.5 rounded-lg shadow-sm transition-colors"
                             >

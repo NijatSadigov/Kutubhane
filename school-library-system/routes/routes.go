@@ -20,6 +20,9 @@ func Setup(app *fiber.App) {
 	api.Post("/logout", handlers.Logout)
 	api.Put("/profile", handlers.UpdateProfile)
 
+	// File uploads (covers, e-book PDFs) — librarians only
+	api.Post("/upload/:kind", middleware.IsLibrarian, handlers.UploadFile)
+
 	// ... (Student Routes) ...
 	api.Get("/books", handlers.GetBooks)
 	api.Get("/my-library/:id", handlers.GetMyLibrary)

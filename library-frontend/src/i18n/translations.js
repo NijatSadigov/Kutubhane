@@ -117,6 +117,18 @@ export const translations = {
         'book.addNew': 'Yeni Kitap Ekle',
         'bulk.button': 'Toplu Yükle',
 
+        // Cover & e-book
+        'cover.label': 'Kapak Görseli',
+        'cover.upload': 'Görsel Yükle',
+        'cover.change': 'Görseli Değiştir',
+        'cover.remove': 'Kaldır',
+        'ebook.label': 'E-Kitap (PDF)',
+        'ebook.upload': 'PDF Yükle',
+        'ebook.attached': 'PDF eklendi',
+        'ebook.view': 'E-Kitabı Aç',
+        'ebook.available': 'E-Kitap mevcut',
+        'upload.failed': 'Yükleme başarısız',
+
         // Language
         'lang.label': 'Dil',
     },
@@ -221,6 +233,17 @@ export const translations = {
         'book.addNew': 'Yeni Kitab Əlavə et',
         'bulk.button': 'Toplu Yükləmə',
 
+        'cover.label': 'Üz qabığı',
+        'cover.upload': 'Şəkil yüklə',
+        'cover.change': 'Şəkli dəyiş',
+        'cover.remove': 'Sil',
+        'ebook.label': 'E-Kitab (PDF)',
+        'ebook.upload': 'PDF yüklə',
+        'ebook.attached': 'PDF əlavə edildi',
+        'ebook.view': 'E-Kitabı aç',
+        'ebook.available': 'E-Kitab mövcuddur',
+        'upload.failed': 'Yükləmə uğursuz oldu',
+
         'lang.label': 'Dil',
     },
 
@@ -323,6 +346,17 @@ export const translations = {
 
         'book.addNew': 'Add New Book',
         'bulk.button': 'Bulk Upload',
+
+        'cover.label': 'Cover Image',
+        'cover.upload': 'Upload Image',
+        'cover.change': 'Change Image',
+        'cover.remove': 'Remove',
+        'ebook.label': 'E-Book (PDF)',
+        'ebook.upload': 'Upload PDF',
+        'ebook.attached': 'PDF attached',
+        'ebook.view': 'Open E-Book',
+        'ebook.available': 'E-Book available',
+        'upload.failed': 'Upload failed',
 
         'lang.label': 'Language',
     },
