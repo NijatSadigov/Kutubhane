@@ -11,7 +11,7 @@ type Publisher struct {
 	Branch    Branch `json:"branch" gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	Name      string `json:"name"`
 	Location  string `json:"location"`
-	BookCount int    `json:"book_count" gorm:"-"` // <-- "-" tells GORM: Do not save this in the DB!
+	BookCount int    `json:"book_count" gorm:"->;-:migration"` // Computed via subquery: read-only, no real column
 }
 
 type Author struct {
@@ -19,7 +19,7 @@ type Author struct {
 	BranchID  uint   `json:"branch_id"`
 	Branch    Branch `json:"branch" gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	Name      string `json:"name"`
-	BookCount int    `json:"book_count" gorm:"-"` // <-- "-" tells GORM: Do not save this in the DB!
+	BookCount int    `json:"book_count" gorm:"->;-:migration"` // Computed via subquery: read-only, no real column
 }
 
 type Topic struct {
@@ -28,7 +28,7 @@ type Topic struct {
 	Branch    Branch `json:"branch" gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	Name      string `json:"name"`
 	Location  string `json:"location"`
-	BookCount int    `json:"book_count" gorm:"-"` // <-- "-" tells GORM: Do not save this in the DB!
+	BookCount int    `json:"book_count" gorm:"->;-:migration"` // Computed via subquery: read-only, no real column
 }
 
 type Genre struct {
@@ -37,7 +37,7 @@ type Genre struct {
 	Branch    Branch `json:"branch" gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	Name      string `json:"name"`
 	Location  string `json:"location"`
-	BookCount int    `json:"book_count" gorm:"-"` // <-- "-" tells GORM: Do not save this in the DB!
+	BookCount int    `json:"book_count" gorm:"->;-:migration"` // Computed via subquery: read-only, no real column
 }
 
 type Frequency struct {
