@@ -78,10 +78,10 @@ const StudentDashboard = () => {
     const handleReserve = async (book) => {
         const availableCopy = book.copies?.find(c => c.status?.code === 'AVAILABLE');
         if (!availableCopy) {
-            alert("Üzgünüz, şu anda rezerve edilecek kopya yok.");
+            alert(t('stu.noCopy'));
             return;
         }
-        if(!window.confirm(`"${book.title || book.book_title}" kitabını rezerve etmek istiyor musunuz?`)) return;
+        if(!window.confirm(t('stu.reserveConfirm', { title: book.title || book.book_title }))) return;
 
         try {
             // The backend locates the copy by book + physical barcode, not by copy id.
@@ -90,12 +90,12 @@ const StudentDashboard = () => {
                 book_id: book.id,
                 tracking_number: availableCopy.tracking_number
             });
-            alert("Rezervasyon Talebi Gönderildi! 📩");
+            alert(t('stu.reserveSent'));
             setOpenDropdownId(null);
             setIsDetailModalOpen(false); // Modalı da kapat
             fetchCatalog(); 
         } catch (err) {
-            alert("Rezervasyon başarısız: " + (err.response?.data?.error || "Bilinmeyen Hata"));
+            alert(t('stu.reserveFailed') + ": " + (err.response?.data?.error || t('stu.unknownError')));
         }
     };
 
@@ -109,11 +109,11 @@ const StudentDashboard = () => {
             // Kitaplarım'dan geliyorsa veriyi normalize et
             bookData = {
                 id: data.id,
-                title: data.book_title || "Bilinmeyen Kitap",
-                author: data.author || "Bilinmeyen Yazar",
+                title: data.book_title || t('stu.unknownBook'),
+                author: data.author || t('stu.unknownAuthor'),
                 genre: data.genre || "-",
                 page_count: data.page_count || "?",
-                publisher: "Kütüphane Kaydı", // Backend loan objesinde publisher yoksa
+                publisher: t('stu.libraryRecord'),
                 isbn: "-",
                 cover_url: data.cover_url,
                 isLibraryItem: true,
@@ -127,7 +127,7 @@ const StudentDashboard = () => {
             // Katalog'dan geliyorsa kategori nesnelerini isimlere çevir
             bookData = {
                 ...data,
-                author: data.author?.name || "Bilinmeyen Yazar",
+                author: data.author?.name || t('stu.unknownAuthor'),
                 genre: data.genre?.name || "-",
                 publisher: data.publisher?.name || "-",
                 isLibraryItem: false,
@@ -194,12 +194,12 @@ const StudentDashboard = () => {
     const displayLoans = getFilteredLoans();
 
     const getSafeBookDetails = (loan) => {
-        if (loan.book_title) return { title: loan.book_title, author: loan.author || "Bilinmeyen Yazar", genre: loan.genre, page_count: loan.page_count };
+        if (loan.book_title) return { title: loan.book_title, author: loan.author || t('stu.unknownAuthor'), genre: loan.genre, page_count: loan.page_count };
         const copy = loan.book_copy || loan.BookCopy || {};
         const book = copy.book || copy.Book || {};
         return {
-            title: book.title || "Bilinmeyen Kitap",
-            author: book.author?.name || "Bilinmeyen Yazar",
+            title: book.title || t('stu.unknownBook'),
+            author: book.author?.name || t('stu.unknownAuthor'),
             genre: book.genre?.name || "-",
             page_count: book.page_count || 0
         };
@@ -225,7 +225,7 @@ const StudentDashboard = () => {
         
         const genreCounts = {};
         readBooks.forEach(b => {
-            const g = b.genre || "Diğer";
+            const g = b.genre || t('stu.other');
             genreCounts[g] = (genreCounts[g] || 0) + 1;
         });
 
@@ -235,7 +235,7 @@ const StudentDashboard = () => {
             percent: totalBooks > 0 ? ((genreCounts[key] / totalBooks) * 100).toFixed(1) : 0
         })).sort((a, b) => b.count - a.count);
 
-        const favoriteGenre = genreData.length > 0 ? genreData[0].name : "Henüz Yok";
+        const favoriteGenre = genreData.length > 0 ? genreData[0].name : t('stu.none');
 
         return { readBooks, totalBooks, totalPages, genreData, favoriteGenre };
     };
@@ -320,7 +320,7 @@ const StudentDashboard = () => {
                     <header className="h-20 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-8 z-10 transition-colors duration-200">
                         <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300 font-medium cursor-pointer hover:text-black dark:hover:text-white transition-colors">
                             <ChevronLeft size={20} />
-                            Kütüphane
+                            {t('nav.library')}
                         </div>
                         
                         <div className="flex items-center gap-6">
@@ -374,7 +374,7 @@ const StudentDashboard = () => {
                                             Liste
                                         </button>
                                         <button onClick={() => setLibraryViewMode('card')} className={`px-4 py-1 text-xs font-bold rounded shadow-sm transition-colors ${libraryViewMode === 'card' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
-                                            Grafik / Kart
+                                            {t('view.chartCard')}
                                         </button>
                                     </div>
                                 )}
@@ -394,8 +394,8 @@ const StudentDashboard = () => {
                                             </button>
                                             
                                             <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-                                                <button onClick={() => setViewMode('card')} className={`px-4 py-1 text-xs font-bold rounded shadow-sm transition-colors ${viewMode === 'card' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>Kart</button>
-                                                <button onClick={() => setViewMode('list')} className={`px-4 py-1 text-xs font-bold rounded shadow-sm transition-colors ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>Liste</button>
+                                                <button onClick={() => setViewMode('card')} className={`px-4 py-1 text-xs font-bold rounded shadow-sm transition-colors ${viewMode === 'card' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>{t('view.card')}</button>
+                                                <button onClick={() => setViewMode('list')} className={`px-4 py-1 text-xs font-bold rounded shadow-sm transition-colors ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>{t('view.list')}</button>
                                             </div>
                                         </div>
                                         
@@ -403,17 +403,17 @@ const StudentDashboard = () => {
                                             <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 bg-gray-50 dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2 duration-200">
                                                 <div className="lg:col-span-2">
                                                     <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Kitap Ara</label>
-                                                    <input type="text" placeholder="Kitap adı, yazar veya yayınevi ile ara" className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#E85B5B] dark:focus:border-[#E85B5B]" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                                                    <input type="text" placeholder={t('stu.searchCatalog')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#E85B5B] dark:focus:border-[#E85B5B]" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                                                 </div>
                                                 <div>
                                                     <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Konu</label>
                                                     <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#E85B5B]" value={selectedGenre} onChange={(e) => setSelectedGenre(e.target.value)}>
-                                                        {uniqueGenres.map(g => <option key={g} value={g}>{g === 'All' ? 'Konuya göre ara' : g}</option>)}
+                                                        {uniqueGenres.map(g => <option key={g} value={g}>{g === 'All' ? t('f.byTopic') : g}</option>)}
                                                     </select>
                                                 </div>
                                                 <div>
                                                     <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">ISBN</label>
-                                                    <input type="text" placeholder="ISBN Numarası" className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#E85B5B]" value={isbnFilter} onChange={(e) => setIsbnFilter(e.target.value)} />
+                                                    <input type="text" placeholder={t('f.isbn')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#E85B5B]" value={isbnFilter} onChange={(e) => setIsbnFilter(e.target.value)} />
                                                 </div>
                                             </div>
                                         )}
@@ -426,9 +426,9 @@ const StudentDashboard = () => {
                                                 const availableCount = book.copies ? book.copies.filter(c => c.status?.code === 'AVAILABLE').length : 0;
                                                 const isAvailable = availableCount > 0;
                                                 
-                                                let badgeText = "Tükendi";
+                                                let badgeText = t('stu.outOfStock');
                                                 let badgeColor = "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300";
-                                                if (isAvailable) { badgeText = "Kütüphanede"; badgeColor = "bg-[#E6F4EA] text-[#059669] dark:bg-green-900/30 dark:text-green-400"; }
+                                                if (isAvailable) { badgeText = t('stu.inLibrary'); badgeColor = "bg-[#E6F4EA] text-[#059669] dark:bg-green-900/30 dark:text-green-400"; }
                                                 else if (book.copies && book.copies.length > 0) { badgeText = "Rezerve"; badgeColor = "bg-[#FCE7F3] text-[#DB2777] dark:bg-pink-900/30 dark:text-pink-400"; }
 
                                                 return (
@@ -456,7 +456,7 @@ const StudentDashboard = () => {
                                                                         disabled={!isAvailable} 
                                                                         className={`text-[11px] font-bold px-4 py-2 rounded-lg border w-28 text-center transition-colors ${isAvailable ? 'bg-[#E0E7FF] dark:bg-indigo-900/40 border-[#BFDBFE] dark:border-indigo-700 text-[#4338CA] dark:text-indigo-300 hover:bg-[#C7D2FE] dark:hover:bg-indigo-900/60' : 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed'}`}
                                                                     >
-                                                                        Rezerve Et
+                                                                        {t('stu.reserve')}
                                                                     </button>
                                                                 </div>
                                                             )}
@@ -477,13 +477,13 @@ const StudentDashboard = () => {
                                                             <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-4 truncate">{book.author?.name || '-'}</p>
                                                             
                                                             <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-700 pb-3 mb-3">
-                                                                <span className="text-[11px] text-gray-600 dark:text-gray-300 truncate mr-2">{book.publisher?.name || 'Yayınevi Belirtilmemiş'}</span>
-                                                                <span className="text-[10px] flex items-center gap-1 font-medium bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300 shrink-0"><Globe size={10}/> Türkçe</span>
+                                                                <span className="text-[11px] text-gray-600 dark:text-gray-300 truncate mr-2">{book.publisher?.name || t('stu.publisherUnspecified')}</span>
+                                                                <span className="text-[10px] flex items-center gap-1 font-medium bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300 shrink-0"><Globe size={10}/> {book.language || t('fld.language')}</span>
                                                             </div>
                                                             
                                                             <div className="flex justify-between items-center text-[10px] text-gray-500 dark:text-gray-400 font-medium">
-                                                                <span>ISBN: {book.isbn || 'Yok'}</span>
-                                                                <span>Sayfa: {book.page_count || '?'}</span>
+                                                                <span>ISBN: {book.isbn || t('stu.na')}</span>
+                                                                <span>{t('stu.page')}: {book.page_count || '?'}</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -495,12 +495,12 @@ const StudentDashboard = () => {
                                             <table className="w-full text-left text-sm whitespace-nowrap">
                                                 <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
                                                     <tr>
-                                                        <th className="px-6 py-4 font-semibold">Kitap Adı</th>
-                                                        <th className="px-6 py-4 font-semibold">Yazar</th>
-                                                        <th className="px-6 py-4 font-semibold">Yayınevi</th>
-                                                        <th className="px-6 py-4 font-semibold">Tür</th>
+                                                        <th className="px-6 py-4 font-semibold">{t('th.title')}</th>
+                                                        <th className="px-6 py-4 font-semibold">{t('th.author')}</th>
+                                                        <th className="px-6 py-4 font-semibold">{t('th.publisher')}</th>
+                                                        <th className="px-6 py-4 font-semibold">{t('fld.genre')}</th>
                                                         <th className="px-6 py-4 font-semibold">Durum</th>
-                                                        <th className="px-6 py-4 text-center font-semibold">İşlem</th>
+                                                        <th className="px-6 py-4 text-center font-semibold">{t('th.action')}</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
@@ -508,16 +508,16 @@ const StudentDashboard = () => {
                                                         const availableCount = book.copies ? book.copies.filter(c => c.status?.code === 'AVAILABLE').length : 0;
                                                         const isAvailable = availableCount > 0;
                                                         
-                                                        let badgeText = "Tükendi";
+                                                        let badgeText = t('stu.outOfStock');
                                                         let badgeColor = "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300";
-                                                        if (isAvailable) { badgeText = "Kütüphanede"; badgeColor = "bg-[#E6F4EA] text-[#059669] dark:bg-green-900/30 dark:text-green-400"; }
+                                                        if (isAvailable) { badgeText = t('stu.inLibrary'); badgeColor = "bg-[#E6F4EA] text-[#059669] dark:bg-green-900/30 dark:text-green-400"; }
                                                         else if (book.copies && book.copies.length > 0) { badgeText = "Rezerve"; badgeColor = "bg-[#FCE7F3] text-[#DB2777] dark:bg-pink-900/30 dark:text-pink-400"; }
 
                                                         return (
                                                             <tr key={book.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                                                 <td className="px-6 py-4 font-bold text-gray-800 dark:text-gray-200">
                                                                     {book.title}
-                                                                    <div className="text-[10px] text-gray-400 font-normal mt-0.5">ISBN: {book.isbn || 'Yok'}</div>
+                                                                    <div className="text-[10px] text-gray-400 font-normal mt-0.5">ISBN: {book.isbn || t('stu.na')}</div>
                                                                 </td>
                                                                 <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{book.author?.name || '-'}</td>
                                                                 <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{book.publisher?.name || '-'}</td>
@@ -553,7 +553,7 @@ const StudentDashboard = () => {
                                         </div>
                                     )}
 
-                                    {displayBooks.length === 0 && <div className="py-20 text-center text-gray-400 dark:text-gray-500">Aradığınız kriterlere uygun kitap bulunamadı.</div>}
+                                    {displayBooks.length === 0 && <div className="py-20 text-center text-gray-400 dark:text-gray-500">{t('stu.noBooksFound')}</div>}
                                 </div>
                             )}
 
@@ -575,13 +575,13 @@ const StudentDashboard = () => {
                                         {isLibraryFilterOpen && (
                                             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 bg-gray-50 dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2 duration-200 mb-6">
                                                 <div className="lg:col-span-2">
-                                                    <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Geçmişte Ara</label>
-                                                    <input type="text" placeholder="Kitap adı veya yazar ile ara" className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#E85B5B]" value={librarySearchQuery} onChange={(e) => setLibrarySearchQuery(e.target.value)} />
+                                                    <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('stu.searchHistory')}</label>
+                                                    <input type="text" placeholder={t('stu.searchBookAuthor')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#E85B5B]" value={librarySearchQuery} onChange={(e) => setLibrarySearchQuery(e.target.value)} />
                                                 </div>
                                                 <div className="lg:col-span-2">
                                                     <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Konu</label>
                                                     <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#E85B5B]" value={librarySelectedGenre} onChange={(e) => setLibrarySelectedGenre(e.target.value)}>
-                                                        {uniqueLibraryGenres.map(g => <option key={g} value={g}>{g === 'All' ? 'Konuya göre ara' : g}</option>)}
+                                                        {uniqueLibraryGenres.map(g => <option key={g} value={g}>{g === 'All' ? t('f.byTopic') : g}</option>)}
                                                     </select>
                                                 </div>
                                             </div>
@@ -590,11 +590,11 @@ const StudentDashboard = () => {
                                         <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-gray-50 dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
                                             <div className="flex gap-4">
                                                 <div className="bg-white dark:bg-gray-900 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 min-w-[120px]">
-                                                    <h4 className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">Aktif Ödünçler</h4>
+                                                    <h4 className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">{t('stu.activeLoans')}</h4>
                                                     <p className="text-2xl font-bold text-[#E85B5B] dark:text-red-400">{myLoans.filter(l => l.status_code === 'ACTIVE').length}</p>
                                                 </div>
                                                 <div className="bg-white dark:bg-gray-900 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 min-w-[120px]">
-                                                    <h4 className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">İade Edilen</h4>
+                                                    <h4 className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">{t('stu.returnedLabel')}</h4>
                                                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">{myLoans.filter(l => l.status_code === 'RETURNED').length}</p>
                                                 </div>
                                             </div>
@@ -605,7 +605,7 @@ const StudentDashboard = () => {
                                                     className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors outline-none"
                                                 >
                                                     {hideReturned ? <CheckSquare className="text-[#E85B5B]" size={18}/> : <Square size={18}/>}
-                                                    İade edilenleri gizle
+                                                    {t('stu.hideReturned')}
                                                 </button>
 
                                                 <div className="flex items-center gap-2 border-l border-gray-300 dark:border-gray-600 pl-4">
@@ -613,7 +613,7 @@ const StudentDashboard = () => {
                                                     <select className="bg-transparent text-sm text-gray-700 dark:text-gray-200 outline-none font-medium cursor-pointer" value={loanSort} onChange={(e) => setLoanSort(e.target.value)}>
                                                         <option value="newest">En Yeniler</option>
                                                         <option value="oldest">En Eskiler</option>
-                                                        <option value="title_az">Kitap Adı (A-Z)</option>
+                                                        <option value="title_az">{t('stu.titleAZ')}</option>
                                                     </select>
                                                 </div>
                                             </div>
@@ -626,13 +626,13 @@ const StudentDashboard = () => {
                                             <table className="w-full text-left text-sm whitespace-nowrap">
                                                 <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
                                                     <tr>
-                                                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">Kütüphane</th>
-                                                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">Kitap Adı</th>
-                                                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">Yazar</th>
-                                                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">Tür</th>
-                                                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">Veriliş / Teslim</th>
+                                                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">{t('th.library')}</th>
+                                                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">{t('th.title')}</th>
+                                                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">{t('th.author')}</th>
+                                                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">{t('fld.genre')}</th>
+                                                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">{t('stu.issueReturn')}</th>
                                                         <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-center">Durum</th>
-                                                        <th className="px-6 py-4 text-center font-semibold text-xs uppercase tracking-wider">İşlemler</th>
+                                                        <th className="px-6 py-4 text-center font-semibold text-xs uppercase tracking-wider">{t('common.actions')}</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
@@ -643,10 +643,10 @@ const StudentDashboard = () => {
                                                         const diffDays = Math.ceil((dueDate - new Date()) / (1000 * 60 * 60 * 24));
                                                         const isOverdue = diffDays < 0 && loan.status_code === 'ACTIVE';
                                                         
-                                                        let statusText = "Kullanılıyor";
+                                                        let statusText = t('st.inUse');
                                                         let statusColor = "bg-[#FEF3C7] text-[#B45309] dark:bg-yellow-900/30 dark:text-yellow-500";
                                                         if (loan.status_code === 'RETURNED') {
-                                                            statusText = "İade Edildi";
+                                                            statusText = t('st.returned');
                                                             statusColor = "bg-[#E6F4EA] text-[#059669] dark:bg-green-900/30 dark:text-green-400";
                                                         } else if (isOverdue) {
                                                             statusText = "Gecikti";
@@ -655,7 +655,7 @@ const StudentDashboard = () => {
 
                                                         return (
                                                             <tr key={loan.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group relative">
-                                                                <td className="px-6 py-4 text-gray-500 dark:text-gray-400">Merkez Şube</td>
+                                                                <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{t('f.centralBranch')}</td>
                                                                 <td className="px-6 py-4 font-bold text-gray-800 dark:text-gray-200">{details.title}</td>
                                                                 <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{details.author}</td>
                                                                 <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{details.genre}</td>
@@ -702,10 +702,10 @@ const StudentDashboard = () => {
                                                 const diffDays = Math.ceil((dueDate - new Date()) / (1000 * 60 * 60 * 24));
                                                 const isOverdue = diffDays < 0 && loan.status_code === 'ACTIVE';
 
-                                                let statusText = "Kullanılıyor";
+                                                let statusText = t('st.inUse');
                                                 let statusColor = "bg-[#FEF3C7] text-[#B45309] dark:bg-yellow-900/30 dark:text-yellow-500";
                                                 if (loan.status_code === 'RETURNED') {
-                                                    statusText = "İade Edildi";
+                                                    statusText = t('st.returned');
                                                     statusColor = "bg-[#E6F4EA] text-[#059669] dark:bg-green-900/30 dark:text-green-400";
                                                 } else if (isOverdue) {
                                                     statusText = "Gecikti";
@@ -746,10 +746,10 @@ const StudentDashboard = () => {
                                                             
                                                             <div className="bg-gray-50 dark:bg-gray-900 rounded p-2 text-[10px] text-gray-500 dark:text-gray-400 mb-2 border border-gray-100 dark:border-gray-700">
                                                                 <div className="flex justify-between mb-1">
-                                                                    <span>Alış:</span> <span className="font-medium">{new Date(loan.issue_date).toLocaleDateString()}</span>
+                                                                    <span>{t('stu.acquired')}:</span> <span className="font-medium">{new Date(loan.issue_date).toLocaleDateString()}</span>
                                                                 </div>
                                                                 <div className="flex justify-between">
-                                                                    <span>Teslim:</span> <span className={`font-medium ${isOverdue ? 'text-red-500' : ''}`}>{dueDate.toLocaleDateString()}</span>
+                                                                    <span>{t('stu.deliver')}:</span> <span className={`font-medium ${isOverdue ? 'text-red-500' : ''}`}>{dueDate.toLocaleDateString()}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -758,7 +758,7 @@ const StudentDashboard = () => {
                                             })}
                                         </div>
                                     )}
-                                    {displayLoans.length === 0 && <div className="p-10 text-center text-gray-400 dark:text-gray-500">Kayıt bulunamadı.</div>}
+                                    {displayLoans.length === 0 && <div className="p-10 text-center text-gray-400 dark:text-gray-500">{t('msg.noRecords')}</div>}
                                 </div>
                             )}
 
@@ -766,10 +766,10 @@ const StudentDashboard = () => {
                             {activeTab === 'stats' && (
                                 <div className="p-8 space-y-8">
                                     <div className="flex justify-between items-center">
-                                        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">Okuma İstatistiklerim</h3>
+                                        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{t('stu.readingStats')}</h3>
                                         <select className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 text-sm px-4 py-2 rounded-lg outline-none cursor-pointer focus:border-[#E85B5B]" value={timeFrame} onChange={(e) => setTimeFrame(e.target.value)}>
-                                            <option value="all">Tüm Zamanlar</option>
-                                            <option value="year">Bu Yıl</option>
+                                            <option value="all">{t('misc.allTime')}</option>
+                                            <option value="year">{t('misc.thisYear')}</option>
                                             <option value="month">Bu Ay</option>
                                         </select>
                                     </div>
@@ -791,7 +791,7 @@ const StudentDashboard = () => {
                                         </div>
                                         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex justify-between items-center">
                                             <div>
-                                                <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase mb-1">Favori Tür</p>
+                                                <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase mb-1">{t('stu.favGenre')}</p>
                                                 <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 truncate max-w-[120px]">{stats.favoriteGenre}</h3>
                                             </div>
                                             <div className="w-12 h-12 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center"><Award className="text-purple-500 dark:text-purple-400" size={24} /></div>
@@ -800,7 +800,7 @@ const StudentDashboard = () => {
 
                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col items-center">
-                                            <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-6 text-sm self-start">Tür Dağılımı</h3>
+                                            <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-6 text-sm self-start">{t('stu.genreDist')}</h3>
                                             {stats.totalBooks > 0 ? (
                                                 <>
                                                     <div className="w-48 h-48 rounded-full mb-6 relative" style={{ background: getConicGradient(stats.genreData) }}>
@@ -827,21 +827,21 @@ const StudentDashboard = () => {
                                         </div>
 
                                         <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col">
-                                            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700"><h3 className="font-bold text-gray-800 dark:text-gray-200 text-sm">Okuma Geçmişi</h3></div>
+                                            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700"><h3 className="font-bold text-gray-800 dark:text-gray-200 text-sm">{t('stu.readingHistory')}</h3></div>
                                             <div className="divide-y divide-gray-50 dark:divide-gray-700 flex-1 overflow-y-auto max-h-[400px]">
                                                 {stats.readBooks.length > 0 ? stats.readBooks.map((book) => (
                                                     <div key={book.id} className="p-4 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                                         <div>
                                                             <h4 className="font-bold text-gray-700 dark:text-gray-200 text-sm">{book.book_title}</h4>
-                                                            <p className="text-[11px] text-gray-500 dark:text-gray-400">Yazar: {book.author?.name || '-'}</p>
+                                                            <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('th.author')}: {book.author?.name || '-'}</p>
                                                         </div>
                                                         <div className="text-right">
                                                             <span className="block text-xs font-bold text-green-600 dark:text-green-400">{book.page_count} sayfa</span>
-                                                            <span className="text-[10px] text-gray-400 dark:text-gray-500">İade: {new Date(book.return_date).toLocaleDateString()}</span>
+                                                            <span className="text-[10px] text-gray-400 dark:text-gray-500">{t('th.return')}: {new Date(book.return_date).toLocaleDateString()}</span>
                                                         </div>
                                                     </div>
                                                 )) : (
-                                                    <div className="p-10 text-center text-gray-400 text-sm flex h-full items-center justify-center">Bu dönemde okunan kitap yok.</div>
+                                                    <div className="p-10 text-center text-gray-400 text-sm flex h-full items-center justify-center">{t('stu.noReadPeriod')}</div>
                                                 )}
                                             </div>
                                         </div>
@@ -857,7 +857,7 @@ const StudentDashboard = () => {
             {/* 👇 EKLENDI: Kitap Detay Modalı */}
             <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
 
-            <Modal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} title="Kitap Detayları">
+            <Modal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} title={t('stu.bookDetails')}>
                 {selectedBook && (
                     <div className="flex flex-col gap-4">
                         <div className="flex gap-4">
@@ -875,12 +875,12 @@ const StudentDashboard = () => {
                             {/* Right: Book Details */}
                             <div className="flex-1">
                                 <h3 className="font-bold text-xl text-gray-800 dark:text-gray-100 mb-1">{selectedBook.title}</h3>
-                                <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">Yazar: <span className="font-medium text-gray-900 dark:text-white">{selectedBook.author}</span></p>
+                                <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">{t('th.author')}: <span className="font-medium text-gray-900 dark:text-white">{selectedBook.author}</span></p>
                                 
                                 <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
-                                    <p className="flex justify-between"><span>Tür:</span> <span className="font-medium text-gray-900 dark:text-white">{selectedBook.genre || "-"}</span></p>
-                                    <p className="flex justify-between"><span>Sayfa:</span> <span className="font-medium text-gray-900 dark:text-white">{selectedBook.page_count || "-"}</span></p>
-                                    <p className="flex justify-between"><span>Yayınevi:</span> <span className="font-medium text-gray-900 dark:text-white">{selectedBook.publisher || "-"}</span></p>
+                                    <p className="flex justify-between"><span>{t('fld.genre')}:</span> <span className="font-medium text-gray-900 dark:text-white">{selectedBook.genre || "-"}</span></p>
+                                    <p className="flex justify-between"><span>{t('stu.page')}:</span> <span className="font-medium text-gray-900 dark:text-white">{selectedBook.page_count || "-"}</span></p>
+                                    <p className="flex justify-between"><span>{t('th.publisher')}:</span> <span className="font-medium text-gray-900 dark:text-white">{selectedBook.publisher || "-"}</span></p>
                                     <p className="flex justify-between"><span>ISBN:</span> <span className="font-medium text-gray-900 dark:text-white">{selectedBook.isbn || "-"}</span></p>
                                 </div>
                             </div>
@@ -890,11 +890,11 @@ const StudentDashboard = () => {
                         {selectedBook.isLibraryItem && (
                             <div className="bg-[#E0E7FF] dark:bg-indigo-900/30 text-[#4338CA] dark:text-indigo-300 p-3 rounded-lg text-sm border border-[#BFDBFE] dark:border-indigo-800">
                                 <div className="flex justify-between font-bold mb-1">
-                                    <span>Durum: {selectedBook.status_code === 'ACTIVE' ? 'Aktif Ödünç' : 'İade Edildi'}</span>
+                                    <span>{t('stu.statusPrefix')}: {selectedBook.status_code === 'ACTIVE' ? t('stu.activeLoanBadge') : t('st.returned')}</span>
                                 </div>
                                 <div className="flex justify-between text-xs">
-                                    <span>Veriliş: {new Date(selectedBook.issue_date).toLocaleDateString()}</span>
-                                    {selectedBook.status_code === 'ACTIVE' && <span>Teslim: {new Date(selectedBook.due_date).toLocaleDateString()}</span>}
+                                    <span>{t('th.issue')}: {new Date(selectedBook.issue_date).toLocaleDateString()}</span>
+                                    {selectedBook.status_code === 'ACTIVE' && <span>{t('stu.deliver')}: {new Date(selectedBook.due_date).toLocaleDateString()}</span>}
                                 </div>
                             </div>
                         )}
