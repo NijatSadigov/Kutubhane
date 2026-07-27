@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { LogOut, BookOpen, Bell, Plus, Search, CheckCircle, XCircle, ArrowRight, ChevronDown, ChevronUp, ChevronRight, Edit2, Trash2, Settings, School, Clock, Calendar, Undo2, AlertTriangle, Filter, Layers, Home, Mail, Moon, Sun, MoreHorizontal, ChevronLeft, FileText, Users, Info } from 'lucide-react';
 import Modal from '../../components/Modal';
 import SettingsPanel from './SettingsPanel';
+import BulkUploadModal from './BulkUploadModal';
 
 // Books and copies now reference category rows by id, so empty selects must be sent as
 // null (not "") for the backend's *uint fields, and numeric inputs as real numbers.
@@ -51,6 +52,9 @@ const LibrarianDashboard = () => {
 
     // Forms & Modals
     const [loanForm, setLoanForm] = useState(EMPTY_LOAN_FORM);
+    const [studentPickerText, setStudentPickerText] = useState('');
+    const [loanEditForm, setLoanEditForm] = useState({ due_date: '', description: '' });
+    const [editLoanId, setEditLoanId] = useState(null);
     const [bookForm, setBookForm] = useState(EMPTY_BOOK_FORM);
     const [selectedBookId, setSelectedBookId] = useState(null);
     const [copyForm, setCopyForm] = useState(EMPTY_COPY_FORM);
@@ -59,6 +63,7 @@ const LibrarianDashboard = () => {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalType, setModalType] = useState('');
+    const [isBulkOpen, setIsBulkOpen] = useState(false);
     const [selectedResId, setSelectedResId] = useState(null);
     
     // Selected Student details for Modal
@@ -153,10 +158,34 @@ const LibrarianDashboard = () => {
             });
             alert("Kitap Başarıyla Verildi! 📖");
             setLoanForm(EMPTY_LOAN_FORM);
+            setStudentPickerText('');
             setIsModalOpen(false);
             fetchLoans();
             fetchBooks();
         } catch (err) { alert("İşlem başarısız: " + (err.response?.data?.error || "Hata")); }
+    };
+
+    const openEditLoan = (loan) => {
+        setEditLoanId(loan.id);
+        // <input type="date"> wants YYYY-MM-DD
+        const due = loan.due_date ? new Date(loan.due_date).toISOString().slice(0, 10) : '';
+        setLoanEditForm({ due_date: due, description: loan.description || '' });
+        setModalType('edit_loan');
+        setIsModalOpen(true);
+        setOpenDropdownId(null);
+    };
+
+    const handleLoanEdit = async (e) => {
+        e.preventDefault();
+        try {
+            await api.put(`/loans/${editLoanId}`, {
+                due_date: loanEditForm.due_date,
+                description: loanEditForm.description,
+            });
+            alert("Ödünç kaydı güncellendi.");
+            setIsModalOpen(false);
+            fetchLoans();
+        } catch (err) { alert("Güncelleme başarısız: " + (err.response?.data?.error || "Hata")); }
     };
 
     // The backend finds the copy from the body; the :id segment is kept only for routing.
@@ -464,7 +493,10 @@ const LibrarianDashboard = () => {
 
                                 {/* Action Button in Header */}
                                 {activeTab === 'inventory' && (
-                                    <div className="absolute right-8 bottom-3">
+                                    <div className="absolute right-8 bottom-3 flex gap-2">
+                                        <button onClick={() => setIsBulkOpen(true)} className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center gap-1">
+                                            <FileText size={14} /> Toplu Yükle
+                                        </button>
                                         <button onClick={() => { setModalType('add_book'); setBookForm(EMPTY_BOOK_FORM); setIsModalOpen(true); }} className="bg-[#E85B5B] text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-red-600 transition-colors flex items-center gap-1">
                                             <Plus size={14} /> Yeni Kitap Ekle
                                         </button>
@@ -636,7 +668,7 @@ const LibrarianDashboard = () => {
 
                                                                         {openDropdownId === `inv-${book.id}` && (
                                                                             <div className="absolute right-10 top-0 mt-6 flex flex-col gap-1.5 z-50 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-600 animate-in fade-in zoom-in-95 duration-100 w-40" onClick={(e) => e.stopPropagation()}>
-                                                                                <button onClick={() => { setModalType('issue_loan_modal'); setTargetBookId(book.id); setIsModalOpen(true); setOpenDropdownId(null); }} className="bg-[#C2E0C6] border border-[#A3D3A8] text-[#1E5631] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#A3D3A8] transition-colors w-full">Kitabı Ver</button>
+                                                                                <button onClick={() => { setModalType('issue_loan_modal'); setTargetBookId(book.id); setLoanForm(EMPTY_LOAN_FORM); setStudentPickerText(''); setIsModalOpen(true); setOpenDropdownId(null); }} className="bg-[#C2E0C6] border border-[#A3D3A8] text-[#1E5631] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#A3D3A8] transition-colors w-full">Kitabı Ver</button>
                                                                                 <button onClick={() => { setModalType('return_book_modal'); setIsModalOpen(true); setOpenDropdownId(null); }} className="bg-[#FCE7F3] border border-[#FBCFE8] text-[#9D174D] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#FBCFE8] transition-colors w-full">Kitabı Geri Al</button>
                                                                                 <button onClick={() => openAddCopy(book.id)} className="bg-[#FEF3C7] border border-[#FDE68A] text-[#B45309] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#FDE68A] transition-colors w-full">Yeni Kopya Ekle</button>
                                                                                 <button onClick={() => handleDeleteBook(book.id)} className="bg-red-100 border border-red-200 text-red-700 text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-red-200 transition-colors w-full mt-2">Sil</button>
@@ -843,7 +875,7 @@ const LibrarianDashboard = () => {
                                                                 {openDropdownId === `loan-${loan.id}` && (
                                                                     <div className="absolute right-10 top-0 mt-6 flex flex-col gap-1.5 z-50 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-100 w-36" onClick={(e) => e.stopPropagation()}>
                                                                         <button onClick={() => returnCopy(loan.book_copy_id, loan.book_copy?.book_id, loan.book_copy?.tracking_number)} className="bg-[#FCE7F3] border border-[#FBCFE8] text-[#9D174D] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#FBCFE8] transition-colors w-full">Kitabı İade Al</button>
-                                                                        <button className="bg-[#FEF3C7] border border-[#FDE68A] text-[#B45309] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#FDE68A] transition-colors w-full">Hatırlatma SMS</button>
+                                                                        <button onClick={() => openEditLoan(loan)} className="bg-[#DBEAFE] border border-[#BFDBFE] text-[#1E40AF] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#BFDBFE] transition-colors w-full">Düzenle</button>
                                                                     </div>
                                                                 )}
                                                             </td>
@@ -1018,8 +1050,32 @@ const LibrarianDashboard = () => {
                     {modalType === 'issue_loan_modal' && (
                         <>
                             <div>
-                                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Öğrenci ID</label>
-                                <input type="number" className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white" value={loanForm.student_id} onChange={e => setLoanForm({ ...loanForm, student_id: e.target.value })} required />
+                                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Öğrenci</label>
+                                <input
+                                    type="text"
+                                    list="student-picker-list"
+                                    placeholder="İsim veya numara ile ara..."
+                                    className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white"
+                                    value={studentPickerText}
+                                    onChange={e => {
+                                        const text = e.target.value;
+                                        setStudentPickerText(text);
+                                        // datalist option values are the user_id; map the picked value back to the student
+                                        const picked = students.find(s => String(s.user_id) === text.trim());
+                                        setLoanForm({ ...loanForm, student_id: picked ? picked.user_id : '' });
+                                    }}
+                                    required
+                                />
+                                <datalist id="student-picker-list">
+                                    {students.map(s => (
+                                        <option key={s.user_id} value={s.user_id}>
+                                            {s.name} — No: {s.user_id} ({s.grade}-{s.class_group})
+                                        </option>
+                                    ))}
+                                </datalist>
+                                {loanForm.student_id
+                                    ? <span className="text-xs text-green-600 mt-1 block">Seçilen: {students.find(s => s.user_id === loanForm.student_id)?.name}</span>
+                                    : <span className="text-xs text-gray-400 mt-1 block">*Listeden bir öğrenci seçin.</span>}
                             </div>
                             <div>
                                 <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Verilecek Demirbaş No</label>
@@ -1036,6 +1092,29 @@ const LibrarianDashboard = () => {
                         <input type="date" className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white" value={loanForm.due_date} onChange={e => setLoanForm({...loanForm, due_date: e.target.value})} required/>
                     </div>
                     <button className="w-full bg-[#1E5631] hover:bg-green-800 text-white py-2 rounded font-bold transition-colors">Onayla ve Ver</button>
+                </form>
+            </Modal>
+
+            {/* Bulk Upload Modal */}
+            <BulkUploadModal
+                isOpen={isBulkOpen}
+                onClose={() => setIsBulkOpen(false)}
+                categories={categories}
+                onComplete={() => { fetchBooks(); fetchCategories(); }}
+            />
+
+            {/* Edit Loan Modal */}
+            <Modal isOpen={isModalOpen && modalType === 'edit_loan'} onClose={() => setIsModalOpen(false)} title="Ödünç Kaydını Düzenle">
+                <form onSubmit={handleLoanEdit} className="space-y-4">
+                    <div>
+                        <label className={labelCls}>Son Teslim Tarihi</label>
+                        <input type="date" className={inputCls} value={loanEditForm.due_date} onChange={e => setLoanEditForm({ ...loanEditForm, due_date: e.target.value })} required />
+                    </div>
+                    <div>
+                        <label className={labelCls}>Açıklama / Not</label>
+                        <textarea rows={3} placeholder="Örn: Süre uzatıldı" className={inputCls} value={loanEditForm.description} onChange={e => setLoanEditForm({ ...loanEditForm, description: e.target.value })} />
+                    </div>
+                    <button className="w-full bg-[#1E40AF] hover:bg-blue-800 text-white py-2 rounded font-bold transition-colors">Kaydet</button>
                 </form>
             </Modal>
 
