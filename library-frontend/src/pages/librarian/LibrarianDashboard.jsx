@@ -749,8 +749,8 @@ const LibrarianDashboard = () => {
                                                                             <div className="absolute right-10 top-0 mt-6 flex flex-col gap-1.5 z-50 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-600 animate-in fade-in zoom-in-95 duration-100 w-40" onClick={(e) => e.stopPropagation()}>
                                                                                 <button onClick={() => { setModalType('issue_loan_modal'); setTargetBookId(book.id); setLoanForm(EMPTY_LOAN_FORM); setStudentPickerText(''); setIsModalOpen(true); setOpenDropdownId(null); }} className="bg-[#C2E0C6] border border-[#A3D3A8] text-[#1E5631] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#A3D3A8] transition-colors w-full">{t('b.giveBook')}</button>
                                                                                 <button onClick={() => { setModalType('return_book_modal'); setIsModalOpen(true); setOpenDropdownId(null); }} className="bg-[#FCE7F3] border border-[#FBCFE8] text-[#9D174D] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#FBCFE8] transition-colors w-full">{t('b.takeBack')}</button>
-                                                                                <button onClick={() => openAddCopy(book.id)} className="bg-[#FEF3C7] border border-[#FDE68A] text-[#B45309] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#FDE68A] transition-colors w-full">Yeni Kopya Ekle</button>
-                                                                                <button onClick={() => handleDeleteBook(book.id)} className="bg-red-100 border border-red-200 text-red-700 text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-red-200 transition-colors w-full mt-2">Sil</button>
+                                                                                <button onClick={() => openAddCopy(book.id)} className="bg-[#FEF3C7] border border-[#FDE68A] text-[#B45309] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#FDE68A] transition-colors w-full">{t('md.addCopy')}</button>
+                                                                                <button onClick={() => handleDeleteBook(book.id)} className="bg-red-100 border border-red-200 text-red-700 text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-red-200 transition-colors w-full mt-2">{t('common.delete')}</button>
                                                                             </div>
                                                                         )}
                                                                     </td>
@@ -783,7 +783,7 @@ const LibrarianDashboard = () => {
                                                                                                 <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{copy.condition?.name || '-'}</td>
                                                                                                 <td className="px-4 py-3 text-right">
                                                                                                     <button onClick={() => openEditCopy(copy)} className="text-blue-500 hover:text-blue-700 mr-3 font-medium">{t('common.edit')}</button>
-                                                                                                    <button onClick={() => handleDeleteCopy(copy.id)} className="text-red-500 hover:text-red-700 font-medium">Sil</button>
+                                                                                                    <button onClick={() => handleDeleteCopy(copy.id)} className="text-red-500 hover:text-red-700 font-medium">{t('common.delete')}</button>
                                                                                                 </td>
                                                                                             </tr>
                                                                                         ))}
@@ -855,10 +855,10 @@ const LibrarianDashboard = () => {
                                             <thead className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                                                 <tr>
                                                     <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.title')}</th>
-                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Kopya ID</th>
+                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.copyId')}</th>
                                                     <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.student')}</th>
                                                     <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Talep Tarihi</th>
-                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider text-center">Durum</th>
+                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider text-center">{t('th.status')}</th>
                                                     <th className="px-6 py-4 text-center font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.action')}</th>
                                                 </tr>
                                             </thead>
@@ -922,7 +922,7 @@ const LibrarianDashboard = () => {
                                         <table className="w-full text-left text-sm whitespace-nowrap">
                                             <thead className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                                                 <tr>
-                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Kopya ID</th>
+                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.copyId')}</th>
                                                     <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.title')}</th>
                                                     <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.studentId')}</th>
                                                     <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.issueDate')}</th>

@@ -402,11 +402,11 @@ const StudentDashboard = () => {
                                         {isFilterOpen && (
                                             <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 bg-gray-50 dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2 duration-200">
                                                 <div className="lg:col-span-2">
-                                                    <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Kitap Ara</label>
+                                                    <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('f.search')}</label>
                                                     <input type="text" placeholder={t('stu.searchCatalog')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#E85B5B] dark:focus:border-[#E85B5B]" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Konu</label>
+                                                    <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('fld.topicSel')}</label>
                                                     <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#E85B5B]" value={selectedGenre} onChange={(e) => setSelectedGenre(e.target.value)}>
                                                         {uniqueGenres.map(g => <option key={g} value={g}>{g === 'All' ? t('f.byTopic') : g}</option>)}
                                                     </select>
@@ -499,7 +499,7 @@ const StudentDashboard = () => {
                                                         <th className="px-6 py-4 font-semibold">{t('th.author')}</th>
                                                         <th className="px-6 py-4 font-semibold">{t('th.publisher')}</th>
                                                         <th className="px-6 py-4 font-semibold">{t('fld.genre')}</th>
-                                                        <th className="px-6 py-4 font-semibold">Durum</th>
+                                                        <th className="px-6 py-4 font-semibold">{t('th.status')}</th>
                                                         <th className="px-6 py-4 text-center font-semibold">{t('th.action')}</th>
                                                     </tr>
                                                 </thead>
@@ -579,7 +579,7 @@ const StudentDashboard = () => {
                                                     <input type="text" placeholder={t('stu.searchBookAuthor')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#E85B5B]" value={librarySearchQuery} onChange={(e) => setLibrarySearchQuery(e.target.value)} />
                                                 </div>
                                                 <div className="lg:col-span-2">
-                                                    <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Konu</label>
+                                                    <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('fld.topicSel')}</label>
                                                     <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#E85B5B]" value={librarySelectedGenre} onChange={(e) => setLibrarySelectedGenre(e.target.value)}>
                                                         {uniqueLibraryGenres.map(g => <option key={g} value={g}>{g === 'All' ? t('f.byTopic') : g}</option>)}
                                                     </select>
@@ -631,7 +631,7 @@ const StudentDashboard = () => {
                                                         <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">{t('th.author')}</th>
                                                         <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">{t('fld.genre')}</th>
                                                         <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">{t('stu.issueReturn')}</th>
-                                                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-center">Durum</th>
+                                                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-center">{t('th.status')}</th>
                                                         <th className="px-6 py-4 text-center font-semibold text-xs uppercase tracking-wider">{t('common.actions')}</th>
                                                     </tr>
                                                 </thead>
@@ -806,7 +806,7 @@ const StudentDashboard = () => {
                                                     <div className="w-48 h-48 rounded-full mb-6 relative" style={{ background: getConicGradient(stats.genreData) }}>
                                                         <div className="absolute inset-4 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center flex-col shadow-inner transition-colors duration-200">
                                                             <span className="text-2xl font-bold text-gray-800 dark:text-gray-100">{stats.totalBooks}</span>
-                                                            <span className="text-[10px] text-gray-400 uppercase">Kitap</span>
+                                                            <span className="text-[10px] text-gray-400 uppercase">{t('nav.books')}</span>
                                                         </div>
                                                     </div>
                                                     <div className="w-full space-y-3 mt-4">
