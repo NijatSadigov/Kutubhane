@@ -107,6 +107,80 @@ func ManagerUpdateSchool(c *fiber.Ctx) error {
 	return c.JSON(school)
 }
 
+// --- BRANCH WORKSPACE (read-only view of any branch in the manager's school) ---
+
+// managerBranchParam resolves the :branchId route param and confirms it belongs to
+// the authenticated manager's school. Managers can read any branch they own but
+// nothing outside their school.
+func managerBranchParam(c *fiber.Ctx) (uint, error) {
+	schoolID, err := resolveManagerSchoolID(c)
+	if err != nil {
+		return 0, err
+	}
+	bid, convErr := strconv.Atoi(c.Params("branchId"))
+	if convErr != nil || bid <= 0 {
+		return 0, fiber.NewError(fiber.StatusBadRequest, "Invalid branch id")
+	}
+	branchID := uint(bid)
+	if !branchInSchool(branchID, schoolID) {
+		return 0, fiber.NewError(fiber.StatusForbidden, "Branch is not in your school")
+	}
+	return branchID, nil
+}
+
+// ManagerGetBranchBooks returns a branch's full catalog (same shape as the
+// librarian's GetBooks), read-only.
+func ManagerGetBranchBooks(c *fiber.Ctx) error {
+	branchID, err := managerBranchParam(c)
+	if err != nil {
+		return err
+	}
+	var books []models.Book
+	database.DB.
+		Preload("Author").Preload("Publisher").Preload("Topic").
+		Preload("Genre").Preload("Frequency").
+		Preload("Copies").Preload("Copies.Condition").Preload("Copies.Status").
+		Where("branch_id = ?", branchID).
+		Find(&books)
+	return c.JSON(books)
+}
+
+// ManagerGetBranchLoans returns a branch's active (not-yet-returned) loans.
+func ManagerGetBranchLoans(c *fiber.Ctx) error {
+	branchID, err := managerBranchParam(c)
+	if err != nil {
+		return err
+	}
+	var loans []models.Loan
+	database.DB.
+		Joins("JOIN book_copies ON book_copies.id = loans.book_copy_id").
+		Joins("JOIN books ON books.id = book_copies.book_id").
+		Where("books.branch_id = ? AND loans.return_date IS NULL", branchID).
+		Preload("Student").Preload("Status").
+		Preload("BookCopy").Preload("BookCopy.Book").
+		Preload("BookCopy.Book.Author").Preload("BookCopy.Book.Genre").
+		Find(&loans)
+	return c.JSON(loans)
+}
+
+// ManagerGetBranchReservations returns a branch's reservations.
+func ManagerGetBranchReservations(c *fiber.Ctx) error {
+	branchID, err := managerBranchParam(c)
+	if err != nil {
+		return err
+	}
+	var reservations []models.Reservation
+	database.DB.
+		Joins("JOIN book_copies ON book_copies.id = reservations.book_copy_id").
+		Joins("JOIN books ON books.id = book_copies.book_id").
+		Where("books.branch_id = ?", branchID).
+		Preload("Student").Preload("Status").
+		Preload("BookCopy").Preload("BookCopy.Book").
+		Preload("BookCopy.Book.Author").Preload("BookCopy.Book.Genre").
+		Find(&reservations)
+	return c.JSON(reservations)
+}
+
 // --- LIBRARIAN TRACKING (per-librarian activity across the school) ---
 
 // ManagerLibrarianStats returns, for every librarian in the manager's school,

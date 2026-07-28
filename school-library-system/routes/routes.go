@@ -171,6 +171,11 @@ func Setup(app *fiber.App) {
 	api.Get("/manager/students", middleware.IsManager, handlers.ManagerGetStudents)
 	api.Get("/manager/librarian-stats", middleware.IsManager, handlers.ManagerLibrarianStats)
 
+	// Manager read-only workspace into any branch of their school
+	api.Get("/manager/branch/:branchId/books", middleware.IsManager, handlers.ManagerGetBranchBooks)
+	api.Get("/manager/branch/:branchId/loans", middleware.IsManager, handlers.ManagerGetBranchLoans)
+	api.Get("/manager/branch/:branchId/reservations", middleware.IsManager, handlers.ManagerGetBranchReservations)
+
 	api.Post("/manager/branch", middleware.IsManager, handlers.ManagerCreateBranch)
 	api.Put("/manager/branch/:id", middleware.IsManager, handlers.ManagerUpdateBranch)
 	api.Delete("/manager/branch/:id", middleware.IsManager, handlers.ManagerDeleteBranch)

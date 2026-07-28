@@ -155,12 +155,13 @@ requests are a simple title+author form (no ISBN), also offered on empty search.
   school-scoped. Route `GET /manager/librarian-stats` (IsManager; librarian→403).
 - ManagerDashboard gained a "Librarian Tracking" tab (table). i18n `manager.tracking`,
   `mtrack.*`.
-- NOTE — "managers see what librarians see" is partially delivered: managers already
-  have school-wide visibility into students, reading diaries (ReaderStatsModal), book
-  requests, and now per-librarian activity stats. NOT yet built: a full librarian
-  *workspace* for managers (browse/manage each branch's inventory + loans as a
-  librarian would). That needs a branch-selector + manager-scoped variants of
-  GetBooks/GetActiveLoans/GetAllReservations. Left as a follow-up.
+- Manager branch workspace (read-only "see what librarians see"): manager-scoped
+  read endpoints `GET /manager/branch/:branchId/{books,loans,reservations}` (handlers
+  in manager.go via `managerBranchParam`, which 403s on any branch outside the
+  manager's school — verified). Frontend `components/ManagerBranchWorkspace.jsx` — a
+  "Branch Library" tab with a branch selector + Books/Loans/Reservations sub-tabs.
+  i18n `manager.workspace`, `ws.*`. Read-only by design; managers do not do librarian
+  data-entry (add books / issue loans) — that stays with librarians.
 
 ## Done earlier (2026-07-28, continued session — uncommitted)
 
