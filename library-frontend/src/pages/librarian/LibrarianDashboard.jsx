@@ -10,6 +10,8 @@ import RegistrationTokensModal from './RegistrationTokensModal';
 import HomeView from '../../components/HomeView';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 import ProfileModal, { displayName } from '../ProfileModal';
+import ReaderStatsModal from '../../components/ReaderStatsModal';
+import BookRequestsQueue from '../../components/BookRequestsQueue';
 import { useTranslation } from '../../i18n/LanguageContext';
 
 // Books and copies now reference category rows by id, so empty selects must be sent as
@@ -39,6 +41,7 @@ const LibrarianDashboard = () => {
     // UI State
     const [activeTab, setActiveTab] = useState('home');
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [readerStudent, setReaderStudent] = useState(null); // {id, name} for reading-overview modal
     const [coverUploading, setCoverUploading] = useState(false);
     const [ebookUploading, setEbookUploading] = useState(false);
     const [ebookName, setEbookName] = useState('');
@@ -469,6 +472,7 @@ const LibrarianDashboard = () => {
                                 { id: 'home', icon: Home, label: t('nav.home') },
                                 { id: 'inventory', icon: BookOpen, label: t('nav.books') },
                                 { id: 'reservations', icon: Bell, label: t('nav.reservations') },
+                                { id: 'requests', icon: Mail, label: t('req.queue') },
                                 { id: 'loans', icon: FileText, label: t('nav.loans') },
                                 { id: 'members', icon: Users, label: t('nav.members') },
                                 { id: 'settings', icon: Settings, label: t('nav.management') },
@@ -507,7 +511,7 @@ const LibrarianDashboard = () => {
                     {/* Top Header */}
                     <header className="h-20 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-8 z-10 transition-colors duration-200">
                         <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 font-medium text-sm">
-                            {{ home: t('nav.home'), inventory: t('tab.books'), reservations: t('tab.reservations'), loans: t('tab.loans'), members: t('tab.members'), settings: t('nav.management') }[activeTab]}
+                            {{ home: t('nav.home'), inventory: t('tab.books'), reservations: t('tab.reservations'), requests: t('req.queue'), loans: t('tab.loans'), members: t('tab.members'), settings: t('nav.management') }[activeTab]}
                         </div>
                         
                         <div className="flex items-center gap-6">
@@ -848,6 +852,11 @@ const LibrarianDashboard = () => {
                                     </div>
                                 )}
 
+                                {/* BOOK REQUESTS (student wishlist for missing books) */}
+                                {activeTab === 'requests' && (
+                                    <BookRequestsQueue listUrl="/book-requests" updateBase="/book-requests" />
+                                )}
+
                                 {/* 2. RESERVATIONS (Rezerve Edilen Kitaplar) */}
                                 {activeTab === 'reservations' && (
                                     <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 shadow-sm min-h-[400px]">
@@ -998,12 +1007,20 @@ const LibrarianDashboard = () => {
                                                             <td className="px-6 py-4 text-gray-600 dark:text-gray-400 text-xs">{t('st.student')}</td>
                                                             <td className="px-6 py-4 text-center font-bold text-gray-800 dark:text-gray-200 text-sm">{activeLoansCount}</td>
                                                             <td className="px-6 py-4 text-right">
-                                                                <button 
-                                                                    onClick={() => openStudentDetails(student)}
-                                                                    className="text-yellow-500 hover:text-yellow-600 text-[11px] font-bold flex items-center gap-1 justify-end ml-auto outline-none transition-colors"
-                                                                >
-                                                                    <Info size={14}/> Detay
-                                                                </button>
+                                                                <div className="flex items-center gap-3 justify-end">
+                                                                    <button
+                                                                        onClick={() => setReaderStudent({ id: student.user_id, name: student.name })}
+                                                                        className="text-indigo-500 hover:text-indigo-600 text-[11px] font-bold flex items-center gap-1 outline-none transition-colors"
+                                                                    >
+                                                                        <BookOpen size={14}/> {t('reader.view')}
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => openStudentDetails(student)}
+                                                                        className="text-yellow-500 hover:text-yellow-600 text-[11px] font-bold flex items-center gap-1 outline-none transition-colors"
+                                                                    >
+                                                                        <Info size={14}/> Detay
+                                                                    </button>
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     );
@@ -1198,6 +1215,7 @@ const LibrarianDashboard = () => {
 
             {/* Profile Modal */}
             <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+            <ReaderStatsModal isOpen={!!readerStudent} studentId={readerStudent?.id} studentName={readerStudent?.name} onClose={() => setReaderStudent(null)} />
 
             {/* Registration Tokens Modal */}
             <RegistrationTokensModal isOpen={isTokensOpen} onClose={() => setIsTokensOpen(false)} />

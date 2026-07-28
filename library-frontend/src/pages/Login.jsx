@@ -22,6 +22,7 @@ const Login = () => {
         if (result.success) {
             // Redirect based on Role
             if (result.role === 'admin') navigate('/admin');
+            else if (result.role === 'manager') navigate('/manager');
             else if (result.role === 'librarian') navigate('/librarian');
             else navigate('/student');
         } else {

@@ -7,8 +7,8 @@ Last updated: 2026-07-28. Everything below is committed on branch
 
 A school library system. **Backend**: Go + Fiber + GORM + Postgres in
 `school-library-system/`. **Frontend**: React 19 + Vite (rolldown) + Tailwind in
-`library-frontend/`. Three roles: admin, librarian, student. The git repo root is
-`Kutubhane/` (one level below the folder usually opened).
+`library-frontend/`. Four roles: admin, **manager** (school-level), librarian,
+student. The git repo root is `Kutubhane/` (one level below the folder usually opened).
 
 ## How to run (both servers must be restarted each new session)
 
@@ -37,6 +37,7 @@ This bit us twice this session. When something looks wrong, suspect this first.
 | Email | Role | Branch |
 |---|---|---|
 | admin@school.com | admin | — |
+| mgr@hadaf.com | manager | School "Hadaf" (id 1) — demo account added when building the manager role; delete anytime |
 | fatma@lib.com | librarian | 1 (Nesimi) |
 | ayse@lib.com | librarian | 1 (Nesimi) |
 | Mert@lib.com | librarian | 2 (Gence) |
@@ -54,6 +55,20 @@ gitignored** — covers/e-books live only on this machine's disk, referenced by
 
 ## Architecture you must know before editing
 
+- **Role hierarchy (4 roles).** `User.Role` is a string; each non-admin role has a
+  profile table keyed by `UserID`. `admin` (platform, no profile) → creates schools
+  + **managers**. `manager` (`Manager{UserID,Name,SchoolID}`, many per school) →
+  runs one school: CRUD its branches + librarians, view its students, edit school
+  profile. `librarian` (`SchoolID`+`BranchID`) → one branch. `student` (`BranchID`).
+  - Manager backend lives in `handlers/manager.go`; **every** `/manager/*` handler
+    calls `resolveManagerSchoolID(c)` (from the JWT identity, never the request body)
+    and 403s on anything outside that school. Admin provisions managers via
+    `/admin/manager` (`AddManager`/`UpdateManager`/`RemoveManager` in `admin.go`).
+    Middleware `IsManager` (manager OR admin). Admin keeps full super-admin control.
+  - Frontend: `pages/manager/ManagerDashboard.jsx` (Branches/Students tabs, reuses
+    the admin `Modal` + `admin.*`/`manager.*` i18n keys). Admin dashboard gained a
+    per-school "Managers" strip. Routes/redirects updated in `App.jsx`,
+    `ProtectedRoute.jsx`, `Login.jsx`. Role labels: tr Müdür / az Müdir / en Manager.
 - **Dynamic per-branch categories.** Authors, publishers, genres, topics,
   frequencies, copy-conditions, copy-statuses, loan-statuses, reservation-statuses
   are all branch-scoped lookup tables with CRUD (`handlers/settings.go`). Books
@@ -89,7 +104,79 @@ One-off DB scripts go in a temp subfolder of `school-library-system/` (e.g.
 delete it. Note: Git Bash on Windows mangles UTF-8 in curl bodies (Turkish/Azeri
 text) — that's a harness artifact, the app handles UTF-8 fine from the browser.
 
-## Done this session (12 commits, newest first)
+## Epic in progress (2026-07-28, continued session — uncommitted)
+
+Building 4 phases: **A** reading diary+stats (DONE), **B** book requests, **C** public
+landing page, **D** manager librarian workspace/tracking. Design locked with user:
+reading speed = pages/day from diary-update timestamps (fallback loan duration);
+public home shown to everyone (logged-in users get a "go to dashboard" link); book
+requests are a simple title+author form (no ISBN), also offered on empty search.
+
+**Phase A — DONE & verified (backend curl + frontend build + JS-driven UI checks):**
+- Model `ReadingLog{LoanID, StudentID, Page, Note, CreatedAt}` (models/liblary.go),
+  migrated in main.go. `handlers/reading.go`: `AddReadingLog` (student writes own
+  loan only), `GetLoanReadingLogs`, `GetStudentReading` (aggregate stats + per-book
+  progress + logs). Access helper `canAccessStudent` (self / same-branch librarian /
+  same-school manager / admin) — scope-verified incl. cross-branch 403. Routes:
+  `POST /reading-log`, `GET /reading-log/:loanId`, `GET /student/:id/reading`.
+  `GetMyLibrary` DTO gained `current_page` (max logged page) for progress bars.
+- Student UI: the dead "Okuma Bilgisi" buttons now open a diary modal (update page +
+  note, progress bar, history). Stats tab gained a reading-speed KPI + "currently
+  reading" progress bars; hardcoded TR strings replaced with i18n (`diary.*`,
+  `stu.booksRead/pagesRead/readingSpeed/...`). Duplicate "Sınıf" header fixed via
+  new `th.classGroup`.
+- Staff view: reusable `components/ReaderStatsModal.jsx` wired into the manager
+  students table and the librarian members table ("Okuma"/Reading button per student).
+
+**Phase B — DONE & verified (backend curl incl. scope + build + student UI smoke):**
+- Model `BookRequest{StudentID, BranchID, Title, Author, Note, Status, CreatedAt}`
+  (plain status string PENDING/FULFILLED/REJECTED, not the dynamic status tables).
+  `handlers/bookrequest.go`. Routes: student `POST /book-requests` (branch from own
+  profile) + `GET /book-requests/mine`; librarian `GET /book-requests` +
+  `PUT /book-requests/:id`; manager `GET|PUT /manager/book-requests[/:id]`
+  (school-scoped). Cross-branch update → 403 (verified).
+- Frontend components: `BookRequestModal.jsx` (student form title+author+note +
+  "my requests" list) — opened from a "Kitap İste" button in the catalog toolbar and
+  from an empty-search prompt (prefilled with the query). `BookRequestsQueue.jsx`
+  (shared) — wired as a new "requests" nav tab in the librarian dashboard and a
+  requests tab in the manager dashboard (showBranch). i18n `req.*`.
+
+**Phase C — DONE & verified (public endpoint no-auth + build + guest/logged-in UI):**
+- `handlers/public.go` `GetPublicStats` → per-school + platform totals (schools,
+  branches, students, books, books_read=returned loans, pages_read), counts only,
+  no PII. Registered as `GET /api/public/stats` BEFORE the auth group.
+- `pages/PublicHome.jsx` at `/` (App.jsx route changed from Navigate→login). Header
+  with LanguageSwitcher + login/register; logged-in users get "Go to my dashboard"
+  → their role route. Totals cards + per-school stat cards. i18n `public.*`.
+
+**Phase D — Librarian tracking DONE & verified (backend curl+scope, build, UI):**
+- `handlers/manager.go` `ManagerLibrarianStats` → per-librarian row (branch, books,
+  copies, active loans, pending reservations, pending requests, students),
+  school-scoped. Route `GET /manager/librarian-stats` (IsManager; librarian→403).
+- ManagerDashboard gained a "Librarian Tracking" tab (table). i18n `manager.tracking`,
+  `mtrack.*`.
+- NOTE — "managers see what librarians see" is partially delivered: managers already
+  have school-wide visibility into students, reading diaries (ReaderStatsModal), book
+  requests, and now per-librarian activity stats. NOT yet built: a full librarian
+  *workspace* for managers (browse/manage each branch's inventory + loans as a
+  librarian would). That needs a branch-selector + manager-scoped variants of
+  GetBooks/GetActiveLoans/GetAllReservations. Left as a follow-up.
+
+## Done earlier (2026-07-28, continued session — uncommitted)
+
+- **Admin dashboard translated** to tr/az/en (was English-only). See pending #1.
+- **NEW: `manager` role (school-level admin).** Full stack — see the role-hierarchy
+  bullet under Architecture. Backend verified end-to-end via curl: admin→create
+  manager, manager login/preload, scoped branch CRUD (school_id forced from JWT,
+  statuses auto-seed), students list, edit school; and security scoping — manager
+  gets 403 on `/admin/*` and on any branch/librarian outside their school (foreign
+  data left untouched). Frontend `npm run build` passes clean (1763 modules).
+  Client-side clicks (tab toggle, modals) were NOT visually confirmed — the dev
+  pane's rolldown-vite HMR client wedged after repeated restarts; the code renders
+  and builds fine. If revisiting: hard-restart Vite + fresh browser tab, then click
+  the Öğrenciler tab / "Şube Ekle" / "Ekle" to confirm the toggles + modals.
+
+## Done earlier this session (12 commits, newest first)
 
 - Deep translation of librarian + student dashboards + settings panel (tr/az/en).
 - Token-based student registration (invite links) — `RegistrationToken` model,
@@ -112,9 +199,13 @@ text) — that's a harness artifact, the app handles UTF-8 fine from the browser
 
 ## PENDING / next steps
 
-1. **Admin dashboard is English-only** — `src/pages/admin/AdminDashboard.jsx` was
-   written in English and does NOT use `t()`. ~20 strings to translate to tr/az/en.
-   This is the main known translation gap. (User was asked, hadn't decided.)
+1. ~~**Admin dashboard is English-only**~~ ✅ DONE (2026-07-28). Translated
+   `src/pages/admin/AdminDashboard.jsx` to tr/az/en via `t()`. Added an
+   `admin.*` namespace (+ `admin.md.*` for the modal titles keyed on `modalType`)
+   to `src/i18n/translations.js`; reused existing keys where they fit
+   (`common.save/add/loading`, `auth.email/password`, `profile.name`,
+   `msg.opFailed`). Verified in-browser rendering in all three languages (nav,
+   headers, librarian lists, "New School" modal). CRUD not yet exercised — see #4.
 2. **3 covers are generated placeholders, not real.** Əli və Nino, Kitabi-Dədə
    Qorqud, Saatleri Ayarlama Enstitüsü have real covers on Open Library (cover_i
    5094326, 103858, 8996939) but the covers CDN rate-limited us after ~14

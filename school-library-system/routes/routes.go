@@ -14,6 +14,9 @@ func Setup(app *fiber.App) {
 	app.Post("/api/login", handlers.Login)
 	app.Get("/api/registration-tokens/validate/:token", handlers.ValidateRegistrationToken)
 
+	// Public aggregate stats for the landing page (no auth, no PII)
+	app.Get("/api/public/stats", handlers.GetPublicStats)
+
 	api := app.Group("/api", middleware.IsAuthenticated)
 
 	// ... (Session Routes) ...
@@ -30,6 +33,15 @@ func Setup(app *fiber.App) {
 	api.Get("/student/:id/stats", handlers.GetStudentStats)
 	api.Post("/reservation", handlers.RequestReservation)
 	api.Get("/books/:id", handlers.GetBookDetails)
+
+	// Reading diary (student writes own; owner or scoped staff read)
+	api.Post("/reading-log", handlers.AddReadingLog)
+	api.Get("/reading-log/:loanId", handlers.GetLoanReadingLogs)
+	api.Get("/student/:id/reading", handlers.GetStudentReading)
+
+	// Book requests — student asks for a book the branch lacks
+	api.Post("/book-requests", handlers.CreateBookRequest)
+	api.Get("/book-requests/mine", handlers.GetMyBookRequests)
 
 	// ===========================
 	// LIBRARIAN ROUTES
@@ -56,6 +68,10 @@ func Setup(app *fiber.App) {
 	api.Get("/reservations", middleware.IsLibrarian, handlers.GetAllReservations)
 	api.Post("/reservation/:id", middleware.IsLibrarian, handlers.HandleReservation)
 	api.Post("/reservation/:id/issue", middleware.IsLibrarian, handlers.IssueReservation)
+
+	// Book requests — librarian queue for their branch
+	api.Get("/book-requests", middleware.IsLibrarian, handlers.GetBranchBookRequests)
+	api.Put("/book-requests/:id", middleware.IsLibrarian, handlers.UpdateBookRequestStatus)
 
 	// Class & Student Data
 	api.Get("/class-list", middleware.IsLibrarian, handlers.GetClassList)
@@ -140,4 +156,30 @@ func Setup(app *fiber.App) {
 	api.Post("/admin/librarian", middleware.IsAdmin, handlers.AddLibrarian)
 	api.Put("/admin/librarian/:id", middleware.IsAdmin, handlers.UpdateLibrarian)
 	api.Delete("/admin/librarian/:id", middleware.IsAdmin, handlers.RemoveLibrarian)
+
+	// Managers are provisioned by the admin, one login per school (many allowed).
+	api.Post("/admin/manager", middleware.IsAdmin, handlers.AddManager)
+	api.Put("/admin/manager/:id", middleware.IsAdmin, handlers.UpdateManager)
+	api.Delete("/admin/manager/:id", middleware.IsAdmin, handlers.RemoveManager)
+
+	// ===========================
+	// MANAGER ROUTES (school-scoped; every handler enforces the caller's own school)
+	// ===========================
+
+	api.Get("/manager/school", middleware.IsManager, handlers.GetMySchool)
+	api.Put("/manager/school", middleware.IsManager, handlers.ManagerUpdateSchool)
+	api.Get("/manager/students", middleware.IsManager, handlers.ManagerGetStudents)
+	api.Get("/manager/librarian-stats", middleware.IsManager, handlers.ManagerLibrarianStats)
+
+	api.Post("/manager/branch", middleware.IsManager, handlers.ManagerCreateBranch)
+	api.Put("/manager/branch/:id", middleware.IsManager, handlers.ManagerUpdateBranch)
+	api.Delete("/manager/branch/:id", middleware.IsManager, handlers.ManagerDeleteBranch)
+
+	api.Post("/manager/librarian", middleware.IsManager, handlers.ManagerAddLibrarian)
+	api.Put("/manager/librarian/:id", middleware.IsManager, handlers.ManagerUpdateLibrarian)
+	api.Delete("/manager/librarian/:id", middleware.IsManager, handlers.ManagerRemoveLibrarian)
+
+	// Manager sees/handles book requests across their whole school
+	api.Get("/manager/book-requests", middleware.IsManager, handlers.GetSchoolBookRequests)
+	api.Put("/manager/book-requests/:id", middleware.IsManager, handlers.ManagerUpdateBookRequestStatus)
 }

@@ -22,6 +22,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
         
         // Redirect them to their appropriate dashboard
         if (user.role === 'admin') return <Navigate to="/admin" replace />;
+        if (user.role === 'manager') return <Navigate to="/manager" replace />;
         if (user.role === 'librarian') return <Navigate to="/librarian" replace />;
         if (user.role === 'student') return <Navigate to="/student" replace />;
         

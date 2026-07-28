@@ -22,6 +22,7 @@ func main() {
 		&models.Branch{},
 		&models.User{},
 		&models.Librarian{},
+		&models.Manager{},
 		&models.Student{},
 		&models.Publisher{},
 		&models.Author{},
@@ -36,6 +37,8 @@ func main() {
 		&models.BookCopy{},
 		&models.Loan{},
 		&models.Reservation{},
+		&models.ReadingLog{},
+		&models.BookRequest{},
 		&models.RegistrationToken{},
 	)
 	// 3. Seed Default Statuses for Each Branch

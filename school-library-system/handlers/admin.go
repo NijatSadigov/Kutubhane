@@ -193,6 +193,98 @@ func UpdateLibrarian(c *fiber.Ctx) error {
 	return c.JSON(lib)
 }
 
+// --- MANAGER MANAGEMENT (admin) ---
+
+// AddManager provisions a manager account (login + profile) for a school.
+func AddManager(c *fiber.Ctx) error {
+	type ManagerReq struct {
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+		SchoolID uint   `json:"school_id"`
+	}
+	var req ManagerReq
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).SendString("Invalid Input")
+	}
+	if req.SchoolID == 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "A school is required"})
+	}
+
+	hashedPwd, _ := bcrypt.GenerateFromPassword([]byte(req.Password), 14)
+	tx := database.DB.Begin()
+
+	user := models.User{Email: req.Email, Password: hashedPwd, Role: "manager"}
+	if err := tx.Create(&user).Error; err != nil {
+		tx.Rollback()
+		return c.Status(500).JSON(fiber.Map{"error": "Email exists"})
+	}
+
+	mgr := models.Manager{
+		UserID:   user.ID,
+		Name:     req.Name,
+		SchoolID: req.SchoolID,
+	}
+	if err := tx.Create(&mgr).Error; err != nil {
+		tx.Rollback()
+		return c.Status(500).JSON(fiber.Map{"error": "Profile Error"})
+	}
+	tx.Commit()
+	return c.JSON(user)
+}
+
+// UpdateManager edits a manager's name (and optionally reassigns their school).
+func UpdateManager(c *fiber.Ctx) error {
+	idParam := c.Params("id")
+	if _, err := strconv.Atoi(idParam); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid ID format"})
+	}
+
+	type UpdateReq struct {
+		Name     string `json:"name"`
+		SchoolID uint   `json:"school_id"`
+	}
+	var req UpdateReq
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).SendString("Invalid Input")
+	}
+
+	var mgr models.Manager
+	if err := database.DB.Where("user_id = ?", idParam).First(&mgr).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Manager not found"})
+	}
+
+	if req.Name != "" {
+		mgr.Name = req.Name
+	}
+	if req.SchoolID != 0 {
+		mgr.SchoolID = req.SchoolID
+	}
+
+	database.DB.Save(&mgr)
+	return c.JSON(mgr)
+}
+
+// RemoveManager deletes a manager's profile and login.
+func RemoveManager(c *fiber.Ctx) error {
+	idParam := c.Params("id")
+	if _, err := strconv.Atoi(idParam); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid ID format"})
+	}
+
+	var mgr models.Manager
+	if err := database.DB.Where("user_id = ?", idParam).First(&mgr).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Manager not found"})
+	}
+
+	if mgr.UserID != 0 {
+		database.DB.Unscoped().Delete(&models.User{}, mgr.UserID)
+	}
+	database.DB.Unscoped().Delete(&mgr)
+
+	return c.JSON(fiber.Map{"message": "Manager deleted successfully"})
+}
+
 // --- GENERAL QUERIES ---
 
 func DeleteSchool(c *fiber.Ctx) error {
@@ -212,6 +304,8 @@ func GetAllSchools(c *fiber.Ctx) error {
 		Preload("Branches").
 		Preload("Branches.Librarians").
 		Preload("Branches.Librarians.User").
+		Preload("Managers").
+		Preload("Managers.User").
 		Find(&schools).Error; err != nil {
 		return c.Status(500).SendString("Database Error")
 	}

@@ -79,6 +79,31 @@ func IsAdmin(c *fiber.Ctx) error {
 	return c.Next()
 }
 
+func IsManager(c *fiber.Ctx) error {
+	tokenString := c.Cookies("jwt")
+	if tokenString == "" {
+		authHeader := c.Get("Authorization")
+		if len(authHeader) > 7 {
+			tokenString = authHeader[7:]
+		}
+	}
+
+	token, _ := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return []byte(SecretKey), nil
+	})
+
+	if token == nil {
+		return c.SendStatus(fiber.StatusUnauthorized)
+	}
+	claims, _ := token.Claims.(jwt.MapClaims)
+
+	if claims["role"] != "manager" && claims["role"] != "admin" {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "Managers Only"})
+	}
+
+	return c.Next()
+}
+
 func IsLibrarian(c *fiber.Ctx) error {
 	tokenString := c.Cookies("jwt")
 	if tokenString == "" {

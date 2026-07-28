@@ -176,6 +176,36 @@ type ReservationStatus struct {
 	Code     string `json:"code"` // "PENDING", "APPROVED", "REJECTED", "COMPLETED"
 }
 
+// BookRequest is a student's request for a book the library does not have. It is
+// free-text (title + author, optional note), branch-scoped, and worked by
+// librarians/managers who fulfill or reject it. Status is a plain code, not one of
+// the dynamic branch status tables.
+type BookRequest struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	StudentID uint      `json:"student_id"`
+	Student   Student   `json:"student" gorm:"foreignKey:StudentID"`
+	BranchID  uint      `json:"branch_id"`
+	Branch    Branch    `json:"branch" gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Title     string    `json:"title"`
+	Author    string    `json:"author"`
+	Note      string    `json:"note"`
+	Status    string    `json:"status" gorm:"default:PENDING"` // PENDING, FULFILLED, REJECTED
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// ReadingLog is one entry in a student's reading diary: the page they had reached
+// in a borrowed book at a moment in time, plus an optional note. A book's reading
+// speed (pages/day) is derived from the timestamps across its entries.
+type ReadingLog struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	LoanID    uint      `json:"loan_id"`
+	Loan      Loan      `json:"-" gorm:"foreignKey:LoanID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	StudentID uint      `json:"student_id"` // denormalized (= Student.UserID) for per-student queries
+	Page      int       `json:"page"`       // current page reached at this update
+	Note      string    `json:"note"`       // optional reflection on the reading
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // RegistrationToken is a branch-scoped invite that students use to self-register
 // instead of typing a branch id. It carries an expiry and can be revoked — much
 // like an API token.

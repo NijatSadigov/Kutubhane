@@ -575,16 +575,39 @@ func GetMyLibrary(c *fiber.Ctx) error {
 	}
 
 	type LoanDTO struct {
-		ID         uint       `json:"id"`
-		BookTitle  string     `json:"book_title"`
-		Author     string     `json:"author"`
-		Genre      string     `json:"genre"`
-		PageCount  int        `json:"page_count"`
-		IssueDate  time.Time  `json:"issue_date"`
-		DueDate    time.Time  `json:"due_date"`
-		ReturnDate *time.Time `json:"return_date"`
-		Status     string     `json:"status"`      // Display name, librarian-editable
-		StatusCode string     `json:"status_code"` // Fixed code the UI can branch on
+		ID          uint       `json:"id"`
+		BookTitle   string     `json:"book_title"`
+		Author      string     `json:"author"`
+		Genre       string     `json:"genre"`
+		PageCount   int        `json:"page_count"`
+		CurrentPage int        `json:"current_page"` // furthest page logged in the reading diary
+		IssueDate   time.Time  `json:"issue_date"`
+		DueDate     time.Time  `json:"due_date"`
+		ReturnDate  *time.Time `json:"return_date"`
+		Status      string     `json:"status"`      // Display name, librarian-editable
+		StatusCode  string     `json:"status_code"` // Fixed code the UI can branch on
+	}
+
+	// Furthest logged page per loan, for progress bars.
+	progress := map[uint]int{}
+	loanIDs := make([]uint, 0, len(loans))
+	for _, l := range loans {
+		loanIDs = append(loanIDs, l.ID)
+	}
+	if len(loanIDs) > 0 {
+		type row struct {
+			LoanID  uint
+			MaxPage int
+		}
+		var rows []row
+		database.DB.Model(&models.ReadingLog{}).
+			Select("loan_id, MAX(page) as max_page").
+			Where("loan_id IN ?", loanIDs).
+			Group("loan_id").
+			Scan(&rows)
+		for _, r := range rows {
+			progress[r.LoanID] = r.MaxPage
+		}
 	}
 
 	response := []LoanDTO{}
@@ -613,17 +636,23 @@ func GetMyLibrary(c *fiber.Ctx) error {
 			statusCode = l.Status.Code
 		}
 
+		current := progress[l.ID]
+		if pages > 0 && current > pages {
+			current = pages
+		}
+
 		response = append(response, LoanDTO{
-			ID:         l.ID,
-			BookTitle:  title,
-			Author:     author,
-			Genre:      genre,
-			PageCount:  pages,
-			IssueDate:  l.IssueDate,
-			DueDate:    l.DueDate,
-			ReturnDate: l.ReturnDate,
-			Status:     statusName,
-			StatusCode: statusCode,
+			ID:          l.ID,
+			BookTitle:   title,
+			Author:      author,
+			Genre:       genre,
+			PageCount:   pages,
+			CurrentPage: current,
+			IssueDate:   l.IssueDate,
+			DueDate:     l.DueDate,
+			ReturnDate:  l.ReturnDate,
+			Status:      statusName,
+			StatusCode:  statusCode,
 		})
 	}
 

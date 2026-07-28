@@ -5,8 +5,10 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Register from './pages/Register'; 
 import Login from './pages/Login';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import ManagerDashboard from './pages/manager/ManagerDashboard';
 import LibrarianDashboard from './pages/librarian/LibrarianDashboard';
 import StudentDashboard from './pages/student/StudentDashBoard';
+import PublicHome from './pages/PublicHome';
 function App() {
   return (
     <LanguageProvider>
@@ -14,7 +16,7 @@ function App() {
       <Router>
         <Routes>
           {/* Public Route */}
-          <Route path="/" element={<Navigate to="/login" />} />
+          <Route path="/" element={<PublicHome />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           {/* --- ADMIN ONLY --- */}
@@ -23,6 +25,16 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* --- MANAGER ONLY --- */}
+          <Route
+            path="/manager"
+            element={
+              <ProtectedRoute allowedRoles={['manager']}>
+                <ManagerDashboard />
               </ProtectedRoute>
             }
           />

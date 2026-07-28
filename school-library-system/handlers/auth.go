@@ -111,6 +111,8 @@ func Login(c *fiber.Ctx) error {
 	switch user.Role {
 	case "librarian":
 		database.DB.Preload("Librarian.School").Preload("Librarian.Branch").First(&user, user.ID)
+	case "manager":
+		database.DB.Preload("Manager.School").First(&user, user.ID)
 	case "student":
 		database.DB.Preload("Student.Branch").First(&user, user.ID)
 	}
@@ -150,6 +152,8 @@ func User(c *fiber.Ctx) error {
 
 	if user.Role == "librarian" {
 		database.DB.Preload("Librarian.School").Preload("Librarian.Branch").First(&user, id)
+	} else if user.Role == "manager" {
+		database.DB.Preload("Manager.School").First(&user, id)
 	} else if user.Role == "student" {
 		database.DB.Preload("Student.Branch").First(&user, id)
 	}
@@ -215,6 +219,8 @@ func UpdateProfile(c *fiber.Ctx) error {
 		switch user.Role {
 		case "librarian":
 			database.DB.Model(&models.Librarian{}).Where("user_id = ?", user.ID).Update("name", req.Name)
+		case "manager":
+			database.DB.Model(&models.Manager{}).Where("user_id = ?", user.ID).Update("name", req.Name)
 		case "student":
 			database.DB.Model(&models.Student{}).Where("user_id = ?", user.ID).Update("name", req.Name)
 		}

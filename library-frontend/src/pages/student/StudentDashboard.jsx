@@ -7,6 +7,7 @@ import Modal from '../../components/Modal'; // <-- EKLENDI: Modal Bileseni
 import HomeView from '../../components/HomeView';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 import ProfileModal, { displayName } from '../ProfileModal';
+import BookRequestModal from '../../components/BookRequestModal';
 import { useTranslation } from '../../i18n/LanguageContext';
 
 const StudentDashboard = () => {
@@ -31,6 +32,15 @@ const StudentDashboard = () => {
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [selectedBook, setSelectedBook] = useState(null);
 
+    // Reading diary modal + aggregated reading stats
+    const [diaryLoan, setDiaryLoan] = useState(null);   // the loan whose diary is open
+    const [diaryLogs, setDiaryLogs] = useState([]);
+    const [diaryPage, setDiaryPage] = useState('');
+    const [diaryNote, setDiaryNote] = useState('');
+    const [diarySaving, setDiarySaving] = useState(false);
+    const [readingStats, setReadingStats] = useState(null);
+    const [bookReqOpen, setBookReqOpen] = useState(false);
+
     // Data State
     const [books, setBooks] = useState([]);
     const [myLoans, setMyLoans] = useState([]);
@@ -50,7 +60,7 @@ const StudentDashboard = () => {
     useEffect(() => {
         const fetchData = async () => {
             await fetchCatalog();
-            if (user && user.id) await fetchMyLibrary();
+            if (user && user.id) { await fetchMyLibrary(); fetchReadingStats(); }
             setLoading(false);
         };
         fetchData();
@@ -69,9 +79,50 @@ const StudentDashboard = () => {
 
     const fetchMyLibrary = async () => {
         try {
-            const res = await api.get(`/my-library/${user.id}`); 
+            const res = await api.get(`/my-library/${user.id}`);
             setMyLoans(res.data);
         } catch (err) { console.error("Error fetching loans", err); }
+    };
+
+    const fetchReadingStats = async () => {
+        try {
+            const res = await api.get(`/student/${user.id}/reading`);
+            setReadingStats(res.data);
+        } catch (err) { console.error("Error fetching reading stats", err); }
+    };
+
+    // --- READING DIARY ---
+    const openDiary = async (loan) => {
+        setOpenDropdownId(null);
+        setDiaryLoan(loan);
+        setDiaryNote('');
+        setDiaryPage(loan.current_page ? String(loan.current_page) : '');
+        setDiaryLogs([]);
+        try {
+            const res = await api.get(`/reading-log/${loan.id}`);
+            setDiaryLogs(res.data);
+        } catch (err) { console.error("Error fetching diary", err); }
+    };
+
+    const submitDiary = async () => {
+        if (!diaryLoan) return;
+        const pageNum = parseInt(diaryPage, 10);
+        if (isNaN(pageNum) && !diaryNote.trim()) return;
+        setDiarySaving(true);
+        try {
+            await api.post('/reading-log', {
+                loan_id: diaryLoan.id,
+                page: isNaN(pageNum) ? 0 : pageNum,
+                note: diaryNote.trim(),
+            });
+            setDiaryNote('');
+            const res = await api.get(`/reading-log/${diaryLoan.id}`);
+            setDiaryLogs(res.data);
+            fetchMyLibrary();
+            fetchReadingStats();
+        } catch (err) {
+            alert(t('diary.saveFailed') + ": " + (err.response?.data?.error || t('stu.unknownError')));
+        } finally { setDiarySaving(false); }
     };
 
     // --- 2. ACTIONS ---
@@ -386,13 +437,21 @@ const StudentDashboard = () => {
                                 <div className="p-8">
                                     <div className="mb-8">
                                         <div className="flex justify-between items-center mb-4">
-                                            <button 
-                                                onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                                className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 outline-none hover:text-[#E85B5B] transition-colors"
-                                            >
-                                                {isFilterOpen ? <ChevronUp size={16}/> : <ChevronDown size={16}/>} Filtre
-                                            </button>
-                                            
+                                            <div className="flex items-center gap-4">
+                                                <button
+                                                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                                    className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 outline-none hover:text-[#E85B5B] transition-colors"
+                                                >
+                                                    {isFilterOpen ? <ChevronUp size={16}/> : <ChevronDown size={16}/>} Filtre
+                                                </button>
+                                                <button
+                                                    onClick={() => setBookReqOpen(true)}
+                                                    className="flex items-center gap-1.5 text-sm font-bold text-[#E85B5B] hover:text-red-600 outline-none transition-colors"
+                                                >
+                                                    <Bookmark size={15}/> {t('req.request')}
+                                                </button>
+                                            </div>
+
                                             <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
                                                 <button onClick={() => setViewMode('card')} className={`px-4 py-1 text-xs font-bold rounded shadow-sm transition-colors ${viewMode === 'card' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>{t('view.card')}</button>
                                                 <button onClick={() => setViewMode('list')} className={`px-4 py-1 text-xs font-bold rounded shadow-sm transition-colors ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>{t('view.list')}</button>
@@ -553,7 +612,16 @@ const StudentDashboard = () => {
                                         </div>
                                     )}
 
-                                    {displayBooks.length === 0 && <div className="py-20 text-center text-gray-400 dark:text-gray-500">{t('stu.noBooksFound')}</div>}
+                                    {displayBooks.length === 0 && (
+                                        <div className="py-16 text-center">
+                                            <p className="text-gray-400 dark:text-gray-500">{t('stu.noBooksFound')}</p>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">{t('req.notFound')}</p>
+                                            <button onClick={() => setBookReqOpen(true)}
+                                                className="mt-3 inline-flex items-center gap-2 bg-[#E85B5B] hover:bg-red-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-sm transition-colors">
+                                                <Bookmark size={16} /> {t('req.requestIt')}
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -684,7 +752,7 @@ const StudentDashboard = () => {
                                                                             onClick={(e) => e.stopPropagation()}
                                                                         >
                                                                             <button onClick={() => openBookDetails(loan, true)} className="bg-[#C2E0C6] dark:bg-green-900/40 border border-[#A3D3A8] dark:border-green-700 text-[#1E5631] dark:text-green-300 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#A3D3A8] dark:hover:bg-green-900/60 transition-colors">Detay</button>
-                                                                            <button className="bg-[#E0E7FF] dark:bg-indigo-900/40 border border-[#BFDBFE] dark:border-indigo-700 text-[#4338CA] dark:text-indigo-300 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#C7D2FE] dark:hover:bg-indigo-900/60 transition-colors">Okuma Bilgisi</button>
+                                                                            <button onClick={() => openDiary(loan)} className="bg-[#E0E7FF] dark:bg-indigo-900/40 border border-[#BFDBFE] dark:border-indigo-700 text-[#4338CA] dark:text-indigo-300 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#C7D2FE] dark:hover:bg-indigo-900/60 transition-colors">{t('diary.open')}</button>
                                                                         </div>
                                                                     )}
                                                                 </td>
@@ -730,7 +798,7 @@ const StudentDashboard = () => {
                                                                     onClick={(e) => e.stopPropagation()}
                                                                 >
                                                                     <button onClick={() => openBookDetails(loan, true)} className="bg-[#C2E0C6] dark:bg-green-900/40 border border-[#A3D3A8] dark:border-green-700 text-[#1E5631] dark:text-green-300 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#A3D3A8] dark:hover:bg-green-900/60 transition-colors">Detay</button>
-                                                                    <button className="bg-[#E0E7FF] dark:bg-indigo-900/40 border border-[#BFDBFE] dark:border-indigo-700 text-[#4338CA] dark:text-indigo-300 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#C7D2FE] dark:hover:bg-indigo-900/60 transition-colors">Okuma Bilgisi</button>
+                                                                    <button onClick={() => openDiary(loan)} className="bg-[#E0E7FF] dark:bg-indigo-900/40 border border-[#BFDBFE] dark:border-indigo-700 text-[#4338CA] dark:text-indigo-300 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#C7D2FE] dark:hover:bg-indigo-900/60 transition-colors">{t('diary.open')}</button>
                                                                 </div>
                                                             )}
                                                         </div>
@@ -770,24 +838,31 @@ const StudentDashboard = () => {
                                         <select className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 text-sm px-4 py-2 rounded-lg outline-none cursor-pointer focus:border-[#E85B5B]" value={timeFrame} onChange={(e) => setTimeFrame(e.target.value)}>
                                             <option value="all">{t('misc.allTime')}</option>
                                             <option value="year">{t('misc.thisYear')}</option>
-                                            <option value="month">Bu Ay</option>
+                                            <option value="month">{t('misc.thisMonth')}</option>
                                         </select>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex justify-between items-center">
                                             <div>
-                                                <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase mb-1">Okunan Kitap</p>
+                                                <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase mb-1">{t('stu.booksRead')}</p>
                                                 <h3 className="text-3xl font-bold text-gray-800 dark:text-gray-100">{stats.totalBooks}</h3>
                                             </div>
                                             <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center"><BookOpen className="text-blue-500 dark:text-blue-400" size={24} /></div>
                                         </div>
                                         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex justify-between items-center">
                                             <div>
-                                                <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase mb-1">Okunan Sayfa</p>
+                                                <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase mb-1">{t('stu.pagesRead')}</p>
                                                 <h3 className="text-3xl font-bold text-gray-800 dark:text-gray-100">{stats.totalPages.toLocaleString()}</h3>
                                             </div>
                                             <div className="w-12 h-12 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center"><BarChart2 className="text-green-500 dark:text-green-400" size={24} /></div>
+                                        </div>
+                                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex justify-between items-center">
+                                            <div>
+                                                <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase mb-1">{t('stu.readingSpeed')}</p>
+                                                <h3 className="text-3xl font-bold text-gray-800 dark:text-gray-100">{readingStats ? readingStats.reading_speed_ppd : 0} <span className="text-sm font-medium text-gray-400">{t('stu.pagesPerDay')}</span></h3>
+                                            </div>
+                                            <div className="w-12 h-12 rounded-full bg-[#FDECEC] dark:bg-red-900/20 flex items-center justify-center"><Clock className="text-[#E85B5B] dark:text-red-400" size={24} /></div>
                                         </div>
                                         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex justify-between items-center">
                                             <div>
@@ -797,6 +872,30 @@ const StudentDashboard = () => {
                                             <div className="w-12 h-12 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center"><Award className="text-purple-500 dark:text-purple-400" size={24} /></div>
                                         </div>
                                     </div>
+
+                                    {myLoans.filter(l => l.status_code === 'ACTIVE').length > 0 && (
+                                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                                            <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-4 text-sm">{t('stu.currentlyReading')}</h3>
+                                            <div className="space-y-4">
+                                                {myLoans.filter(l => l.status_code === 'ACTIVE').map(l => {
+                                                    const pc = l.page_count || 0;
+                                                    const cur = l.current_page || 0;
+                                                    const pct = pc > 0 ? Math.min(100, Math.round(cur / pc * 100)) : 0;
+                                                    return (
+                                                        <div key={l.id}>
+                                                            <div className="flex justify-between text-xs mb-1">
+                                                                <span className="font-medium text-gray-700 dark:text-gray-200 truncate max-w-[65%]">{l.book_title}</span>
+                                                                <span className="text-gray-500 dark:text-gray-400">{cur}/{pc || '?'} {t('stu.pagesShort')} · {pct}%</span>
+                                                            </div>
+                                                            <div className="w-full h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                                                <div className="h-full bg-[#E85B5B] rounded-full transition-all" style={{ width: `${pct}%` }}></div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col items-center">
@@ -822,7 +921,7 @@ const StudentDashboard = () => {
                                                     </div>
                                                 </>
                                             ) : (
-                                                <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">Veri Yok</div>
+                                                <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">{t('stu.noData')}</div>
                                             )}
                                         </div>
 
@@ -836,7 +935,7 @@ const StudentDashboard = () => {
                                                             <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('th.author')}: {book.author?.name || '-'}</p>
                                                         </div>
                                                         <div className="text-right">
-                                                            <span className="block text-xs font-bold text-green-600 dark:text-green-400">{book.page_count} sayfa</span>
+                                                            <span className="block text-xs font-bold text-green-600 dark:text-green-400">{book.page_count} {t('stu.pagesShort')}</span>
                                                             <span className="text-[10px] text-gray-400 dark:text-gray-500">{t('th.return')}: {new Date(book.return_date).toLocaleDateString()}</span>
                                                         </div>
                                                     </div>
@@ -917,11 +1016,73 @@ const StudentDashboard = () => {
                                 onClick={() => handleReserve(selectedBook)}
                                 className="w-full mt-2 bg-[#E85B5B] hover:bg-red-600 text-white font-bold py-2.5 rounded-lg shadow-sm transition-colors"
                             >
-                                Rezerve Et
+                                {t('stu.reserve')}
                             </button>
                         )}
                     </div>
                 )}
+            </Modal>
+
+            {/* Book Request Modal */}
+            <BookRequestModal isOpen={bookReqOpen} onClose={() => setBookReqOpen(false)} prefillTitle={searchQuery} />
+
+            {/* Reading Diary Modal */}
+            <Modal isOpen={!!diaryLoan} onClose={() => setDiaryLoan(null)} title={t('diary.title')}>
+                {diaryLoan && (() => {
+                    const pc = diaryLoan.page_count || 0;
+                    const logged = diaryLogs.reduce((m, e) => Math.max(m, e.page || 0), diaryLoan.current_page || 0);
+                    const pct = pc > 0 ? Math.min(100, Math.round(logged / pc * 100)) : 0;
+                    return (
+                        <div className="flex flex-col gap-4">
+                            <div>
+                                <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100">{diaryLoan.book_title}</h3>
+                                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-3 mb-1">
+                                    <span>{t('diary.progress')}</span>
+                                    <span>{logged}/{pc || '?'} {t('stu.pagesShort')} · {pct}%</span>
+                                </div>
+                                <div className="w-full h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                    <div className="h-full bg-[#E85B5B] rounded-full transition-all" style={{ width: `${pct}%` }}></div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div className="sm:col-span-1">
+                                    <label className="text-[11px] font-bold uppercase text-gray-500 dark:text-gray-400">{t('diary.currentPage')}</label>
+                                    <input type="number" min="0" max={pc || undefined} value={diaryPage} onChange={e => setDiaryPage(e.target.value)}
+                                        className="w-full mt-1 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#E85B5B]" />
+                                </div>
+                                <div className="sm:col-span-2">
+                                    <label className="text-[11px] font-bold uppercase text-gray-500 dark:text-gray-400">{t('diary.note')}</label>
+                                    <input type="text" value={diaryNote} onChange={e => setDiaryNote(e.target.value)}
+                                        className="w-full mt-1 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#E85B5B]" />
+                                </div>
+                            </div>
+                            <button onClick={submitDiary} disabled={diarySaving}
+                                className="bg-[#E85B5B] hover:bg-red-600 disabled:opacity-60 text-white font-bold py-2.5 rounded-lg shadow-sm transition-colors">
+                                {t('diary.save')}
+                            </button>
+
+                            <div className="border-t border-gray-100 dark:border-gray-700 pt-3">
+                                <h4 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">{t('diary.history')}</h4>
+                                {diaryLogs.length === 0 ? (
+                                    <p className="text-xs text-gray-400 py-4 text-center">{t('diary.noEntries')}</p>
+                                ) : (
+                                    <div className="space-y-2 max-h-52 overflow-y-auto">
+                                        {[...diaryLogs].reverse().map(e => (
+                                            <div key={e.id} className="flex justify-between items-start gap-3 text-xs bg-gray-50 dark:bg-gray-800/60 rounded-lg px-3 py-2 border border-gray-100 dark:border-gray-700">
+                                                <div className="flex-1">
+                                                    <span className="font-bold text-gray-700 dark:text-gray-200">{t('diary.currentPage')}: {e.page}</span>
+                                                    {e.note && <p className="text-gray-500 dark:text-gray-400 mt-0.5">{e.note}</p>}
+                                                </div>
+                                                <span className="text-[10px] text-gray-400 whitespace-nowrap">{new Date(e.created_at).toLocaleDateString()}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })()}
             </Modal>
 
         </div>

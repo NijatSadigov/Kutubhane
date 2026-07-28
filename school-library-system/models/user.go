@@ -10,6 +10,7 @@ type User struct {
 	Role      string     `json:"role"`
 	Student   *Student   `json:"student,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	Librarian *Librarian `json:"librarian,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Manager   *Manager   `json:"manager,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
 
 // 2. School
@@ -19,6 +20,8 @@ type School struct {
 	Address string `json:"address"`
 	// When School is deleted, delete its Branches automatically
 	Branches []Branch `json:"branches,omitempty" gorm:"foreignKey:SchoolID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	// School-level managers; deleted along with the school
+	Managers []Manager `json:"managers,omitempty" gorm:"foreignKey:SchoolID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
 
 // 3. Branch
@@ -42,6 +45,18 @@ type Librarian struct {
 
 	SchoolID uint `json:"school_id"`
 	// If School is deleted, delete this Librarian profile
+	School School `json:"school" gorm:"foreignKey:SchoolID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+}
+
+// 4b. Manager — school-level administrator. Scoped to one School; a School may
+// have several. Manages that school's branches, librarians and students.
+type Manager struct {
+	UserID uint   `json:"user_id" gorm:"primaryKey"`
+	Name   string `json:"name"`
+	User   User   `json:"user" gorm:"foreignKey:UserID"`
+
+	SchoolID uint `json:"school_id"`
+	// If School is deleted, delete this Manager profile
 	School School `json:"school" gorm:"foreignKey:SchoolID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
 
