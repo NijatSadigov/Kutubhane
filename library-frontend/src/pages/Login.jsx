@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { BookOpen, Lock, Mail } from 'lucide-react';
@@ -9,25 +9,36 @@ const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const { login } = useContext(AuthContext);
+    const [submitting, setSubmitting] = useState(false);
+    const { user, login } = useContext(AuthContext);
     const navigate = useNavigate();
     const { t } = useTranslation();
 
+    // Redirect once the auth state is actually committed. Driving navigation off
+    // `user` (instead of imperatively right after login) avoids a race where the
+    // route changed before the context updated, bouncing back to /login — which
+    // showed up as "having to click login several times". Also auto-redirects if
+    // an already-logged-in user lands on /login.
+    useEffect(() => {
+        if (!user) return;
+        const home = user.role === 'admin' ? '/admin'
+            : user.role === 'manager' ? '/manager'
+            : user.role === 'librarian' ? '/librarian'
+            : '/student';
+        navigate(home, { replace: true });
+    }, [user, navigate]);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (submitting) return;
         setError('');
-        
+        setSubmitting(true);
         const result = await login(email, password);
-        
-        if (result.success) {
-            // Redirect based on Role
-            if (result.role === 'admin') navigate('/admin');
-            else if (result.role === 'manager') navigate('/manager');
-            else if (result.role === 'librarian') navigate('/librarian');
-            else navigate('/student');
-        } else {
+        if (!result.success) {
             setError(result.message);
+            setSubmitting(false);
         }
+        // On success the effect above performs the redirect once `user` commits.
     };
 
     return (
@@ -85,9 +96,10 @@ const Login = () => {
 
                     <button
                         type="submit"
-                        className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition duration-200"
+                        disabled={submitting}
+                        className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                        {t('auth.login')}
+                        {submitting ? '…' : t('auth.login')}
                     </button>
                 </form>
 
