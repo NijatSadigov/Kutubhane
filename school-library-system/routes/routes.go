@@ -38,6 +38,7 @@ func Setup(app *fiber.App) {
 	api.Post("/reading-log", handlers.AddReadingLog)
 	api.Get("/reading-log/:loanId", handlers.GetLoanReadingLogs)
 	api.Get("/student/:id/reading", handlers.GetStudentReading)
+	api.Get("/student/:id/holds", handlers.GetStudentHolds)
 
 	// Book requests — student asks for a book the branch lacks
 	api.Post("/book-requests", handlers.CreateBookRequest)
@@ -56,6 +57,11 @@ func Setup(app *fiber.App) {
 	api.Post("/books/copy", middleware.IsLibrarian, handlers.AddCopy)
 	api.Put("/copy/:id", middleware.IsLibrarian, handlers.UpdateCopy)
 	api.Delete("/copy/:id", middleware.IsLibrarian, handlers.DeleteCopy)
+
+	// Borrow limits (branch default + per-student override)
+	api.Get("/loan-limit", middleware.IsLibrarian, handlers.GetLoanLimit)
+	api.Put("/loan-limit", middleware.IsLibrarian, handlers.SetLoanLimit)
+	api.Put("/student/:id/limit", middleware.IsLibrarian, handlers.SetStudentLimit)
 
 	// Loan Operations
 	api.Post("/loan", middleware.IsLibrarian, handlers.CreateLoan)

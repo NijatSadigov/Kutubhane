@@ -378,6 +378,21 @@ func CreateLoan(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Book is not available"})
 	}
 
+	// A student can't hold the same title on two active loans.
+	if studentHasActiveLoanForBook(req.StudentID, copy.BookID) {
+		return c.Status(400).JSON(fiber.Map{"error": "Student already has this book on loan", "code": "DUPLICATE"})
+	}
+	// This direct loan may be fulfilling the student's own reservation for the same
+	// book; that reservation already counts toward the limit, so don't double-count.
+	resForBook, hasRes := studentActiveReservationForBook(req.StudentID, copy.BookID)
+	holdCount := studentHoldCount(req.StudentID)
+	if hasRes {
+		holdCount--
+	}
+	if limit := studentEffectiveLimit(req.StudentID); holdCount >= int64(limit) {
+		return c.Status(400).JSON(fiber.Map{"error": "Borrow limit reached", "code": "LIMIT", "limit": limit})
+	}
+
 	var activeLoanStatus models.LoanStatus
 	database.DB.Where("code = 'ACTIVE' AND branch_id = ?", branchID).First(&activeLoanStatus)
 
@@ -411,6 +426,13 @@ func CreateLoan(c *fiber.Ctx) error {
 	if err := tx.Model(&models.BookCopy{}).Where("id = ?", copy.ID).Update("status_id", loanedCopyStatus.ID).Error; err != nil {
 		tx.Rollback()
 		return c.Status(500).JSON(fiber.Map{"error": "Could not update copy status"})
+	}
+
+	// If this loan fulfilled an open reservation for the same book, close it out.
+	if hasRes {
+		var completed models.ReservationStatus
+		tx.Where("code = 'COMPLETED' AND branch_id = ?", branchID).First(&completed)
+		tx.Model(&models.Reservation{}).Where("id = ?", resForBook.ID).Update("status_id", completed.ID)
 	}
 
 	tx.Commit()
@@ -705,6 +727,19 @@ func RequestReservation(c *fiber.Ctx) error {
 
 	if copy.Status.Code != "AVAILABLE" {
 		return c.Status(400).JSON(fiber.Map{"error": "Book not available for reservation"})
+	}
+
+	// One active hold per title: a student can't reserve a book they already have
+	// reserved or on loan.
+	if studentHasActiveLoanForBook(r.StudentID, copy.BookID) {
+		return c.Status(400).JSON(fiber.Map{"error": "You already have this book on loan", "code": "DUPLICATE"})
+	}
+	if _, exists := studentActiveReservationForBook(r.StudentID, copy.BookID); exists {
+		return c.Status(400).JSON(fiber.Map{"error": "You already reserved this book", "code": "DUPLICATE"})
+	}
+	// Respect the borrow limit (active loans + open reservations).
+	if limit := studentEffectiveLimit(r.StudentID); studentHoldCount(r.StudentID) >= int64(limit) {
+		return c.Status(400).JSON(fiber.Map{"error": "Borrow limit reached", "code": "LIMIT", "limit": limit})
 	}
 
 	var pendingStatus models.ReservationStatus

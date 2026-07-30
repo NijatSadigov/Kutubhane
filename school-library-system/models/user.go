@@ -30,6 +30,10 @@ type Branch struct {
 	Name     string `json:"name"`
 	SchoolID uint   `json:"school_id"`
 
+	// Default cap on how many books a student here may hold at once (active loans
+	// + pending/approved reservations combined). A Student.LoanLimit overrides it.
+	LoanLimit int `json:"loan_limit" gorm:"default:5"`
+
 	Librarians []Librarian `json:"librarians,omitempty" gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	Students   []Student   `json:"students,omitempty" gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
@@ -73,4 +77,7 @@ type Student struct {
 	ClassGroup string    `json:"class_group"`
 	BirthDate  time.Time `json:"birth_date"`
 	Loans      []Loan    `json:"loans" gorm:"foreignKey:StudentID;references:UserID"`
+
+	// Optional per-student override of the branch borrow limit. Nil = use branch default.
+	LoanLimit *int `json:"loan_limit"`
 }
