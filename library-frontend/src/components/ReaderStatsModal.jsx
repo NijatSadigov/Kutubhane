@@ -43,7 +43,7 @@ const ReaderStatsModal = ({ studentId, studentName, isOpen, onClose }) => {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {kpi(t('stu.booksRead'), data.books_read, BookOpen, 'text-blue-500')}
                         {kpi(t('stu.pagesRead'), (data.pages_read || 0).toLocaleString(), BarChart2, 'text-green-500')}
-                        {kpi(t('stu.readingSpeed'), `${data.reading_speed_ppd} ${t('stu.pagesPerDay')}`, Clock, 'text-[#E85B5B]')}
+                        {kpi(t('stu.readingSpeed'), `${data.reading_speed_ppd} ${t('stu.pagesPerDay')}`, Clock, 'text-[#1B9DD9]')}
                     </div>
 
                     <div>
@@ -59,7 +59,7 @@ const ReaderStatsModal = ({ studentId, studentName, isOpen, onClose }) => {
                                             <span className="text-gray-500 dark:text-gray-400">{b.current_page}/{b.page_count || '?'} {t('stu.pagesShort')} · {b.percent}%</span>
                                         </div>
                                         <div className="w-full h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                            <div className="h-full bg-[#E85B5B] rounded-full" style={{ width: `${b.percent}%` }}></div>
+                                            <div className="h-full bg-[#1B9DD9] rounded-full" style={{ width: `${b.percent}%` }}></div>
                                         </div>
                                     </div>
                                 ))}

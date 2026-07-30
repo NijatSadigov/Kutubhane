@@ -65,7 +65,7 @@ const RegistrationTokensModal = ({ isOpen, onClose }) => {
                         <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('regtoken.validityDays')}</label>
                         <input type="number" min="1" className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white text-sm" value={days} onChange={e => setDays(e.target.value)} />
                     </div>
-                    <button className="bg-[#E85B5B] hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1"><Plus size={14} /> {t('regtoken.create')}</button>
+                    <button className="bg-[#1B9DD9] hover:bg-[#1580B5] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1"><Plus size={14} /> {t('regtoken.create')}</button>
                 </form>
 
                 {/* List */}
@@ -89,10 +89,10 @@ const RegistrationTokensModal = ({ isOpen, onClose }) => {
                                 <div className="flex items-center justify-between gap-2">
                                     <span className="text-[11px] text-gray-400 flex items-center gap-1"><Clock size={12} /> {new Date(tok.expires_at).toLocaleDateString()} · {tok.use_count} {t('regtoken.uses')}</span>
                                     <div className="flex gap-2">
-                                        <button onClick={() => copy(tok.token, tok.id + 't')} className="text-[11px] font-bold text-gray-600 dark:text-gray-300 hover:text-[#E85B5B] flex items-center gap-1">
+                                        <button onClick={() => copy(tok.token, tok.id + 't')} className="text-[11px] font-bold text-gray-600 dark:text-gray-300 hover:text-[#1B9DD9] flex items-center gap-1">
                                             {copied === tok.id + 't' ? <Check size={13} className="text-green-600" /> : <Copy size={13} />} {t('regtoken.copyToken')}
                                         </button>
-                                        <button onClick={() => copy(linkFor(tok.token), tok.id + 'l')} className="text-[11px] font-bold text-[#E85B5B] hover:text-red-600 flex items-center gap-1">
+                                        <button onClick={() => copy(linkFor(tok.token), tok.id + 'l')} className="text-[11px] font-bold text-[#1B9DD9] hover:text-red-600 flex items-center gap-1">
                                             {copied === tok.id + 'l' ? <Check size={13} className="text-green-600" /> : <Link2 size={13} />} {t('regtoken.copyLink')}
                                         </button>
                                     </div>

@@ -137,11 +137,11 @@ const ManagerDashboard = () => {
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                            <School className="text-indigo-600" /> {t('role.manager')}
+                            <School className="text-sky-600" /> {t('role.manager')}
                         </h1>
                         <div className="flex items-center gap-5">
                             <LanguageSwitcher />
-                            <button onClick={() => setIsProfileOpen(true)} className="flex items-center gap-2 text-gray-500 hover:text-indigo-600 transition-colors text-sm font-medium">
+                            <button onClick={() => setIsProfileOpen(true)} className="flex items-center gap-2 text-gray-500 hover:text-sky-600 transition-colors text-sm font-medium">
                                 <UserIcon size={18} /> {t('nav.profile')}
                             </button>
                             <button onClick={handleLogout} className="flex items-center gap-2 text-gray-500 hover:text-red-600 transition-colors text-sm font-medium">
@@ -161,12 +161,12 @@ const ManagerDashboard = () => {
                 <div className="flex justify-between items-end mb-6">
                     <div>
                         <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-                            <School className="text-indigo-600" size={28} /> {school.name}
+                            <School className="text-sky-600" size={28} /> {school.name}
                         </h2>
                         <p className="text-gray-500 mt-1">{t('manager.subtitle')}</p>
                         {school.address && <p className="text-xs text-gray-400 mt-0.5">{school.address}</p>}
                     </div>
-                    <button onClick={openEditSchool} className="bg-white border border-gray-300 hover:border-indigo-400 hover:text-indigo-600 text-gray-600 px-4 py-2 rounded-lg shadow-sm flex items-center gap-2 font-medium transition-all text-sm">
+                    <button onClick={openEditSchool} className="bg-white border border-gray-300 hover:border-sky-400 hover:text-sky-600 text-gray-600 px-4 py-2 rounded-lg shadow-sm flex items-center gap-2 font-medium transition-all text-sm">
                         <Edit2 size={16} /> {t('manager.editSchool')}
                     </button>
                 </div>
@@ -175,31 +175,31 @@ const ManagerDashboard = () => {
                 <div className="flex gap-1 border-b border-gray-200 mb-6">
                     <button
                         onClick={() => setTab('branches')}
-                        className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px flex items-center gap-2 transition-colors ${tab === 'branches' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px flex items-center gap-2 transition-colors ${tab === 'branches' ? 'border-sky-600 text-sky-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                     >
                         <MapPin size={16} /> {t('manager.branches')}
                     </button>
                     <button
                         onClick={() => setTab('students')}
-                        className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px flex items-center gap-2 transition-colors ${tab === 'students' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px flex items-center gap-2 transition-colors ${tab === 'students' ? 'border-sky-600 text-sky-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                     >
                         <GraduationCap size={16} /> {t('manager.students')} <span className="text-xs text-gray-400">({students.length})</span>
                     </button>
                     <button
                         onClick={() => setTab('requests')}
-                        className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px flex items-center gap-2 transition-colors ${tab === 'requests' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px flex items-center gap-2 transition-colors ${tab === 'requests' ? 'border-sky-600 text-sky-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                     >
                         <BookOpen size={16} /> {t('req.queue')}
                     </button>
                     <button
                         onClick={() => setTab('tracking')}
-                        className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px flex items-center gap-2 transition-colors ${tab === 'tracking' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px flex items-center gap-2 transition-colors ${tab === 'tracking' ? 'border-sky-600 text-sky-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                     >
                         <Users size={16} /> {t('manager.tracking')}
                     </button>
                     <button
                         onClick={() => setTab('workspace')}
-                        className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px flex items-center gap-2 transition-colors ${tab === 'workspace' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px flex items-center gap-2 transition-colors ${tab === 'workspace' ? 'border-sky-600 text-sky-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                     >
                         <School size={16} /> {t('manager.workspace')}
                     </button>
@@ -209,7 +209,7 @@ const ManagerDashboard = () => {
                 {tab === 'branches' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {school.branches && school.branches.map((branch) => (
-                            <div key={branch.id} className="border border-gray-200 bg-white rounded-lg p-4 hover:border-indigo-300 transition-colors group">
+                            <div key={branch.id} className="border border-gray-200 bg-white rounded-lg p-4 hover:border-sky-300 transition-colors group">
                                 {/* Branch Header */}
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="flex items-center gap-2 font-semibold text-gray-700">
@@ -217,7 +217,7 @@ const ManagerDashboard = () => {
                                         {branch.name}
                                     </div>
                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => openEditBranch(branch)} className="text-gray-400 hover:text-indigo-500"><Edit2 size={14} /></button>
+                                        <button onClick={() => openEditBranch(branch)} className="text-gray-400 hover:text-sky-500"><Edit2 size={14} /></button>
                                         <button onClick={() => handleDelete('branch', branch.id)} className="text-gray-400 hover:text-red-500"><Trash2 size={14} /></button>
                                     </div>
                                 </div>
@@ -230,7 +230,7 @@ const ManagerDashboard = () => {
                                         </div>
                                         <button
                                             onClick={() => openCreateLibrarian(branch.id)}
-                                            className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-200 flex items-center gap-1"
+                                            className="text-xs bg-sky-100 text-sky-700 px-2 py-0.5 rounded hover:bg-sky-200 flex items-center gap-1"
                                         >
                                             <Plus size={10} /> {t('common.add')}
                                         </button>
@@ -244,7 +244,7 @@ const ManagerDashboard = () => {
                                                     <span className="block text-[10px] text-gray-400">{lib.user?.email || lib.email || t('admin.noEmail')}</span>
                                                 </div>
                                                 <div className="flex gap-1 shrink-0">
-                                                    <button onClick={() => openEditLibrarian(lib)} className="text-gray-300 hover:text-indigo-500"><Edit2 size={12} /></button>
+                                                    <button onClick={() => openEditLibrarian(lib)} className="text-gray-300 hover:text-sky-500"><Edit2 size={12} /></button>
                                                     <button onClick={() => handleDelete('librarian', lib.user_id || lib.id)} className="text-gray-300 hover:text-red-500"><Trash2 size={12} /></button>
                                                 </div>
                                             </div>
@@ -257,7 +257,7 @@ const ManagerDashboard = () => {
 
                         <button
                             onClick={openCreateBranch}
-                            className="border-2 border-dashed border-gray-200 rounded-lg p-4 flex flex-col items-center justify-center text-gray-400 hover:border-indigo-400 hover:text-indigo-500 transition-all h-full min-h-[150px]"
+                            className="border-2 border-dashed border-gray-200 rounded-lg p-4 flex flex-col items-center justify-center text-gray-400 hover:border-sky-400 hover:text-sky-500 transition-all h-full min-h-[150px]"
                         >
                             <Plus size={24} className="mb-2" />
                             <span className="text-sm font-medium">{t('admin.addBranch')}</span>
@@ -287,7 +287,7 @@ const ManagerDashboard = () => {
                                         <td className="px-4 py-2.5 text-gray-500">{s.class_group || '—'}</td>
                                         <td className="px-4 py-2.5 text-right">
                                             <button onClick={() => setReaderStudent({ id: s.user_id, name: s.name })}
-                                                className="inline-flex items-center gap-1.5 text-indigo-600 hover:text-indigo-800 text-xs font-semibold">
+                                                className="inline-flex items-center gap-1.5 text-sky-600 hover:text-sky-800 text-xs font-semibold">
                                                 <BookOpen size={14} /> {t('reader.view')}
                                             </button>
                                         </td>
@@ -338,7 +338,7 @@ const ManagerDashboard = () => {
                                         <td className="px-4 py-2.5 text-center text-gray-700">{l.books}</td>
                                         <td className="px-4 py-2.5 text-center text-gray-700">{l.copies}</td>
                                         <td className="px-4 py-2.5 text-center text-gray-700">{l.students}</td>
-                                        <td className="px-4 py-2.5 text-center font-semibold text-indigo-600">{l.active_loans}</td>
+                                        <td className="px-4 py-2.5 text-center font-semibold text-sky-600">{l.active_loans}</td>
                                         <td className="px-4 py-2.5 text-center text-gray-700">{l.pending_reservations}</td>
                                         <td className="px-4 py-2.5 text-center">
                                             {l.pending_requests > 0
@@ -365,12 +365,12 @@ const ManagerDashboard = () => {
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.schoolName')}</label>
-                                <input type="text" className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                <input type="text" className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-sky-500 outline-none"
                                     value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.address')}</label>
-                                <input type="text" className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                <input type="text" className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-sky-500 outline-none"
                                     value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} />
                             </div>
                         </div>
@@ -380,7 +380,7 @@ const ManagerDashboard = () => {
                     {modalType.includes('branch') && (
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.branchName')}</label>
-                            <input type="text" className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                            <input type="text" className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-sky-500 outline-none"
                                 placeholder={t('admin.branchPlaceholder')}
                                 value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
                         </div>
@@ -391,13 +391,13 @@ const ManagerDashboard = () => {
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('profile.name')}</label>
-                                <input type="text" className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                <input type="text" className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-sky-500 outline-none"
                                     placeholder={t('admin.namePlaceholder')}
                                     value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.email')}</label>
-                                <input type="email" className={`w-full border border-gray-300 rounded-lg px-4 py-2 outline-none ${modalType.startsWith('edit_') ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'focus:ring-2 focus:ring-indigo-500'}`}
+                                <input type="email" className={`w-full border border-gray-300 rounded-lg px-4 py-2 outline-none ${modalType.startsWith('edit_') ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'focus:ring-2 focus:ring-sky-500'}`}
                                     placeholder={t('admin.emailPlaceholder')}
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -408,7 +408,7 @@ const ManagerDashboard = () => {
                             {modalType.startsWith('create_') && (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.password')}</label>
-                                    <input type="password" className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    <input type="password" className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-sky-500 outline-none"
                                         placeholder="••••••"
                                         value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} required />
                                 </div>
@@ -416,7 +416,7 @@ const ManagerDashboard = () => {
                         </div>
                     )}
 
-                    <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                    <button type="submit" className="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
                         {t('common.save')}
                     </button>
                 </form>

@@ -83,7 +83,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
                     <span className="text-[11px] text-gray-400 mt-1 block">{t('profile.currentPasswordHint')}</span>
                 </div>
 
-                <button disabled={busy} className="w-full bg-[#E85B5B] hover:bg-red-600 disabled:opacity-50 text-white py-2 rounded font-bold transition-colors">
+                <button disabled={busy} className="w-full bg-[#1B9DD9] hover:bg-[#1580B5] disabled:opacity-50 text-white py-2 rounded font-bold transition-colors">
                     {busy ? t('common.loading') : t('profile.save')}
                 </button>
             </form>

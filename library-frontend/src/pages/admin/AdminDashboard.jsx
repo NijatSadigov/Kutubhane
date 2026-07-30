@@ -236,27 +236,27 @@ const AdminDashboard = () => {
                             {/* Branches Grid */}
                             <div className="p-6 bg-white">
                                 {/* School-level Managers */}
-                                <div className="mb-5 bg-indigo-50/50 border border-indigo-100 rounded-lg p-3">
+                                <div className="mb-5 bg-sky-50/50 border border-sky-100 rounded-lg p-3">
                                     <div className="flex justify-between items-center mb-2">
-                                        <div className="text-xs font-bold text-indigo-400 uppercase flex items-center gap-1">
+                                        <div className="text-xs font-bold text-sky-400 uppercase flex items-center gap-1">
                                             <UserIcon size={12} /> {t('admin.managers')}
                                         </div>
                                         <button
                                             onClick={() => openCreateManager(school.id)}
-                                            className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-200 flex items-center gap-1"
+                                            className="text-xs bg-sky-100 text-sky-700 px-2 py-0.5 rounded hover:bg-sky-200 flex items-center gap-1"
                                         >
                                             <Plus size={10} /> {t('common.add')}
                                         </button>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
                                         {school.managers && school.managers.map((mgr) => (
-                                            <div key={mgr.user_id || mgr.id} className="flex items-center gap-2 bg-white border border-indigo-100 rounded px-2 py-1">
+                                            <div key={mgr.user_id || mgr.id} className="flex items-center gap-2 bg-white border border-sky-100 rounded px-2 py-1">
                                                 <div className="leading-tight">
                                                     <span className="block font-medium text-xs text-gray-700">{mgr.name}</span>
                                                     <span className="block text-[10px] text-gray-400">{mgr.user?.email || mgr.email || t('admin.noEmail')}</span>
                                                 </div>
                                                 <div className="flex gap-1 shrink-0">
-                                                    <button onClick={() => openEditManager(mgr)} className="text-gray-300 hover:text-indigo-500"><Edit2 size={12} /></button>
+                                                    <button onClick={() => openEditManager(mgr)} className="text-gray-300 hover:text-sky-500"><Edit2 size={12} /></button>
                                                     <button onClick={() => handleDelete('manager', mgr.user_id || mgr.id)} className="text-gray-300 hover:text-red-500"><Trash2 size={12} /></button>
                                                 </div>
                                             </div>

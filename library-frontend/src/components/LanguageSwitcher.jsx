@@ -32,7 +32,7 @@ const LanguageSwitcher = () => {
                         <button
                             key={l.code}
                             onClick={() => { setLang(l.code); setOpen(false); }}
-                            className={`w-full flex items-center gap-2 px-4 py-2 text-sm text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${l.code === lang ? 'font-bold text-[#E85B5B]' : 'text-gray-700 dark:text-gray-300'}`}
+                            className={`w-full flex items-center gap-2 px-4 py-2 text-sm text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${l.code === lang ? 'font-bold text-[#1B9DD9]' : 'text-gray-700 dark:text-gray-300'}`}
                         >
                             <span>{l.flag}</span> {l.label}
                         </button>

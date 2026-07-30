@@ -152,7 +152,7 @@ const BulkUploadModal = ({ isOpen, onClose, categories, onComplete }) => {
                 </p>
 
                 <div className="flex flex-wrap gap-3">
-                    <label className="flex items-center gap-2 bg-[#E85B5B] text-white px-4 py-2 rounded-lg text-sm font-bold cursor-pointer hover:bg-red-600 transition-colors">
+                    <label className="flex items-center gap-2 bg-[#1B9DD9] text-white px-4 py-2 rounded-lg text-sm font-bold cursor-pointer hover:bg-[#1580B5] transition-colors">
                         <UploadCloud size={16} /> CSV Dosyası Seç
                         <input type="file" accept=".csv,text/csv" className="hidden" onChange={handleFile} />
                     </label>

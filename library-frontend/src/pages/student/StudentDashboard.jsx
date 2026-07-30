@@ -309,7 +309,7 @@ const StudentDashboard = () => {
 
     // Overview data for the Anasayfa (home) view.
     const studentHomeStats = [
-        { key: 'active', label: t('home.myActiveLoans'), value: myLoans.filter(l => l.status_code === 'ACTIVE').length, accent: 'text-[#E85B5B] dark:text-red-400' },
+        { key: 'active', label: t('home.myActiveLoans'), value: myLoans.filter(l => l.status_code === 'ACTIVE').length, accent: 'text-[#1B9DD9] dark:text-sky-400' },
         { key: 'read', label: t('home.myReadBooks'), value: myLoans.filter(l => l.status_code === 'RETURNED').length, accent: 'text-green-600 dark:text-green-400' },
         { key: 'catalog', label: t('home.totalBooks'), value: books.length },
     ];
@@ -327,8 +327,8 @@ const StudentDashboard = () => {
                 {/* LEFT SIDEBAR */}
                 <div className="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col z-20 shadow-sm transition-colors duration-200">
                     <div className="h-20 flex items-center px-8 border-b border-gray-100 dark:border-gray-800">
-                        <img src="/logo.png" alt="e12" className="h-8" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='block'; }} />
-                        <span className="text-2xl font-bold text-[#E85B5B] hidden">e12</span>
+                        <img src="/logo.png" alt="Hədəf" className="h-8" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='block'; }} />
+                        <span className="text-2xl font-bold text-[#1B9DD9] hidden">Hədəf</span>
                     </div>
                     
                     <nav className="flex-1 px-4 py-6 flex flex-col gap-1">
@@ -345,7 +345,7 @@ const StudentDashboard = () => {
                                     key={item.id}
                                     onClick={() => setActiveTab(item.id)}
                                     className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${active
-                                        ? 'bg-[#E85B5B] text-white shadow-md shadow-red-200 dark:shadow-none'
+                                        ? 'bg-[#1B9DD9] text-white shadow-md shadow-red-200 dark:shadow-none'
                                         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                                 >
                                     <Icon size={18} /> {item.label}
@@ -377,7 +377,7 @@ const StudentDashboard = () => {
                         <div className="flex items-center gap-6">
                             <div className="flex items-center gap-4 text-gray-400 dark:text-gray-500">
                                 <LanguageSwitcher />
-                                <button onClick={() => setIsDark(!isDark)} className="hover:text-indigo-500 dark:hover:text-yellow-400 transition-colors outline-none">
+                                <button onClick={() => setIsDark(!isDark)} className="hover:text-sky-500 dark:hover:text-yellow-400 transition-colors outline-none">
                                     {isDark ? <Sun size={20} /> : <Moon size={20} />}
                                 </button>
                             </div>
@@ -386,7 +386,7 @@ const StudentDashboard = () => {
                                     {displayName(user)?.charAt(0) || 'A'}
                                 </div>
                                 <div className="text-right hidden sm:block">
-                                    <p className="text-sm font-bold text-gray-800 dark:text-gray-100 leading-tight group-hover:text-[#E85B5B] transition-colors">{displayName(user) || t('role.student')}</p>
+                                    <p className="text-sm font-bold text-gray-800 dark:text-gray-100 leading-tight group-hover:text-[#1B9DD9] transition-colors">{displayName(user) || t('role.student')}</p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">{user?.email}</p>
                                 </div>
                             </button>
@@ -405,17 +405,17 @@ const StudentDashboard = () => {
                             {/* Tabs */}
                             {activeTab !== 'home' && (
                             <div className="px-8 pt-6 border-b border-gray-100 dark:border-gray-800 flex gap-8 relative">
-                                <button onClick={() => setActiveTab('catalog')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'catalog' ? 'text-[#E85B5B]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
+                                <button onClick={() => setActiveTab('catalog')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'catalog' ? 'text-[#1B9DD9]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
                                     {t('tab.catalog')}
-                                    {activeTab === 'catalog' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#E85B5B] rounded-t-full"></div>}
+                                    {activeTab === 'catalog' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1B9DD9] rounded-t-full"></div>}
                                 </button>
-                                <button onClick={() => setActiveTab('mylibrary')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'mylibrary' ? 'text-[#E85B5B]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
+                                <button onClick={() => setActiveTab('mylibrary')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'mylibrary' ? 'text-[#1B9DD9]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
                                     {t('tab.myLibrary')}
-                                    {activeTab === 'mylibrary' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#E85B5B] rounded-t-full"></div>}
+                                    {activeTab === 'mylibrary' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1B9DD9] rounded-t-full"></div>}
                                 </button>
-                                <button onClick={() => setActiveTab('stats')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'stats' ? 'text-[#E85B5B]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
+                                <button onClick={() => setActiveTab('stats')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'stats' ? 'text-[#1B9DD9]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
                                     {t('tab.stats')}
-                                    {activeTab === 'stats' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#E85B5B] rounded-t-full"></div>}
+                                    {activeTab === 'stats' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1B9DD9] rounded-t-full"></div>}
                                 </button>
 
                                 {/* List/Card Toggle for Kitaplarım */}
@@ -440,13 +440,13 @@ const StudentDashboard = () => {
                                             <div className="flex items-center gap-4">
                                                 <button
                                                     onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                                    className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 outline-none hover:text-[#E85B5B] transition-colors"
+                                                    className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 outline-none hover:text-[#1B9DD9] transition-colors"
                                                 >
                                                     {isFilterOpen ? <ChevronUp size={16}/> : <ChevronDown size={16}/>} Filtre
                                                 </button>
                                                 <button
                                                     onClick={() => setBookReqOpen(true)}
-                                                    className="flex items-center gap-1.5 text-sm font-bold text-[#E85B5B] hover:text-red-600 outline-none transition-colors"
+                                                    className="flex items-center gap-1.5 text-sm font-bold text-[#1B9DD9] hover:text-red-600 outline-none transition-colors"
                                                 >
                                                     <Bookmark size={15}/> {t('req.request')}
                                                 </button>
@@ -462,17 +462,17 @@ const StudentDashboard = () => {
                                             <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 bg-gray-50 dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2 duration-200">
                                                 <div className="lg:col-span-2">
                                                     <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('f.search')}</label>
-                                                    <input type="text" placeholder={t('stu.searchCatalog')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#E85B5B] dark:focus:border-[#E85B5B]" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                                                    <input type="text" placeholder={t('stu.searchCatalog')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#1B9DD9] dark:focus:border-[#1B9DD9]" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                                                 </div>
                                                 <div>
                                                     <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('fld.topicSel')}</label>
-                                                    <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#E85B5B]" value={selectedGenre} onChange={(e) => setSelectedGenre(e.target.value)}>
+                                                    <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#1B9DD9]" value={selectedGenre} onChange={(e) => setSelectedGenre(e.target.value)}>
                                                         {uniqueGenres.map(g => <option key={g} value={g}>{g === 'All' ? t('f.byTopic') : g}</option>)}
                                                     </select>
                                                 </div>
                                                 <div>
                                                     <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">ISBN</label>
-                                                    <input type="text" placeholder={t('f.isbn')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#E85B5B]" value={isbnFilter} onChange={(e) => setIsbnFilter(e.target.value)} />
+                                                    <input type="text" placeholder={t('f.isbn')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#1B9DD9]" value={isbnFilter} onChange={(e) => setIsbnFilter(e.target.value)} />
                                                 </div>
                                             </div>
                                         )}
@@ -491,7 +491,7 @@ const StudentDashboard = () => {
                                                 else if (book.copies && book.copies.length > 0) { badgeText = "Rezerve"; badgeColor = "bg-[#FCE7F3] text-[#DB2777] dark:bg-pink-900/30 dark:text-pink-400"; }
 
                                                 return (
-                                                    <div key={book.id} className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 relative group hover:border-[#E85B5B] dark:hover:border-[#E85B5B] transition-colors bg-white dark:bg-gray-800">
+                                                    <div key={book.id} className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 relative group hover:border-[#1B9DD9] dark:hover:border-[#1B9DD9] transition-colors bg-white dark:bg-gray-800">
                                                         <div className="flex justify-between items-start mb-4 relative">
                                                             <span className={`text-[10px] px-3 py-1 rounded font-bold tracking-wide ${badgeColor}`}>{badgeText}</span>
                                                             
@@ -513,7 +513,7 @@ const StudentDashboard = () => {
                                                                     <button 
                                                                         onClick={() => handleReserve(book)} 
                                                                         disabled={!isAvailable} 
-                                                                        className={`text-[11px] font-bold px-4 py-2 rounded-lg border w-28 text-center transition-colors ${isAvailable ? 'bg-[#E0E7FF] dark:bg-indigo-900/40 border-[#BFDBFE] dark:border-indigo-700 text-[#4338CA] dark:text-indigo-300 hover:bg-[#C7D2FE] dark:hover:bg-indigo-900/60' : 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed'}`}
+                                                                        className={`text-[11px] font-bold px-4 py-2 rounded-lg border w-28 text-center transition-colors ${isAvailable ? 'bg-[#E0F2FE] dark:bg-sky-900/40 border-[#7DD3FC] dark:border-sky-700 text-[#075985] dark:text-sky-300 hover:bg-[#BAE6FD] dark:hover:bg-sky-900/60' : 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed'}`}
                                                                     >
                                                                         {t('stu.reserve')}
                                                                     </button>
@@ -600,7 +600,7 @@ const StudentDashboard = () => {
                                                                             onClick={(e) => e.stopPropagation()}
                                                                         >
                                                                             <button onClick={() => openBookDetails(book)} className="bg-[#FEF3C7] dark:bg-amber-900/40 border border-[#FDE68A] dark:border-amber-700 text-[#B45309] dark:text-amber-400 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#FDE68A] dark:hover:bg-amber-900/60 transition-colors">Detay</button>
-                                                                            <button onClick={() => handleReserve(book)} disabled={!isAvailable} className={`text-[11px] font-bold px-4 py-2 rounded-lg border w-28 text-center transition-colors ${isAvailable ? 'bg-[#E0E7FF] dark:bg-indigo-900/40 border-[#BFDBFE] dark:border-indigo-700 text-[#4338CA] dark:text-indigo-300 hover:bg-[#C7D2FE] dark:hover:bg-indigo-900/60' : 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed'}`}>Rezerve Et</button>
+                                                                            <button onClick={() => handleReserve(book)} disabled={!isAvailable} className={`text-[11px] font-bold px-4 py-2 rounded-lg border w-28 text-center transition-colors ${isAvailable ? 'bg-[#E0F2FE] dark:bg-sky-900/40 border-[#7DD3FC] dark:border-sky-700 text-[#075985] dark:text-sky-300 hover:bg-[#BAE6FD] dark:hover:bg-sky-900/60' : 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed'}`}>Rezerve Et</button>
                                                                         </div>
                                                                     )}
                                                                 </td>
@@ -617,7 +617,7 @@ const StudentDashboard = () => {
                                             <p className="text-gray-400 dark:text-gray-500">{t('stu.noBooksFound')}</p>
                                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">{t('req.notFound')}</p>
                                             <button onClick={() => setBookReqOpen(true)}
-                                                className="mt-3 inline-flex items-center gap-2 bg-[#E85B5B] hover:bg-red-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-sm transition-colors">
+                                                className="mt-3 inline-flex items-center gap-2 bg-[#1B9DD9] hover:bg-[#1580B5] text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-sm transition-colors">
                                                 <Bookmark size={16} /> {t('req.requestIt')}
                                             </button>
                                         </div>
@@ -634,7 +634,7 @@ const StudentDashboard = () => {
                                         <div className="flex justify-between items-center mb-4">
                                             <button 
                                                 onClick={() => setIsLibraryFilterOpen(!isLibraryFilterOpen)}
-                                                className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 outline-none hover:text-[#E85B5B] transition-colors"
+                                                className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 outline-none hover:text-[#1B9DD9] transition-colors"
                                             >
                                                 {isLibraryFilterOpen ? <ChevronUp size={16}/> : <ChevronDown size={16}/>} Filtre
                                             </button>
@@ -644,11 +644,11 @@ const StudentDashboard = () => {
                                             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 bg-gray-50 dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2 duration-200 mb-6">
                                                 <div className="lg:col-span-2">
                                                     <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('stu.searchHistory')}</label>
-                                                    <input type="text" placeholder={t('stu.searchBookAuthor')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#E85B5B]" value={librarySearchQuery} onChange={(e) => setLibrarySearchQuery(e.target.value)} />
+                                                    <input type="text" placeholder={t('stu.searchBookAuthor')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#1B9DD9]" value={librarySearchQuery} onChange={(e) => setLibrarySearchQuery(e.target.value)} />
                                                 </div>
                                                 <div className="lg:col-span-2">
                                                     <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('fld.topicSel')}</label>
-                                                    <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#E85B5B]" value={librarySelectedGenre} onChange={(e) => setLibrarySelectedGenre(e.target.value)}>
+                                                    <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-sm px-3 py-2 outline-none focus:border-[#1B9DD9]" value={librarySelectedGenre} onChange={(e) => setLibrarySelectedGenre(e.target.value)}>
                                                         {uniqueLibraryGenres.map(g => <option key={g} value={g}>{g === 'All' ? t('f.byTopic') : g}</option>)}
                                                     </select>
                                                 </div>
@@ -659,7 +659,7 @@ const StudentDashboard = () => {
                                             <div className="flex gap-4">
                                                 <div className="bg-white dark:bg-gray-900 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 min-w-[120px]">
                                                     <h4 className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">{t('stu.activeLoans')}</h4>
-                                                    <p className="text-2xl font-bold text-[#E85B5B] dark:text-red-400">{myLoans.filter(l => l.status_code === 'ACTIVE').length}</p>
+                                                    <p className="text-2xl font-bold text-[#1B9DD9] dark:text-sky-400">{myLoans.filter(l => l.status_code === 'ACTIVE').length}</p>
                                                 </div>
                                                 <div className="bg-white dark:bg-gray-900 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 min-w-[120px]">
                                                     <h4 className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">{t('stu.returnedLabel')}</h4>
@@ -672,7 +672,7 @@ const StudentDashboard = () => {
                                                     onClick={() => setHideReturned(!hideReturned)}
                                                     className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors outline-none"
                                                 >
-                                                    {hideReturned ? <CheckSquare className="text-[#E85B5B]" size={18}/> : <Square size={18}/>}
+                                                    {hideReturned ? <CheckSquare className="text-[#1B9DD9]" size={18}/> : <Square size={18}/>}
                                                     {t('stu.hideReturned')}
                                                 </button>
 
@@ -752,7 +752,7 @@ const StudentDashboard = () => {
                                                                             onClick={(e) => e.stopPropagation()}
                                                                         >
                                                                             <button onClick={() => openBookDetails(loan, true)} className="bg-[#C2E0C6] dark:bg-green-900/40 border border-[#A3D3A8] dark:border-green-700 text-[#1E5631] dark:text-green-300 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#A3D3A8] dark:hover:bg-green-900/60 transition-colors">Detay</button>
-                                                                            <button onClick={() => openDiary(loan)} className="bg-[#E0E7FF] dark:bg-indigo-900/40 border border-[#BFDBFE] dark:border-indigo-700 text-[#4338CA] dark:text-indigo-300 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#C7D2FE] dark:hover:bg-indigo-900/60 transition-colors">{t('diary.open')}</button>
+                                                                            <button onClick={() => openDiary(loan)} className="bg-[#E0F2FE] dark:bg-sky-900/40 border border-[#7DD3FC] dark:border-sky-700 text-[#075985] dark:text-sky-300 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#BAE6FD] dark:hover:bg-sky-900/60 transition-colors">{t('diary.open')}</button>
                                                                         </div>
                                                                     )}
                                                                 </td>
@@ -781,7 +781,7 @@ const StudentDashboard = () => {
                                                 }
 
                                                 return (
-                                                    <div key={loan.id} className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 relative hover:border-[#E85B5B] dark:hover:border-[#E85B5B] transition-colors bg-white dark:bg-gray-800">
+                                                    <div key={loan.id} className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 relative hover:border-[#1B9DD9] dark:hover:border-[#1B9DD9] transition-colors bg-white dark:bg-gray-800">
                                                         <div className="flex justify-between items-start mb-4 relative">
                                                             <span className={`text-[10px] px-3 py-1 rounded font-bold tracking-wide ${statusColor}`}>{statusText}</span>
                                                             
@@ -798,7 +798,7 @@ const StudentDashboard = () => {
                                                                     onClick={(e) => e.stopPropagation()}
                                                                 >
                                                                     <button onClick={() => openBookDetails(loan, true)} className="bg-[#C2E0C6] dark:bg-green-900/40 border border-[#A3D3A8] dark:border-green-700 text-[#1E5631] dark:text-green-300 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#A3D3A8] dark:hover:bg-green-900/60 transition-colors">Detay</button>
-                                                                    <button onClick={() => openDiary(loan)} className="bg-[#E0E7FF] dark:bg-indigo-900/40 border border-[#BFDBFE] dark:border-indigo-700 text-[#4338CA] dark:text-indigo-300 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#C7D2FE] dark:hover:bg-indigo-900/60 transition-colors">{t('diary.open')}</button>
+                                                                    <button onClick={() => openDiary(loan)} className="bg-[#E0F2FE] dark:bg-sky-900/40 border border-[#7DD3FC] dark:border-sky-700 text-[#075985] dark:text-sky-300 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#BAE6FD] dark:hover:bg-sky-900/60 transition-colors">{t('diary.open')}</button>
                                                                 </div>
                                                             )}
                                                         </div>
@@ -835,7 +835,7 @@ const StudentDashboard = () => {
                                 <div className="p-8 space-y-8">
                                     <div className="flex justify-between items-center">
                                         <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{t('stu.readingStats')}</h3>
-                                        <select className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 text-sm px-4 py-2 rounded-lg outline-none cursor-pointer focus:border-[#E85B5B]" value={timeFrame} onChange={(e) => setTimeFrame(e.target.value)}>
+                                        <select className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 text-sm px-4 py-2 rounded-lg outline-none cursor-pointer focus:border-[#1B9DD9]" value={timeFrame} onChange={(e) => setTimeFrame(e.target.value)}>
                                             <option value="all">{t('misc.allTime')}</option>
                                             <option value="year">{t('misc.thisYear')}</option>
                                             <option value="month">{t('misc.thisMonth')}</option>
@@ -862,7 +862,7 @@ const StudentDashboard = () => {
                                                 <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase mb-1">{t('stu.readingSpeed')}</p>
                                                 <h3 className="text-3xl font-bold text-gray-800 dark:text-gray-100">{readingStats ? readingStats.reading_speed_ppd : 0} <span className="text-sm font-medium text-gray-400">{t('stu.pagesPerDay')}</span></h3>
                                             </div>
-                                            <div className="w-12 h-12 rounded-full bg-[#FDECEC] dark:bg-red-900/20 flex items-center justify-center"><Clock className="text-[#E85B5B] dark:text-red-400" size={24} /></div>
+                                            <div className="w-12 h-12 rounded-full bg-[#E7F5FB] dark:bg-sky-900/20 flex items-center justify-center"><Clock className="text-[#1B9DD9] dark:text-sky-400" size={24} /></div>
                                         </div>
                                         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex justify-between items-center">
                                             <div>
@@ -888,7 +888,7 @@ const StudentDashboard = () => {
                                                                 <span className="text-gray-500 dark:text-gray-400">{cur}/{pc || '?'} {t('stu.pagesShort')} · {pct}%</span>
                                                             </div>
                                                             <div className="w-full h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                                                <div className="h-full bg-[#E85B5B] rounded-full transition-all" style={{ width: `${pct}%` }}></div>
+                                                                <div className="h-full bg-[#1B9DD9] rounded-full transition-all" style={{ width: `${pct}%` }}></div>
                                                             </div>
                                                         </div>
                                                     );
@@ -987,7 +987,7 @@ const StudentDashboard = () => {
 
                         {/* Additional Info for Library Items */}
                         {selectedBook.isLibraryItem && (
-                            <div className="bg-[#E0E7FF] dark:bg-indigo-900/30 text-[#4338CA] dark:text-indigo-300 p-3 rounded-lg text-sm border border-[#BFDBFE] dark:border-indigo-800">
+                            <div className="bg-[#E0F2FE] dark:bg-sky-900/30 text-[#075985] dark:text-sky-300 p-3 rounded-lg text-sm border border-[#7DD3FC] dark:border-sky-800">
                                 <div className="flex justify-between font-bold mb-1">
                                     <span>{t('stu.statusPrefix')}: {selectedBook.status_code === 'ACTIVE' ? t('stu.activeLoanBadge') : t('st.returned')}</span>
                                 </div>
@@ -1014,7 +1014,7 @@ const StudentDashboard = () => {
                         {!selectedBook.isLibraryItem && (
                             <button
                                 onClick={() => handleReserve(selectedBook)}
-                                className="w-full mt-2 bg-[#E85B5B] hover:bg-red-600 text-white font-bold py-2.5 rounded-lg shadow-sm transition-colors"
+                                className="w-full mt-2 bg-[#1B9DD9] hover:bg-[#1580B5] text-white font-bold py-2.5 rounded-lg shadow-sm transition-colors"
                             >
                                 {t('stu.reserve')}
                             </button>
@@ -1041,7 +1041,7 @@ const StudentDashboard = () => {
                                     <span>{logged}/{pc || '?'} {t('stu.pagesShort')} · {pct}%</span>
                                 </div>
                                 <div className="w-full h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                    <div className="h-full bg-[#E85B5B] rounded-full transition-all" style={{ width: `${pct}%` }}></div>
+                                    <div className="h-full bg-[#1B9DD9] rounded-full transition-all" style={{ width: `${pct}%` }}></div>
                                 </div>
                             </div>
 
@@ -1049,16 +1049,16 @@ const StudentDashboard = () => {
                                 <div className="sm:col-span-1">
                                     <label className="text-[11px] font-bold uppercase text-gray-500 dark:text-gray-400">{t('diary.currentPage')}</label>
                                     <input type="number" min="0" max={pc || undefined} value={diaryPage} onChange={e => setDiaryPage(e.target.value)}
-                                        className="w-full mt-1 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#E85B5B]" />
+                                        className="w-full mt-1 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1B9DD9]" />
                                 </div>
                                 <div className="sm:col-span-2">
                                     <label className="text-[11px] font-bold uppercase text-gray-500 dark:text-gray-400">{t('diary.note')}</label>
                                     <input type="text" value={diaryNote} onChange={e => setDiaryNote(e.target.value)}
-                                        className="w-full mt-1 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#E85B5B]" />
+                                        className="w-full mt-1 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1B9DD9]" />
                                 </div>
                             </div>
                             <button onClick={submitDiary} disabled={diarySaving}
-                                className="bg-[#E85B5B] hover:bg-red-600 disabled:opacity-60 text-white font-bold py-2.5 rounded-lg shadow-sm transition-colors">
+                                className="bg-[#1B9DD9] hover:bg-[#1580B5] disabled:opacity-60 text-white font-bold py-2.5 rounded-lg shadow-sm transition-colors">
                                 {t('diary.save')}
                             </button>
 

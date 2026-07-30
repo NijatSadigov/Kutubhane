@@ -462,8 +462,8 @@ const LibrarianDashboard = () => {
                 {/* LEFT SIDEBAR */}
                 <div className="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col z-20 shadow-sm transition-colors duration-200">
                     <div className="h-20 flex items-center px-8 border-b border-gray-100 dark:border-gray-800">
-                        <img src="/logo.png" alt="e12" className="h-8" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='block'; }} />
-                        <span className="text-2xl font-bold text-[#E85B5B] hidden">e12</span>
+                        <img src="/logo.png" alt="Hədəf" className="h-8" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='block'; }} />
+                        <span className="text-2xl font-bold text-[#1B9DD9] hidden">Hədəf</span>
                     </div>
                     
                     <nav className="flex-1 px-4 py-6 flex flex-col gap-1">
@@ -485,7 +485,7 @@ const LibrarianDashboard = () => {
                                         key={item.id}
                                         onClick={() => setActiveTab(item.id)}
                                         className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${active
-                                            ? 'bg-[#E85B5B] text-white shadow-md shadow-red-200 dark:shadow-none'
+                                            ? 'bg-[#1B9DD9] text-white shadow-md shadow-red-200 dark:shadow-none'
                                             : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                                     >
                                         <Icon size={18} /> {item.label}
@@ -517,7 +517,7 @@ const LibrarianDashboard = () => {
                         <div className="flex items-center gap-6">
                             <div className="flex items-center gap-4 text-gray-400 dark:text-gray-500">
                                 <LanguageSwitcher />
-                                <button onClick={() => setIsDark(!isDark)} className="hover:text-indigo-500 outline-none">
+                                <button onClick={() => setIsDark(!isDark)} className="hover:text-sky-500 outline-none">
                                     {isDark ? <Sun size={20} /> : <Moon size={20} />}
                                 </button>
                             </div>
@@ -526,7 +526,7 @@ const LibrarianDashboard = () => {
                                     {displayName(user)?.charAt(0) || 'P'}
                                 </div>
                                 <div className="text-right hidden sm:block">
-                                    <p className="text-sm font-bold text-gray-800 dark:text-gray-100 leading-tight group-hover:text-[#E85B5B] transition-colors">{displayName(user) || t('role.librarian')}</p>
+                                    <p className="text-sm font-bold text-gray-800 dark:text-gray-100 leading-tight group-hover:text-[#1B9DD9] transition-colors">{displayName(user) || t('role.librarian')}</p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">{user?.email}</p>
                                 </div>
                             </button>
@@ -545,25 +545,25 @@ const LibrarianDashboard = () => {
                             {/* Tabs */}
                             {activeTab !== 'home' && (
                             <div className="px-8 pt-6 border-b border-gray-100 dark:border-gray-800 flex gap-8 relative">
-                                <button onClick={() => setActiveTab('inventory')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'inventory' ? 'text-[#E85B5B]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
+                                <button onClick={() => setActiveTab('inventory')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'inventory' ? 'text-[#1B9DD9]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
                                     {t('tab.books')}
-                                    {activeTab === 'inventory' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#E85B5B] rounded-t-full"></div>}
+                                    {activeTab === 'inventory' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1B9DD9] rounded-t-full"></div>}
                                 </button>
-                                <button onClick={() => setActiveTab('reservations')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'reservations' ? 'text-[#E85B5B]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
+                                <button onClick={() => setActiveTab('reservations')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'reservations' ? 'text-[#1B9DD9]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
                                     {t('tab.reservations')}
-                                    {activeTab === 'reservations' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#E85B5B] rounded-t-full"></div>}
+                                    {activeTab === 'reservations' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1B9DD9] rounded-t-full"></div>}
                                 </button>
-                                <button onClick={() => setActiveTab('loans')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'loans' ? 'text-[#E85B5B]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
+                                <button onClick={() => setActiveTab('loans')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'loans' ? 'text-[#1B9DD9]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
                                     {t('tab.loans')}
-                                    {activeTab === 'loans' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#E85B5B] rounded-t-full"></div>}
+                                    {activeTab === 'loans' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1B9DD9] rounded-t-full"></div>}
                                 </button>
-                                <button onClick={() => setActiveTab('members')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'members' ? 'text-[#E85B5B]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
+                                <button onClick={() => setActiveTab('members')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'members' ? 'text-[#1B9DD9]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
                                     {t('tab.members')}
-                                    {activeTab === 'members' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#E85B5B] rounded-t-full"></div>}
+                                    {activeTab === 'members' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1B9DD9] rounded-t-full"></div>}
                                 </button>
-                                <button onClick={() => setActiveTab('settings')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'settings' ? 'text-[#E85B5B]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
+                                <button onClick={() => setActiveTab('settings')} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'settings' ? 'text-[#1B9DD9]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}>
                                     {t('tab.settings')}
-                                    {activeTab === 'settings' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#E85B5B] rounded-t-full"></div>}
+                                    {activeTab === 'settings' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1B9DD9] rounded-t-full"></div>}
                                 </button>
 
                                 {/* Action Button in Header */}
@@ -572,14 +572,14 @@ const LibrarianDashboard = () => {
                                         <button onClick={() => setIsBulkOpen(true)} className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center gap-1">
                                             <FileText size={14} /> {t('bulk.button')}
                                         </button>
-                                        <button onClick={() => { setModalType('add_book'); setBookForm(EMPTY_BOOK_FORM); setEbookName(''); setIsModalOpen(true); }} className="bg-[#E85B5B] text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-red-600 transition-colors flex items-center gap-1">
+                                        <button onClick={() => { setModalType('add_book'); setBookForm(EMPTY_BOOK_FORM); setEbookName(''); setIsModalOpen(true); }} className="bg-[#1B9DD9] text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-[#1580B5] transition-colors flex items-center gap-1">
                                             <Plus size={14} /> {t('book.addNew')}
                                         </button>
                                     </div>
                                 )}
                                 {activeTab === 'members' && (
                                     <div className="absolute right-8 bottom-3">
-                                        <button onClick={() => setIsTokensOpen(true)} className="bg-[#E85B5B] text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-red-600 transition-colors flex items-center gap-1">
+                                        <button onClick={() => setIsTokensOpen(true)} className="bg-[#1B9DD9] text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-[#1580B5] transition-colors flex items-center gap-1">
                                             <Mail size={14} /> {t('regtoken.button')}
                                         </button>
                                     </div>
@@ -592,7 +592,7 @@ const LibrarianDashboard = () => {
                                 {activeTab !== 'settings' && activeTab !== 'home' && (
                                 <div className="mb-6">
                                     <div className="flex justify-between items-center mb-4">
-                                        <button onClick={() => setIsFilterOpen(!isFilterOpen)} className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 outline-none hover:text-[#E85B5B] transition-colors">
+                                        <button onClick={() => setIsFilterOpen(!isFilterOpen)} className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 outline-none hover:text-[#1B9DD9] transition-colors">
                                             {isFilterOpen ? <ChevronUp size={16}/> : <ChevronDown size={16}/>} {t('f.title')}
                                         </button>
                                     </div>
@@ -606,25 +606,25 @@ const LibrarianDashboard = () => {
                                                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
                                                         <div className="lg:col-span-2">
                                                             <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('f.search')}</label>
-                                                            <input type="text" placeholder={activeTab === 'inventory' ? t('f.searchBook') : t('f.searchPerson')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                                                            <input type="text" placeholder={activeTab === 'inventory' ? t('f.searchBook') : t('f.searchPerson')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#1B9DD9]" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                                                         </div>
                                                         <div>
                                                             <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('fld.topicSel')}</label>
-                                                            <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={selectedGenre} onChange={(e) => setSelectedGenre(e.target.value)}>
+                                                            <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#1B9DD9]" value={selectedGenre} onChange={(e) => setSelectedGenre(e.target.value)}>
                                                                 {uniqueGenres.map(g => <option key={g} value={g}>{g === 'All' ? t('f.byTopic') : g}</option>)}
                                                             </select>
                                                         </div>
                                                         <div>
                                                             <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">ISBN</label>
-                                                            <input type="text" placeholder={t('f.isbn')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={isbnFilter} onChange={(e) => setIsbnFilter(e.target.value)} />
+                                                            <input type="text" placeholder={t('f.isbn')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#1B9DD9]" value={isbnFilter} onChange={(e) => setIsbnFilter(e.target.value)} />
                                                         </div>
                                                         <div>
                                                             <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Call No</label>
-                                                            <input type="text" placeholder={t('f.callNo')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={callNoFilter} onChange={(e) => setCallNoFilter(e.target.value)} />
+                                                            <input type="text" placeholder={t('f.callNo')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#1B9DD9]" value={callNoFilter} onChange={(e) => setCallNoFilter(e.target.value)} />
                                                         </div>
                                                         <div>
                                                             <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">CEFR</label>
-                                                            <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={cefrFilter} onChange={(e) => setCefrFilter(e.target.value)}>
+                                                            <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#1B9DD9]" value={cefrFilter} onChange={(e) => setCefrFilter(e.target.value)}>
                                                                 {uniqueCefr.map(v => <option key={v} value={v}>{v === 'All' ? t('f.cefrAll') : v}</option>)}
                                                             </select>
                                                         </div>
@@ -633,7 +633,7 @@ const LibrarianDashboard = () => {
                                                         {activeTab === 'inventory' && (
                                                             <div>
                                                                 <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('th.copyStatus')}</label>
-                                                                <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={availabilityFilter} onChange={(e) => setAvailabilityFilter(e.target.value)}>
+                                                                <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#1B9DD9]" value={availabilityFilter} onChange={(e) => setAvailabilityFilter(e.target.value)}>
                                                                     <option value="All">{t('common.all')}</option>
                                                                     <option value="available">{t('f.hasAvailable')}</option>
                                                                     <option value="unavailable">{t('f.noAvailable')}</option>
@@ -642,7 +642,7 @@ const LibrarianDashboard = () => {
                                                         )}
                                                         <div>
                                                             <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('fld.language')}</label>
-                                                            <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={languageFilter} onChange={(e) => setLanguageFilter(e.target.value)}>
+                                                            <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#1B9DD9]" value={languageFilter} onChange={(e) => setLanguageFilter(e.target.value)}>
                                                                 {uniqueLanguages.map(v => <option key={v} value={v}>{v === 'All' ? t('f.langAll') : v}</option>)}
                                                             </select>
                                                         </div>
@@ -653,15 +653,15 @@ const LibrarianDashboard = () => {
                                                 <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4">
                                                     <div className="lg:col-span-2">
                                                         <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('f.personSearch')}</label>
-                                                        <input type="text" placeholder={t('f.fullName')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={studentSearch} onChange={(e) => setStudentSearch(e.target.value)} />
+                                                        <input type="text" placeholder={t('f.fullName')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#1B9DD9]" value={studentSearch} onChange={(e) => setStudentSearch(e.target.value)} />
                                                     </div>
                                                     <div>
                                                         <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('f.studentNo')}</label>
-                                                        <input type="text" placeholder={t('f.studentNoPh')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={studentIdFilter} onChange={(e) => setStudentIdFilter(e.target.value)} />
+                                                        <input type="text" placeholder={t('f.studentNoPh')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#1B9DD9]" value={studentIdFilter} onChange={(e) => setStudentIdFilter(e.target.value)} />
                                                     </div>
                                                     <div>
                                                         <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('th.unit')}</label>
-                                                        <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]">
+                                                        <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#1B9DD9]">
                                                             <option>{t('common.all')}</option>
                                                             <option>{user?.librarian?.branch?.name || t('f.centralBranch')}</option>
                                                         </select>
@@ -669,7 +669,7 @@ const LibrarianDashboard = () => {
                                                     <div>
                                                         {/* 👇 UPDATED: Combined Sınıf dropdown */}
                                                         <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('th.class')}</label>
-                                                        <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#E85B5B]" value={studentClass} onChange={e => setStudentClass(e.target.value)}>
+                                                        <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#1B9DD9]" value={studentClass} onChange={e => setStudentClass(e.target.value)}>
                                                             <option value="All">{t('common.all')}</option>
                                                             {uniqueClasses.map(c => <option key={c} value={c}>{c.replace('-', ' ')}</option>)}
                                                         </select>
@@ -814,7 +814,7 @@ const LibrarianDashboard = () => {
                                                 <select 
                                                     value={itemsPerPage} 
                                                     onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                                                    className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded px-2 py-1 outline-none focus:border-[#E85B5B] cursor-pointer"
+                                                    className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded px-2 py-1 outline-none focus:border-[#1B9DD9] cursor-pointer"
                                                 >
                                                     <option value={20}>20</option>
                                                     <option value={50}>50</option>
@@ -903,7 +903,7 @@ const LibrarianDashboard = () => {
                                                                             </>
                                                                         ) : (
                                                                             <>
-                                                                                <button onClick={() => { setSelectedResId(res.id); setModalType('issue_res'); setIsModalOpen(true); setOpenDropdownId(null); }} className="bg-[#E0E7FF] border border-[#BFDBFE] text-[#4338CA] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#C7D2FE] transition-colors w-full">{t('b.giveBook')}</button>
+                                                                                <button onClick={() => { setSelectedResId(res.id); setModalType('issue_res'); setIsModalOpen(true); setOpenDropdownId(null); }} className="bg-[#E0F2FE] border border-[#7DD3FC] text-[#075985] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#BAE6FD] transition-colors w-full">{t('b.giveBook')}</button>
                                                                                 <button onClick={() => handleReservationAction(res.id, 'Rejected')} className="bg-[#FFEDD5] border border-[#FDBA74] text-[#C2410C] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#FDBA74] transition-colors w-full">{t('b.reject')}</button>
                                                                             </>
                                                                         )}
@@ -963,7 +963,7 @@ const LibrarianDashboard = () => {
                                                                 {openDropdownId === `loan-${loan.id}` && (
                                                                     <div className="absolute right-10 top-0 mt-6 flex flex-col gap-1.5 z-50 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-100 w-36" onClick={(e) => e.stopPropagation()}>
                                                                         <button onClick={() => returnCopy(loan.book_copy_id, loan.book_copy?.book_id, loan.book_copy?.tracking_number)} className="bg-[#FCE7F3] border border-[#FBCFE8] text-[#9D174D] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#FBCFE8] transition-colors w-full">{t('b.returnBook')}</button>
-                                                                        <button onClick={() => openEditLoan(loan)} className="bg-[#DBEAFE] border border-[#BFDBFE] text-[#1E40AF] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#BFDBFE] transition-colors w-full">{t('common.edit')}</button>
+                                                                        <button onClick={() => openEditLoan(loan)} className="bg-[#DBEAFE] border border-[#7DD3FC] text-[#1E40AF] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#7DD3FC] transition-colors w-full">{t('common.edit')}</button>
                                                                     </div>
                                                                 )}
                                                             </td>
@@ -1010,7 +1010,7 @@ const LibrarianDashboard = () => {
                                                                 <div className="flex items-center gap-3 justify-end">
                                                                     <button
                                                                         onClick={() => setReaderStudent({ id: student.user_id, name: student.name })}
-                                                                        className="text-indigo-500 hover:text-indigo-600 text-[11px] font-bold flex items-center gap-1 outline-none transition-colors"
+                                                                        className="text-sky-500 hover:text-sky-600 text-[11px] font-bold flex items-center gap-1 outline-none transition-colors"
                                                                     >
                                                                         <BookOpen size={14}/> {t('reader.view')}
                                                                     </button>
@@ -1145,7 +1145,7 @@ const LibrarianDashboard = () => {
                         <label className={labelCls}>{t('ebook.label')}</label>
                         {bookForm.ebook_url ? (
                             <div className="flex items-center justify-between gap-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
-                                <a href={assetUrl(bookForm.ebook_url)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-[#E85B5B] font-medium truncate">
+                                <a href={assetUrl(bookForm.ebook_url)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-[#1B9DD9] font-medium truncate">
                                     <FileText size={16} /> {ebookName || t('ebook.attached')}
                                 </a>
                                 <button type="button" onClick={() => { setBookForm({ ...bookForm, ebook_url: '', has_ebook: false }); setEbookName(''); }} className="text-xs text-red-500 hover:text-red-700 shrink-0">{t('cover.remove')}</button>
@@ -1158,7 +1158,7 @@ const LibrarianDashboard = () => {
                         )}
                     </div>
 
-                    <button className="w-full bg-[#E85B5B] hover:bg-red-600 text-white py-2 rounded font-bold transition-colors">{t('common.save')}</button>
+                    <button className="w-full bg-[#1B9DD9] hover:bg-[#1580B5] text-white py-2 rounded font-bold transition-colors">{t('common.save')}</button>
                 </form>
             </Modal>
 
@@ -1313,7 +1313,7 @@ const LibrarianDashboard = () => {
                                 </div>
                                 <div className="flex items-center gap-4 w-full sm:w-auto">
                                     <select 
-                                        className="w-full sm:w-auto border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm px-3 py-1.5 outline-none rounded-lg focus:border-[#E85B5B]"
+                                        className="w-full sm:w-auto border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm px-3 py-1.5 outline-none rounded-lg focus:border-[#1B9DD9]"
                                         value={studentHistoryTimeFrame}
                                         onChange={(e) => setStudentHistoryTimeFrame(e.target.value)}
                                     >
@@ -1323,7 +1323,7 @@ const LibrarianDashboard = () => {
                                     </select>
                                     
                                     <div className="text-right border-l border-gray-200 dark:border-gray-600 pl-4">
-                                        <span className="block text-xl font-bold text-[#E85B5B]">{filteredStudentLoans.length}</span>
+                                        <span className="block text-xl font-bold text-[#1B9DD9]">{filteredStudentLoans.length}</span>
                                         <span className="text-[10px] text-gray-400 uppercase whitespace-nowrap">{t('misc.totalTx')}</span>
                                     </div>
                                 </div>

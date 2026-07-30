@@ -22,9 +22,9 @@ const PublicHome = () => {
     const schools = data?.schools || [];
 
     const totalCards = [
-        { key: 'schools', icon: School, label: t('public.schools'), value: totals.schools ?? 0, accent: 'text-[#E85B5B]' },
+        { key: 'schools', icon: School, label: t('public.schools'), value: totals.schools ?? 0, accent: 'text-[#1B9DD9]' },
         { key: 'students', icon: Users, label: t('public.students'), value: totals.students ?? 0, accent: 'text-blue-500' },
-        { key: 'books', icon: BookOpen, label: t('public.books'), value: totals.books ?? 0, accent: 'text-indigo-500' },
+        { key: 'books', icon: BookOpen, label: t('public.books'), value: totals.books ?? 0, accent: 'text-sky-500' },
         { key: 'booksRead', icon: BookMarked, label: t('public.booksRead'), value: totals.books_read ?? 0, accent: 'text-green-600' },
         { key: 'pagesRead', icon: FileText, label: t('public.pagesRead'), value: (totals.pages_read ?? 0).toLocaleString(), accent: 'text-amber-500' },
     ];
@@ -36,24 +36,24 @@ const PublicHome = () => {
             {/* Header */}
             <header className="flex items-center justify-between px-6 sm:px-10 h-20 max-w-6xl mx-auto">
                 <div className="flex items-center gap-2">
-                    <span className="text-2xl font-black text-[#E85B5B]">e12</span>
+                    <span className="text-2xl font-black text-[#1B9DD9]">Hədəf</span>
                     <span className="font-bold text-gray-700 dark:text-gray-200 hidden sm:inline">Kütüphane</span>
                 </div>
                 <div className="flex items-center gap-4">
                     <LanguageSwitcher />
                     {user ? (
                         <button onClick={goDashboard}
-                            className="flex items-center gap-2 bg-[#E85B5B] hover:bg-red-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-sm transition-colors">
+                            className="flex items-center gap-2 bg-[#1B9DD9] hover:bg-[#1580B5] text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-sm transition-colors">
                             {t('public.goToDashboard')} <ArrowRight size={16} />
                         </button>
                     ) : (
                         <div className="flex items-center gap-2">
                             <button onClick={() => navigate('/login')}
-                                className="bg-[#E85B5B] hover:bg-red-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-sm transition-colors">
+                                className="bg-[#1B9DD9] hover:bg-[#1580B5] text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-sm transition-colors">
                                 {t('public.login')}
                             </button>
                             <button onClick={() => navigate('/register')}
-                                className="text-sm font-bold text-gray-600 dark:text-gray-300 hover:text-[#E85B5B] px-3 py-2.5 transition-colors">
+                                className="text-sm font-bold text-gray-600 dark:text-gray-300 hover:text-[#1B9DD9] px-3 py-2.5 transition-colors">
                                 {t('public.register')}
                             </button>
                         </div>
@@ -65,7 +65,7 @@ const PublicHome = () => {
                 {/* Hero */}
                 <section className="text-center py-14 sm:py-20">
                     <h1 className="text-4xl sm:text-5xl font-black tracking-tight">
-                        <span className="text-[#E85B5B]">e12</span> Kütüphane
+                        <span className="text-[#1B9DD9]">Hədəf</span> Kütüphane
                     </h1>
                     <p className="mt-4 text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">{t('public.tagline')}</p>
                 </section>

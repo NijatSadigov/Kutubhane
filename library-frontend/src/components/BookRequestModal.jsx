@@ -49,21 +49,21 @@ const BookRequestModal = ({ isOpen, onClose, prefillTitle = '' }) => {
                     <div className="sm:col-span-2">
                         <label className="text-[11px] font-bold uppercase text-gray-500 dark:text-gray-400">{t('req.fTitle')}</label>
                         <input value={title} onChange={e => setTitle(e.target.value)}
-                            className="w-full mt-1 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#E85B5B]" />
+                            className="w-full mt-1 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1B9DD9]" />
                     </div>
                     <div className="sm:col-span-2">
                         <label className="text-[11px] font-bold uppercase text-gray-500 dark:text-gray-400">{t('req.fAuthor')}</label>
                         <input value={author} onChange={e => setAuthor(e.target.value)}
-                            className="w-full mt-1 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#E85B5B]" />
+                            className="w-full mt-1 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1B9DD9]" />
                     </div>
                     <div className="sm:col-span-2">
                         <label className="text-[11px] font-bold uppercase text-gray-500 dark:text-gray-400">{t('req.fNote')}</label>
                         <input value={note} onChange={e => setNote(e.target.value)}
-                            className="w-full mt-1 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#E85B5B]" />
+                            className="w-full mt-1 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1B9DD9]" />
                     </div>
                 </div>
                 <button onClick={submit} disabled={saving || !title.trim()}
-                    className="bg-[#E85B5B] hover:bg-red-600 disabled:opacity-60 text-white font-bold py-2.5 rounded-lg shadow-sm transition-colors">
+                    className="bg-[#1B9DD9] hover:bg-[#1580B5] disabled:opacity-60 text-white font-bold py-2.5 rounded-lg shadow-sm transition-colors">
                     {t('req.submit')}
                 </button>
 

@@ -95,7 +95,7 @@ const SettingsPanel = ({ onDataChanged }) => {
                         key={s.key}
                         onClick={() => setActiveKey(s.key)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${activeKey === s.key
-                            ? 'bg-[#E85B5B] text-white shadow-sm'
+                            ? 'bg-[#1B9DD9] text-white shadow-sm'
                             : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
                     >
                         {t(s.labelKey)}
@@ -110,7 +110,7 @@ const SettingsPanel = ({ onDataChanged }) => {
                         {loading ? t('common.loading') : `${items.length} ${t('common.records')}`}
                     </p>
                 </div>
-                <button onClick={openAdd} className="bg-[#E85B5B] text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-red-600 transition-colors flex items-center gap-1">
+                <button onClick={openAdd} className="bg-[#1B9DD9] text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-[#1580B5] transition-colors flex items-center gap-1">
                     <Plus size={14} /> {t('common.addNew')}
                 </button>
             </div>
@@ -154,7 +154,7 @@ const SettingsPanel = ({ onDataChanged }) => {
                                 )}
                                 <td className="px-6 py-3">
                                     <div className="flex items-center justify-end gap-2">
-                                        <button onClick={() => openEdit(item)} title={t('common.edit')} className="p-1.5 rounded-lg text-gray-500 hover:text-[#E85B5B] hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                                        <button onClick={() => openEdit(item)} title={t('common.edit')} className="p-1.5 rounded-lg text-gray-500 hover:text-[#1B9DD9] hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-colors">
                                             <Edit2 size={14} />
                                         </button>
                                         {isProtected(item) ? (
@@ -194,7 +194,7 @@ const SettingsPanel = ({ onDataChanged }) => {
                             />
                         </div>
                     ))}
-                    <button type="submit" className="w-full bg-[#E85B5B] text-white py-2 rounded-lg text-sm font-bold hover:bg-red-600 transition-colors">
+                    <button type="submit" className="w-full bg-[#1B9DD9] text-white py-2 rounded-lg text-sm font-bold hover:bg-[#1580B5] transition-colors">
                         {editingId ? 'Kaydet' : 'Ekle'}
                     </button>
                 </form>

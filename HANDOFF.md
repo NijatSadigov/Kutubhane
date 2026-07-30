@@ -55,6 +55,14 @@ gitignored** — covers/e-books live only on this machine's disk, referenced by
 
 ## Architecture you must know before editing
 
+- **Branding = Hədəf STEAM Liseyi** (customer, not "e12"). Brand primary blue
+  `#1B9DD9`, hover/darker `#1580B5`; secondary accent = Tailwind `sky-*` (was
+  `indigo-*`); light info tints `#E0F2FE`/`#7DD3FC`/`#BAE6FD`, dark info text
+  `#075985`. Colors are inline (no Tailwind theme tokens). **Semantic red is kept
+  on purpose** — errors, overdue, delete/danger, and the reserved/rejected pink
+  (`#FCE7F3`) badges. Wordmark renders as the text "Hədəf" (public/logo.png is
+  absent; drop the real Hədəf logo there and it shows automatically).
+
 - **Role hierarchy (4 roles).** `User.Role` is a string; each non-admin role has a
   profile table keyed by `UserID`. `admin` (platform, no profile) → creates schools
   + **managers**. `manager` (`Manager{UserID,Name,SchoolID}`, many per school) →

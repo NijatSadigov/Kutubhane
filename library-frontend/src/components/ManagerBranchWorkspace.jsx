@@ -28,7 +28,7 @@ const ManagerBranchWorkspace = ({ branches = [] }) => {
 
     const subTab = (v, label) => (
         <button onClick={() => setView(v)}
-            className={`px-4 py-1.5 text-xs font-bold rounded transition-colors ${view === v ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+            className={`px-4 py-1.5 text-xs font-bold rounded transition-colors ${view === v ? 'bg-white text-sky-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
             {label}
         </button>
     );
@@ -47,7 +47,7 @@ const ManagerBranchWorkspace = ({ branches = [] }) => {
                     {subTab('reservations', t('nav.reservations'))}
                 </div>
                 <select value={branchId || ''} onChange={e => setBranchId(Number(e.target.value))}
-                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 bg-white">
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-sky-500 bg-white">
                     {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
             </div>

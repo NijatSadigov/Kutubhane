@@ -28,7 +28,7 @@ const HomeView = ({ welcomeName, stats = [], actions = [], children }) => {
                     <h2 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">{t('home.quickActions')}</h2>
                     <div className="flex flex-wrap gap-3">
                         {actions.map((a, i) => (
-                            <button key={i} onClick={a.onClick} className="bg-[#E85B5B] hover:bg-red-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-colors">
+                            <button key={i} onClick={a.onClick} className="bg-[#1B9DD9] hover:bg-[#1580B5] text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-colors">
                                 {a.label}
                             </button>
                         ))}
