@@ -28,7 +28,7 @@ const EMPTY_BOOK_FORM = {
 };
 
 const EMPTY_COPY_FORM = { tracking_number: '', condition_id: '', status_id: '' };
-const EMPTY_LOAN_FORM = { student_id: '', tracking_number: '', due_date: '' };
+const EMPTY_LOAN_FORM = { student_id: '', book_id: '', tracking_number: '', due_date: '' };
 
 const inputCls = "w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white";
 const labelCls = "block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1";
@@ -65,6 +65,7 @@ const LibrarianDashboard = () => {
 
     // Forms & Modals
     const [loanForm, setLoanForm] = useState(EMPTY_LOAN_FORM);
+    const [loanHolds, setLoanHolds] = useState(null); // selected student's current holds vs limit
     const [studentPickerText, setStudentPickerText] = useState('');
     const [loanEditForm, setLoanEditForm] = useState({ due_date: '', description: '' });
     const [editLoanId, setEditLoanId] = useState(null);
@@ -159,23 +160,50 @@ const LibrarianDashboard = () => {
         return null;
     };
 
+    // Open a clean direct-loan modal (prominent "Give Book" action).
+    const openIssueLoan = () => {
+        setLoanForm(EMPTY_LOAN_FORM);
+        setLoanHolds(null);
+        setStudentPickerText('');
+        setModalType('issue_loan_modal');
+        setIsModalOpen(true);
+        setOpenDropdownId(null);
+    };
+
+    // When a student is chosen, load their current holds so the librarian can see
+    // how many books they already have vs their limit.
+    const selectLoanStudent = async (id) => {
+        setLoanForm(f => ({ ...f, student_id: id }));
+        if (!id) { setLoanHolds(null); return; }
+        try {
+            const res = await api.get(`/student/${id}/holds`);
+            setLoanHolds(res.data);
+        } catch { setLoanHolds(null); }
+    };
+
     const handleLoan = async (e) => {
         e.preventDefault();
-        const match = findCopyByTracking(loanForm.tracking_number);
-        if (!match) { alert(t('msg.copyNotFound')); return; }
+        if (!loanForm.student_id || !loanForm.book_id || !loanForm.tracking_number) {
+            alert(t('msg.fillAll') || t('msg.error'));
+            return;
+        }
         try {
+            // book_id is explicit (copy numbers can repeat across books, so we can't
+            // resolve by tracking number alone).
             await api.post('/loan', {
                 student_id: parseInt(loanForm.student_id),
-                book_id: match.book.id,
-                tracking_number: match.copy.tracking_number,
+                book_id: parseInt(loanForm.book_id),
+                tracking_number: loanForm.tracking_number,
                 due_date: loanForm.due_date,
             });
             alert(t('msg.loanSuccess'));
             setLoanForm(EMPTY_LOAN_FORM);
+            setLoanHolds(null);
             setStudentPickerText('');
             setIsModalOpen(false);
             fetchLoans();
             fetchBooks();
+            fetchStudents();
         } catch (err) { alert(t('msg.opFailed') + ": " + (err.response?.data?.error || t('msg.error'))); }
     };
 
@@ -921,6 +949,10 @@ const LibrarianDashboard = () => {
 
                                 {/* 3. LOANS (Verilen Kitaplar) */}
                                 {activeTab === 'loans' && (
+                                  <div>
+                                    <div className="flex justify-end mb-4">
+                                        <button onClick={openIssueLoan} className="bg-[#1B9DD9] hover:bg-[#1580B5] text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-sm"><Plus size={16}/> {t('loan.giveBook')}</button>
+                                    </div>
                                     <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 shadow-sm min-h-[400px]">
                                         {overdueCount > 0 && (
                                             <div className="bg-red-50 dark:bg-red-900/20 px-6 py-3 border-b border-red-100 dark:border-red-900/50 flex items-center gap-3 text-red-700 dark:text-red-400 animate-pulse">
@@ -974,6 +1006,7 @@ const LibrarianDashboard = () => {
                                             </tbody>
                                         </table>
                                     </div>
+                                  </div>
                                 )}
 
                                 {/* 👇 UPDATED: 4. MEMBERS (Üyeler) */}
@@ -1169,36 +1202,47 @@ const LibrarianDashboard = () => {
                         <>
                             <div>
                                 <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('th.student')}</label>
-                                <input
-                                    type="text"
-                                    list="student-picker-list"
-                                    placeholder={t('ph.searchStudent')}
-                                    className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white"
-                                    value={studentPickerText}
-                                    onChange={e => {
-                                        const text = e.target.value;
-                                        setStudentPickerText(text);
-                                        // datalist option values are the user_id; map the picked value back to the student
-                                        const picked = students.find(s => String(s.user_id) === text.trim());
-                                        setLoanForm({ ...loanForm, student_id: picked ? picked.user_id : '' });
-                                    }}
-                                    required
-                                />
-                                <datalist id="student-picker-list">
+                                <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white"
+                                    value={loanForm.student_id}
+                                    onChange={e => selectLoanStudent(e.target.value ? parseInt(e.target.value) : '')} required>
+                                    <option value="">{t('loan.selectStudent')}…</option>
                                     {students.map(s => (
-                                        <option key={s.user_id} value={s.user_id}>
-                                            {s.name} — No: {s.user_id} ({s.grade}-{s.class_group})
-                                        </option>
+                                        <option key={s.user_id} value={s.user_id}>{s.name} ({s.grade}-{s.class_group})</option>
                                     ))}
-                                </datalist>
-                                {loanForm.student_id
-                                    ? <span className="text-xs text-green-600 mt-1 block">{t('misc.selected')}: {students.find(s => s.user_id === loanForm.student_id)?.name}</span>
-                                    : <span className="text-xs text-gray-400 mt-1 block">{t('misc.selectStudentHint')}</span>}
+                                </select>
+                                {loanHolds && (
+                                    <span className={`text-xs mt-1 block ${loanHolds.count >= loanHolds.limit ? 'text-red-600 font-bold' : 'text-gray-500 dark:text-gray-400'}`}>
+                                        {t('loan.holds')}: {loanHolds.count} / {loanHolds.limit}{loanHolds.count >= loanHolds.limit ? ` — ${t('loan.limitReached')}` : ''}
+                                    </span>
+                                )}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('fld.issueTrackingNo')}</label>
-                                <input type="text" placeholder={t('ph.trackingExample')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white" value={loanForm.tracking_number} onChange={e => setLoanForm({ ...loanForm, tracking_number: e.target.value })} required />
-                                <span className="text-xs text-gray-400 mt-1 block">{t('misc.trackingHint')}</span>
+                                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('th.title')}</label>
+                                <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white"
+                                    value={loanForm.book_id}
+                                    onChange={e => setLoanForm({ ...loanForm, book_id: e.target.value, tracking_number: '' })} required>
+                                    <option value="">{t('loan.selectBook')}…</option>
+                                    {books.map(b => (
+                                        <option key={b.id} value={b.id}>{b.title}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('loan.selectCopy')}</label>
+                                {(() => {
+                                    const selBook = books.find(b => String(b.id) === String(loanForm.book_id));
+                                    const avail = (selBook?.copies || []).filter(c => c.status?.code === 'AVAILABLE');
+                                    if (!loanForm.book_id) return <div className="text-xs text-gray-400 p-2 border border-dashed border-gray-200 dark:border-gray-700 rounded">{t('loan.selectBook')}…</div>;
+                                    if (avail.length === 0) return <div className="text-xs text-red-500 p-2 border border-dashed border-red-200 dark:border-red-900 rounded">{t('loan.noCopies')}</div>;
+                                    return (
+                                        <select className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white"
+                                            value={loanForm.tracking_number}
+                                            onChange={e => setLoanForm({ ...loanForm, tracking_number: e.target.value })} required>
+                                            <option value="">{t('loan.selectCopy')}…</option>
+                                            {avail.map(c => <option key={c.id} value={c.tracking_number}>{c.tracking_number}</option>)}
+                                        </select>
+                                    );
+                                })()}
                             </div>
                         </>
                     )}
