@@ -689,6 +689,9 @@ func GetAllReservations(c *fiber.Ctx) error {
 		return c.Status(401).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	// Expire any approved reservations past their pickup deadline before listing.
+	sweepExpiredReservations(branchID)
+
 	var reservations []models.Reservation
 
 	if err := database.DB.
@@ -709,10 +712,10 @@ func GetAllReservations(c *fiber.Ctx) error {
 
 func RequestReservation(c *fiber.Ctx) error {
 	type Req struct {
-		StudentID      uint   `json:"student_id"`
-		BookID         uint   `json:"book_id"`
-		TrackingNumber string `json:"tracking_number"`
-		Description    string `json:"description"`
+		StudentID   uint   `json:"student_id"`
+		BookID      uint   `json:"book_id"`
+		PickupDays  int    `json:"pickup_days"` // student's chosen pickup window (days)
+		Description string `json:"description"`
 	}
 
 	var r Req
@@ -720,21 +723,17 @@ func RequestReservation(c *fiber.Ctx) error {
 		return c.SendStatus(400)
 	}
 
-	var copy models.BookCopy
-	if err := database.DB.Preload("Status").Preload("Book").Where("book_id = ? AND tracking_number = ?", r.BookID, r.TrackingNumber).First(&copy).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "Copy not found"})
-	}
-
-	if copy.Status.Code != "AVAILABLE" {
-		return c.Status(400).JSON(fiber.Map{"error": "Book not available for reservation"})
+	var book models.Book
+	if err := database.DB.First(&book, r.BookID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Book not found"})
 	}
 
 	// One active hold per title: a student can't reserve a book they already have
 	// reserved or on loan.
-	if studentHasActiveLoanForBook(r.StudentID, copy.BookID) {
+	if studentHasActiveLoanForBook(r.StudentID, r.BookID) {
 		return c.Status(400).JSON(fiber.Map{"error": "You already have this book on loan", "code": "DUPLICATE"})
 	}
-	if _, exists := studentActiveReservationForBook(r.StudentID, copy.BookID); exists {
+	if _, exists := studentActiveReservationForBook(r.StudentID, r.BookID); exists {
 		return c.Status(400).JSON(fiber.Map{"error": "You already reserved this book", "code": "DUPLICATE"})
 	}
 	// Respect the borrow limit (active loans + open reservations).
@@ -742,13 +741,44 @@ func RequestReservation(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Borrow limit reached", "code": "LIMIT", "limit": limit})
 	}
 
+	// Pick a genuinely free copy: AVAILABLE and not already tied up by another
+	// student's active reservation. This is what stops N students holding M<N copies.
+	var copies []models.BookCopy
+	database.DB.Preload("Status").Where("book_id = ?", r.BookID).Find(&copies)
+	var chosen *models.BookCopy
+	for i := range copies {
+		if copies[i].Status.Code == "AVAILABLE" && !copyHasActiveReservation(copies[i].ID) {
+			chosen = &copies[i]
+			break
+		}
+	}
+	if chosen == nil {
+		return c.Status(400).JSON(fiber.Map{"error": "No free copy available to reserve", "code": "NO_COPY"})
+	}
+
+	// Clamp the student's requested pickup window to the branch maximum.
+	var branch models.Branch
+	database.DB.First(&branch, book.BranchID)
+	maxDays := branch.MaxPickupDays
+	if maxDays < 1 {
+		maxDays = 7
+	}
+	days := r.PickupDays
+	if days < 1 {
+		days = maxDays
+	}
+	if days > maxDays {
+		days = maxDays
+	}
+
 	var pendingStatus models.ReservationStatus
-	database.DB.Where("code = 'PENDING' AND branch_id = ?", copy.Book.BranchID).First(&pendingStatus)
+	database.DB.Where("code = 'PENDING' AND branch_id = ?", book.BranchID).First(&pendingStatus)
 
 	reservation := models.Reservation{
 		StudentID:   r.StudentID,
-		BookCopyID:  copy.ID,
+		BookCopyID:  chosen.ID,
 		RequestDate: time.Now(),
+		PickupDays:  days,
 		StatusID:    &pendingStatus.ID,
 		Description: r.Description,
 	}
@@ -784,6 +814,13 @@ func HandleReservation(c *fiber.Ctx) error {
 	if req.Action == "Approved" {
 		var appStatus models.ReservationStatus
 		database.DB.Where("code = 'APPROVED' AND branch_id = ?", branchID).First(&appStatus)
+		// Start the pickup countdown now: the student has PickupDays to collect it.
+		days := res.PickupDays
+		if days < 1 {
+			days = 7
+		}
+		deadline := time.Now().AddDate(0, 0, days)
+		res.PickupDeadline = &deadline
 		res.StatusID = &appStatus.ID
 		database.DB.Save(&res)
 

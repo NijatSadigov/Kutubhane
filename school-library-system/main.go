@@ -46,6 +46,7 @@ func main() {
 	database.DB.Find(&branches)
 	for _, branch := range branches {
 		database.SeedDefaultStatusesForBranch(branch.ID)
+		database.EnsureExpiredReservationStatus(branch.ID) // backfill for older branches
 	}
 	// 3. Ensure upload directories exist
 	os.MkdirAll("uploads/covers", 0o755)

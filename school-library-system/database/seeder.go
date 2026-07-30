@@ -24,4 +24,15 @@ func SeedDefaultStatusesForBranch(branchID uint) {
 	DB.Create(&models.ReservationStatus{BranchID: branchID, Name: "Onaylandı", Code: "APPROVED"})
 	DB.Create(&models.ReservationStatus{BranchID: branchID, Name: "Reddedildi", Code: "REJECTED"})
 	DB.Create(&models.ReservationStatus{BranchID: branchID, Name: "Tamamlandı", Code: "COMPLETED"})
+	DB.Create(&models.ReservationStatus{BranchID: branchID, Name: "Süresi Doldu", Code: "EXPIRED"})
+}
+
+// EnsureExpiredReservationStatus backfills the EXPIRED reservation status for a
+// branch seeded before that status existed. Idempotent.
+func EnsureExpiredReservationStatus(branchID uint) {
+	var c int64
+	DB.Model(&models.ReservationStatus{}).Where("branch_id = ? AND code = 'EXPIRED'", branchID).Count(&c)
+	if c == 0 {
+		DB.Create(&models.ReservationStatus{BranchID: branchID, Name: "Süresi Doldu", Code: "EXPIRED"})
+	}
 }

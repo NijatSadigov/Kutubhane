@@ -58,7 +58,9 @@ func Setup(app *fiber.App) {
 	api.Put("/copy/:id", middleware.IsLibrarian, handlers.UpdateCopy)
 	api.Delete("/copy/:id", middleware.IsLibrarian, handlers.DeleteCopy)
 
-	// Borrow limits (branch default + per-student override)
+	// Branch policy settings (borrow limit + max pickup days) and per-student override
+	api.Get("/branch-settings", middleware.IsLibrarian, handlers.GetBranchSettings)
+	api.Put("/branch-settings", middleware.IsLibrarian, handlers.UpdateBranchSettings)
 	api.Get("/loan-limit", middleware.IsLibrarian, handlers.GetLoanLimit)
 	api.Put("/loan-limit", middleware.IsLibrarian, handlers.SetLoanLimit)
 	api.Put("/student/:id/limit", middleware.IsLibrarian, handlers.SetStudentLimit)

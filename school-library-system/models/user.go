@@ -34,6 +34,10 @@ type Branch struct {
 	// + pending/approved reservations combined). A Student.LoanLimit overrides it.
 	LoanLimit int `json:"loan_limit" gorm:"default:5"`
 
+	// Max days a student may take to pick up an approved reservation before it
+	// expires and the copy is freed. Students pick a window up to this cap.
+	MaxPickupDays int `json:"max_pickup_days" gorm:"default:7"`
+
 	Librarians []Librarian `json:"librarians,omitempty" gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	Students   []Student   `json:"students,omitempty" gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }

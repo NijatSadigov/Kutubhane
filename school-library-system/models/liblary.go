@@ -153,6 +153,12 @@ type Reservation struct {
 
 	RequestDate time.Time `json:"request_date"`
 
+	// Pickup window: the student's chosen number of days to collect the book, and
+	// the concrete deadline set when the reservation is approved. Past the deadline
+	// an approved reservation expires and its copy is freed.
+	PickupDays     int        `json:"pickup_days"`
+	PickupDeadline *time.Time `json:"pickup_deadline"`
+
 	// Dynamic Status
 	StatusID *uint             `json:"status_id"`
 	Status   ReservationStatus `json:"status" gorm:"foreignKey:StatusID"`
