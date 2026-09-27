@@ -16,6 +16,9 @@ func Setup(app *fiber.App) {
 
 	// Public aggregate stats for the landing page (no auth, no PII)
 	app.Get("/api/public/stats", handlers.GetPublicStats)
+	// Books for the logged-out landing page: bibliographic facts and loan
+	// counts only, never who borrowed what.
+	app.Get("/api/public/books", handlers.GetPublicBooks)
 
 	api := app.Group("/api", middleware.IsAuthenticated)
 
@@ -26,6 +29,65 @@ func Setup(app *fiber.App) {
 
 	// File uploads (covers, e-book PDFs) — librarians only
 	api.Post("/upload/:kind", middleware.IsLibrarian, handlers.UploadFile)
+
+	// ===========================
+	// GLOBAL CATALOG (shared across every branch and school)
+	// ===========================
+	// Readable by any signed-in user: editions carry no branch data, and the
+	// social layer will read the same records. Writes stay with the resolver
+	// behind AddBook, so nobody edits a shared record by hand.
+	api.Get("/catalog/search", handlers.SearchCatalog)
+	api.Get("/catalog/editions/:id", handlers.GetEdition)
+	// Reader-facing catalogue grid (myredbookshelf Catalogue screen).
+	api.Get("/catalog/browse", handlers.BrowseCatalogue)
+
+	// Community hub (Discover): all derived from loans and the reading diary.
+	api.Get("/community/trending", handlers.GetTrending)
+	api.Get("/community/readers", handlers.GetTopReaders)
+	api.Get("/community/league", handlers.GetLeague)
+
+	// ===========================
+	// MY SHELF (the reader's own profile)
+	// ===========================
+	api.Get("/shelf", handlers.GetShelf)
+	api.Post("/shelf", handlers.SetShelfStatus)
+	api.Get("/shelf/summary", handlers.GetShelfSummary)
+	api.Get("/shelf/badges", handlers.GetBadges)
+	api.Post("/shelf/badges/:id/pin", handlers.PinBadge)
+	api.Get("/notes", handlers.GetNotes)
+	api.Post("/notes", handlers.SaveNote)
+	api.Delete("/notes/:id", handlers.DeleteNote)
+
+	// The reader's own bookings — a student could create a reservation but
+	// never see or withdraw one.
+	api.Get("/my-reservations", handlers.GetMyReservations)
+	api.Delete("/reservation/:id", handlers.CancelMyReservation)
+
+	// ===========================
+	// REVIEWS & RATINGS
+	// ===========================
+	api.Get("/works/:id/reviews", handlers.GetWorkReviews)
+	api.Post("/reviews", handlers.CreateReview)
+	api.Delete("/reviews/:id", handlers.DeleteReview)
+	api.Post("/reviews/:id/vote", handlers.VoteReview)
+	api.Post("/reviews/:id/replies", handlers.ReplyToReview)
+	api.Post("/reviews/:id/report", handlers.ReportReview)
+	api.Get("/community/reviews", handlers.GetRecentReviews)
+	api.Get("/community/top-reviewer", handlers.GetTopReviewer)
+
+	// ===========================
+	// CHALLENGES
+	// ===========================
+	api.Get("/challenges", handlers.ListChallenges)
+	api.Get("/challenges/:id", handlers.GetChallenge)
+	api.Post("/challenges/:id/join", handlers.JoinChallenge)
+	api.Post("/challenges/:id/read", handlers.MarkRead)
+	api.Get("/challenges/:id/quiz", handlers.GetQuiz)
+	api.Post("/challenges/:id/quiz", handlers.SubmitQuiz)
+	// Authoring — the teacher's Challenge Builder. Staff only.
+	api.Post("/challenges", middleware.IsLibrarian, handlers.CreateChallenge)
+	api.Post("/challenges/:id/questions", middleware.IsLibrarian, handlers.AddQuizQuestion)
+	api.Delete("/challenges/:id", middleware.IsLibrarian, handlers.DeleteChallenge)
 
 	// ... (Student Routes) ...
 	api.Get("/books", handlers.GetBooks)
@@ -83,6 +145,9 @@ func Setup(app *fiber.App) {
 
 	// Class & Student Data
 	api.Get("/class-list", middleware.IsLibrarian, handlers.GetClassList)
+
+	// Circulation desk: KPIs, today's counter activity and the overdue list.
+	api.Get("/desk/summary", middleware.IsLibrarian, handlers.GetDeskSummary)
 
 	// Registration tokens (invite links)
 	api.Get("/registration-tokens", middleware.IsLibrarian, handlers.GetRegistrationTokens)

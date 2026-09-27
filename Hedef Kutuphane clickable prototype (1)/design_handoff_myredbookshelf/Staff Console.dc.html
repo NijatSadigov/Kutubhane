@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#F1F5F9;font-family:'Noto Sans',system-ui,sans-serif;color:#0F172A;-webkit-font-smoothing:antialiased}*{box-sizing:border-box}button,input,textarea,select{font-family:inherit}a{color:#075985;text-decoration:none}a:hover{color:#1580B5;text-decoration:underline}</style>
+</helmet>
+<div style="display:flex;min-height:100vh;background:#F1F5F9;font-size:13px;color:#0F172A;">
+  <aside style="width:236px;flex-shrink:0;background:#082F49;color:#BAE6FD;display:flex;flex-direction:column;gap:20px;position:sticky;top:0;height:100vh;padding:18px 12px;overflow-y:auto;">
+    <div style="display:flex;align-items:center;gap:10px;padding:0 6px;">
+      <span style="width:30px;height:30px;border-radius:8px;background:#fff;position:relative;overflow:hidden;flex-shrink:0;display:block;"><span style="position:absolute;left:4.8px;right:4.8px;bottom:6.6px;height:1.5px;background:#075985;"></span><span style="position:absolute;left:6.6px;bottom:8.1px;width:3.9px;height:12.6px;background:#7DD3FC;border-radius:1px;"></span><span style="position:absolute;left:11.7px;bottom:8.1px;width:3.9px;height:15.6px;background:#1B9DD9;border-radius:1px;"></span><span style="position:absolute;left:16.8px;bottom:8.1px;width:4.2px;height:13.8px;background:#F2545B;border-radius:1px;transform:rotate(16deg);transform-origin:bottom right;"></span></span>
+      <div style="display:flex;flex-direction:column;line-height:1.15;"><span style="font-family:'Source Serif 4',serif;font-weight:700;font-size:16px;color:#fff;">my<span style="color:#FF8A8F;">red</span>bookshelf</span><span style="font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:#7DD3FC;">Staff console</span></div>
+    </div>
+    <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;">
+      <span style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#7DD3FC;">School</span>
+      <span style="font-size:14px;font-weight:700;color:#fff;">Hədəf</span>
+      <span style="font-size:12px;color:#BAE6FD;">{{ roleInfo.where }}</span>
+    </div>
+    <nav style="display:flex;flex-direction:column;gap:2px;">
+      <span style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#7DD3FC;padding:0 10px 6px;">{{ roleInfo.label }} workspace</span>
+      <sc-for list="{{ nav }}" as="n" hint-placeholder-count="3">
+        <button onClick="{{ n.onClick }}" style="display:flex;align-items:center;gap:10px;background:{{ n.bg }};color:{{ n.fg }};border:0;border-radius:8px;padding:9px 10px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;" style-hover="background:rgba(255,255,255,0.08)">
+          <span style="width:6px;height:6px;border-radius:50%;background:{{ n.dot }};flex-shrink:0;"></span><span style="flex:1;">{{ n.label }}</span>
+          <sc-if value="{{ n.hasCount }}" hint-placeholder-val="{{ false }}"><span style="background:#F2545B;color:#fff;border-radius:999px;padding:0 7px;font-size:11px;font-weight:800;">{{ n.count }}</span></sc-if>
+        </button>
+      </sc-for>
+    </nav>
+    <div style="margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px;border-top:1px solid rgba(255,255,255,0.1);">
+      <span style="width:32px;height:32px;border-radius:50%;background:{{ roleInfo.accent }};color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">{{ roleInfo.initials }}</span>
+      <div style="min-width:0;"><div style="font-size:13px;font-weight:700;color:#fff;">{{ roleInfo.user }}</div><div style="font-size:11px;color:#BAE6FD;">{{ roleInfo.label }}</div></div>
+    </div>
+  </aside>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+    <header style="position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid #E2E8F0;padding:12px 28px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <div style="flex:1 1 240px;min-width:0;"><div style="font-size:11px;color:#64748B;font-weight:600;">{{ roleInfo.label }} · {{ pageCrumb }}</div><h1 style="margin:0;font-size:19px;font-weight:800;letter-spacing:-0.01em;">{{ pageTitle }}</h1></div>
+      <div style="flex:0 1 360px;display:flex;align-items:center;gap:8px;background:#F1F5F9;border:1px solid #E2E8F0;border-radius:8px;padding:7px 10px;"><span style="color:#64748B;">⌕</span><input placeholder="Search students, books, barcodes…" style="border:0;background:transparent;outline:none;font-size:13px;flex:1;min-width:0;"></div>
+      <span style="background:{{ roleInfo.tint }};color:{{ roleInfo.ink }};border-radius:999px;padding:4px 12px;font-size:12px;font-weight:800;white-space:nowrap;">{{ roleInfo.label }} mode</span>
+    </header>
+    <main style="padding:24px 28px 110px;display:flex;flex-direction:column;gap:20px;min-width:0;">
+
+<sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
+  <div data-screen-label="S1 Circulation desk" style="display:flex;flex-direction:column;gap:20px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;"><sc-for list="{{ deskKpis }}" as="k" hint-placeholder-count="4"><div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;"><span style="font-size:12px;color:#64748B;font-weight:600;">{{ k.label }}</span><span style="font-size:24px;font-weight:800;letter-spacing:-0.02em;color:#0F172A;">{{ k.value }}</span><span style="font-size:12px;font-weight:600;color:{{ k.dc }};">{{ k.delta }}</span></div></sc-for></div>
+    <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;">
+      <div style="flex:999 1 560px;min-width:0;background:#fff;border:1px solid #E2E8F0;border-radius:12px;display:flex;flex-direction:column;">
+        <div style="display:flex;gap:4px;padding:10px;border-bottom:1px solid #E2E8F0;flex-wrap:wrap;">
+          <sc-for list="{{ deskModes }}" as="m" hint-placeholder-count="2"><button onClick="{{ m.onClick }}" style="background:{{ m.bg }};color:{{ m.fg }};border:0;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">{{ m.label }}</button></sc-for>
+        </div>
+        <sc-if value="{{ modeOut }}" hint-placeholder-val="{{ true }}">
+          <div style="padding:18px;display:flex;flex-direction:column;gap:16px;">
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748B;">1 · Student</span>
+              <sc-if value="{{ noPatron }}" hint-placeholder-val="{{ true }}">
+                <input value="{{ patronQ }}" onChange="{{ onPatronQ }}" placeholder="Scan student card or type a name…" style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;font-size:15px;padding:12px 14px;">
+                <div style="display:flex;flex-direction:column;border:1px solid #E2E8F0;border-radius:10px;overflow:hidden;">
+                  <sc-for list="{{ patronResults }}" as="pr" hint-placeholder-count="4">
+                    <button onClick="{{ pr.onClick }}" style="display:flex;align-items:center;gap:12px;background:#fff;border:0;border-bottom:1px solid #F1F5F9;padding:10px 12px;cursor:pointer;text-align:left;" style-hover="background:#F8FAFC">
+                      <span style="width:32px;height:32px;border-radius:50%;background:{{ pr.av }};color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">{{ pr.initials }}</span>
+                      <span style="flex:1;min-width:0;"><span style="display:block;font-size:14px;font-weight:700;">{{ pr.name }}</span><span style="display:block;font-size:12px;color:#64748B;">{{ pr.grade }} · {{ pr.card }} · {{ pr.loanCount }} loans</span></span>
+                      <sc-if value="{{ pr.hasOverdue }}" hint-placeholder-val="{{ false }}"><span style="background:#FFF1EE;color:#B4232A;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;">Overdue</span></sc-if>
+                    </button>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ hasPatron }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:14px;">
+                  <span style="width:44px;height:44px;border-radius:50%;background:{{ patron.av }};color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0;">{{ patron.initials }}</span>
+                  <div style="flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:6px;">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><strong style="font-size:15px;">{{ patron.name }}</strong><span style="color:#64748B;">{{ patron.grade }} · {{ patron.card }}</span></div>
+                    <div style="font-size:12px;color:#475569;">{{ patron.limitLabel }}</div>
+                    <div style="display:flex;flex-direction:column;gap:4px;">
+                      <sc-for list="{{ patron.loanRows }}" as="lr" hint-placeholder-count="2"><div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;"><span>{{ lr.title }}</span><span style="background:{{ lr.bg }};color:{{ lr.fg }};border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap;">{{ lr.label }}</span></div></sc-for>
+                    </div>
+                  </div>
+                  <button onClick="{{ clearPatron }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Change</button>
+                </div>
+                <sc-if value="{{ patron.blocked }}" hint-placeholder-val="{{ false }}"><div style="background:#FFF1EE;border:1px solid #FFD6CF;color:#B4232A;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;">This student has an overdue book. You can still lend, but a reminder will be sent.</div></sc-if>
+              </sc-if>
+            </div>
+            <sc-if value="{{ hasPatron }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748B;">2 · Books</span>
+                <input value="{{ bookQ }}" onChange="{{ onBookQ }}" placeholder="Scan book barcode or search title…" style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;font-size:15px;padding:12px 14px;">
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;">
+                  <sc-for list="{{ shelfResults }}" as="sr" hint-placeholder-count="4">
+                    <button onClick="{{ sr.onClick }}" style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:8px 10px;cursor:pointer;text-align:left;" style-hover="border-color:#1B9DD9">
+                      <span style="width:24px;height:36px;border-radius:3px;background:{{ sr.bg }};flex-shrink:0;box-shadow:0 1px 3px rgba(15,23,42,0.2);"></span>
+                      <span style="flex:1;min-width:0;"><span style="display:block;font-size:13px;font-weight:700;">{{ sr.title }}</span><span style="display:block;font-size:11px;color:#64748B;font-family:ui-monospace,Menlo,monospace;">{{ sr.bc }}</span></span>
+                      <span style="color:#1580B5;font-weight:800;">+</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748B;">3 · To lend ({{ cartCount }})</span>
+                  <div style="display:flex;gap:4px;align-items:center;"><span style="font-size:12px;color:#64748B;margin-right:4px;">Loan period</span><sc-for list="{{ dueOpts }}" as="d" hint-placeholder-count="3"><button onClick="{{ d.onClick }}" style="background:{{ d.bg }};color:{{ d.fg }};border:1px solid {{ d.border }};border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">{{ d.label }}</button></sc-for></div>
+                </div>
+                <sc-if value="{{ cartEmpty }}" hint-placeholder-val="{{ true }}"><div style="border:1px dashed #CBD5E1;border-radius:10px;padding:16px;text-align:center;color:#64748B;">Scan or pick books above.</div></sc-if>
+                <sc-for list="{{ cart }}" as="ci" hint-placeholder-count="0">
+                  <div style="display:flex;align-items:center;gap:10px;border:1px solid #E2E8F0;border-radius:10px;padding:8px 10px;"><span style="width:24px;height:36px;border-radius:3px;background:{{ ci.bg }};flex-shrink:0;box-shadow:0 1px 3px rgba(15,23,42,0.2);"></span><span style="flex:1;min-width:0;"><strong>{{ ci.title }}</strong> <span style="color:#64748B;font-family:ui-monospace,Menlo,monospace;font-size:11px;">{{ ci.bc }}</span></span><span style="font-size:12px;color:#475569;">Due {{ dueDate }}</span><button onClick="{{ ci.onRemove }}" style="background:none;border:0;color:#94A3B8;cursor:pointer;font-size:14px;">✕</button></div>
+                </sc-for>
+                <button onClick="{{ onCheckout }}" style="background:#1B9DD9;color:#fff;border:0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;align-self:flex-end;padding:10px 18px;font-size:14px;background:{{ checkoutBg }};">Confirm checkout</button>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+        <sc-if value="{{ modeIn }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:18px;display:flex;flex-direction:column;gap:14px;">
+            <input value="{{ checkinQ }}" onChange="{{ onCheckinQ }}" placeholder="Scan the returned book’s barcode…" style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;font-size:15px;padding:12px 14px;">
+            <sc-if value="{{ noCheckin }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;border:1px solid #E2E8F0;border-radius:10px;overflow:hidden;">
+                <sc-for list="{{ onloanResults }}" as="ol" hint-placeholder-count="4">
+                  <button onClick="{{ ol.onClick }}" style="display:flex;align-items:center;gap:12px;background:#fff;border:0;border-bottom:1px solid #F1F5F9;padding:10px 12px;cursor:pointer;text-align:left;" style-hover="background:#F8FAFC">
+                    <span style="width:24px;height:36px;border-radius:3px;background:{{ ol.bg }};flex-shrink:0;box-shadow:0 1px 3px rgba(15,23,42,0.2);"></span>
+                    <span style="flex:1;min-width:0;"><span style="display:block;font-size:14px;font-weight:700;">{{ ol.title }}</span><span style="display:block;font-size:12px;color:#64748B;">{{ ol.patron }} · due {{ ol.due }}</span></span>
+                    <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#64748B;">{{ ol.bc }}</span>
+                    <span style="background:{{ ol.st.bg }};color:{{ ol.st.fg }};border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap;">{{ ol.st.label }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ hasCheckin }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:14px;">
+                <span style="width:40px;height:60px;border-radius:3px;background:{{ ciItem.bg }};flex-shrink:0;box-shadow:0 1px 3px rgba(15,23,42,0.2);"></span>
+                <div style="flex:1 1 240px;display:flex;flex-direction:column;gap:4px;"><strong style="font-size:15px;">{{ ciItem.title }}</strong><span style="color:#475569;">Borrowed by {{ ciItem.patron }}</span><span style="color:#475569;">Due {{ ciItem.due }} · <span style="font-family:ui-monospace,Menlo,monospace;">{{ ciItem.bc }}</span></span></div>
+                <button onClick="{{ clearCheckin }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Cancel</button>
+              </div>
+              <sc-if value="{{ ciItem.isOverdue }}" hint-placeholder-val="{{ false }}"><div style="background:#FFF1EE;border:1px solid #FFD6CF;color:#B4232A;border-radius:10px;padding:10px 12px;font-weight:600;">{{ ciItem.odLabel }}</div></sc-if>
+              <sc-if value="{{ ciItem.hasHold }}" hint-placeholder-val="{{ false }}"><div style="background:#FEF3C7;border:1px solid #FDE68A;color:#92400E;border-radius:10px;padding:10px 12px;font-weight:600;">Hold waiting — put this copy on the holds shelf for {{ ciItem.hold }}.</div></sc-if>
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span style="font-size:12px;color:#64748B;margin-right:4px;">Condition</span><sc-for list="{{ condOpts }}" as="c" hint-placeholder-count="3"><button onClick="{{ c.onClick }}" style="background:{{ c.bg }};color:{{ c.fg }};border:1px solid {{ c.border }};border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">{{ c.label }}</button></sc-for></div>
+              <button onClick="{{ onCheckin }}" style="background:#1B9DD9;color:#fff;border:0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;align-self:flex-end;padding:10px 18px;font-size:14px;">Confirm return</button>
+            </sc-if>
+          </div>
+        </sc-if>
+      </div>
+      <div style="flex:1 1 300px;background:#fff;border:1px solid #E2E8F0;border-radius:12px;display:flex;flex-direction:column;">
+        <div style="padding:14px 16px;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;font-size:15px;font-weight:700;color:#0F172A;">Today at the desk</h2><span style="font-size:12px;color:#64748B;">Nizami · Sat 26 Sep</span></div>
+        <sc-for list="{{ activity }}" as="a" hint-placeholder-count="5">
+          <div style="display:flex;gap:12px;padding:10px 16px;border-bottom:1px solid #F1F5F9;align-items:flex-start;">
+            <span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#64748B;width:40px;flex-shrink:0;padding-top:1px;">{{ a.time }}</span>
+            <span style="width:8px;height:8px;border-radius:50%;background:{{ a.dot }};margin-top:5px;flex-shrink:0;"></span>
+            <div style="min-width:0;"><div style="font-weight:600;">{{ a.action }} · {{ a.title }}</div><div style="font-size:12px;color:#64748B;">{{ a.who }}</div></div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isHolds }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="S2 Holds & overdue" style="display:flex;flex-direction:column;gap:16px;">
+    <div style="display:flex;gap:4px;flex-wrap:wrap;"><sc-for list="{{ holdTabs }}" as="ht" hint-placeholder-count="2"><button onClick="{{ ht.onClick }}" style="display:flex;align-items:center;gap:8px;background:{{ ht.bg }};color:{{ ht.fg }};border:1px solid {{ ht.border }};border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">{{ ht.label }}<span style="background:{{ ht.cBg }};color:{{ ht.cFg }};border-radius:999px;padding:0 7px;font-size:11px;">{{ ht.count }}</span></button></sc-for></div>
+    <sc-if value="{{ tabHolds }}" hint-placeholder-val="{{ true }}">
+      <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;overflow-x:auto;">
+        <div style="min-width:760px;">
+          <div style="display:grid;gap:12px;align-items:center;padding:10px 16px;background:#F8FAFC;border-bottom:1px solid #E2E8F0;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748B;grid-template-columns:minmax(0,2fr) minmax(0,1.6fr) 90px 90px 150px 220px;"><span>Book</span><span>Student</span><span>Placed</span><span>Queue</span><span>Status</span><span style="text-align:right;">Actions</span></div>
+          <sc-for list="{{ holds }}" as="hd" hint-placeholder-count="5">
+            <div style="display:grid;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid #F1F5F9;font-size:13px;grid-template-columns:minmax(0,2fr) minmax(0,1.6fr) 90px 90px 150px 220px;">
+              <span style="display:flex;align-items:center;gap:10px;min-width:0;"><span style="width:22px;height:33px;border-radius:3px;background:{{ hd.bg }};flex-shrink:0;box-shadow:0 1px 3px rgba(15,23,42,0.2);"></span><strong>{{ hd.title }}</strong></span>
+              <span>{{ hd.patron }} <span style="color:#64748B;">· {{ hd.grade }}</span></span>
+              <span style="color:#475569;">{{ hd.placed }}</span><span style="color:#475569;">{{ hd.pos }}</span>
+              <span style="display:flex;flex-direction:column;gap:2px;"><span style="background:{{ hd.st.bg }};color:{{ hd.st.fg }};border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap;align-self:flex-start;">{{ hd.st.label }}</span><span style="font-size:11px;color:#64748B;">{{ hd.pickup }}</span></span>
+              <span style="display:flex;gap:6px;justify-content:flex-end;"><button onClick="{{ hd.onPrimary }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">{{ hd.primaryLabel }}</button><button onClick="{{ hd.onCancel }}" style="background:#fff;color:#B4232A;border:1px solid #FFD6CF;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Cancel</button></span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ tabOverdue }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:10px 14px;">
+        <span style="font-weight:700;">{{ odSelCount }} selected</span><span style="flex:1;"></span>
+        <button onClick="{{ onBulkRemind }}" style="background:#1B9DD9;color:#fff;border:0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">Send reminders</button><button onClick="{{ onBulkTeacher }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Notify class teachers</button>
+      </div>
+      <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;overflow-x:auto;">
+        <div style="min-width:820px;">
+          <div style="display:grid;gap:12px;align-items:center;padding:10px 16px;background:#F8FAFC;border-bottom:1px solid #E2E8F0;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748B;grid-template-columns:28px minmax(0,1.6fr) minmax(0,2fr) 80px 110px 90px 260px;"><span></span><span>Student</span><span>Book</span><span>Due</span><span>Overdue</span><span>Reminders</span><span style="text-align:right;">Actions</span></div>
+          <sc-for list="{{ overdue }}" as="od" hint-placeholder-count="5">
+            <div style="display:grid;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid #F1F5F9;font-size:13px;grid-template-columns:28px minmax(0,1.6fr) minmax(0,2fr) 80px 110px 90px 260px;background:{{ od.rowBg }};">
+              <button onClick="{{ od.onSel }}" style="width:18px;height:18px;border-radius:5px;border:1.5px solid {{ od.boxBorder }};background:{{ od.boxBg }};color:#fff;font-size:11px;font-weight:800;cursor:pointer;padding:0;">{{ od.check }}</button>
+              <span><strong>{{ od.patron }}</strong> <span style="color:#64748B;">· {{ od.grade }}</span><span style="display:block;font-size:11px;color:#64748B;">Teacher: {{ od.teacher }}</span></span>
+              <span>{{ od.title }}</span><span style="color:#475569;">{{ od.due }}</span>
+              <span style="font-weight:800;color:{{ od.dayFg }};">{{ od.daysLabel }}</span>
+              <span style="color:#475569;">{{ od.rem }} sent</span>
+              <span style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;"><button onClick="{{ od.onRemind }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Remind</button><button onClick="{{ od.onTeacher }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Tell teacher</button><button onClick="{{ od.onLost }}" style="background:#fff;color:#B4232A;border:1px solid #FFD6CF;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">{{ od.lostLabel }}</button></span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isInventory }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="S3 Catalogue & inventory" style="display:flex;flex-direction:column;gap:16px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;"><sc-for list="{{ invKpis }}" as="k" hint-placeholder-count="4"><div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;"><span style="font-size:12px;color:#64748B;font-weight:600;">{{ k.label }}</span><span style="font-size:24px;font-weight:800;letter-spacing:-0.02em;color:#0F172A;">{{ k.value }}</span><span style="font-size:12px;font-weight:600;color:{{ k.dc }};">{{ k.delta }}</span></div></sc-for></div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <input value="{{ invQ }}" onChange="{{ onInvQ }}" placeholder="Filter by title, author or ISBN" style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;flex:1 1 260px;width:auto;">
+      <div style="display:flex;gap:4px;flex-wrap:wrap;"><sc-for list="{{ invBranches }}" as="b" hint-placeholder-count="6"><button onClick="{{ b.onClick }}" style="background:{{ b.bg }};color:{{ b.fg }};border:1px solid {{ b.border }};border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">{{ b.label }}</button></sc-for></div>
+      <button onClick="{{ openAdd }}" style="background:#1B9DD9;color:#fff;border:0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;padding:9px 14px;">+ Add title</button>
+    </div>
+    <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;overflow-x:auto;">
+      <div style="min-width:820px;">
+        <div style="display:grid;gap:12px;align-items:center;padding:10px 16px;background:#F8FAFC;border-bottom:1px solid #E2E8F0;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748B;grid-template-columns:minmax(0,2.4fr) 150px 60px minmax(0,1.2fr) 80px minmax(0,1.6fr) 90px;"><span>Title</span><span>ISBN</span><span>CEFR</span><span>Genre</span><span>Copies</span><span>Availability</span><span></span></div>
+        <sc-for list="{{ titles }}" as="ti" hint-placeholder-count="6">
+          <div>
+            <div style="display:grid;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid #F1F5F9;font-size:13px;grid-template-columns:minmax(0,2.4fr) 150px 60px minmax(0,1.2fr) 80px minmax(0,1.6fr) 90px;">
+              <span style="display:flex;align-items:center;gap:10px;min-width:0;"><span style="width:24px;height:36px;border-radius:3px;background:{{ ti.bg }};flex-shrink:0;box-shadow:0 1px 3px rgba(15,23,42,0.2);"></span><span style="min-width:0;"><strong style="display:block;">{{ ti.title }}</strong><span style="font-size:12px;color:#64748B;">{{ ti.author }}</span></span></span>
+              <span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#475569;">{{ ti.isbn }}</span>
+              <span style="font-weight:700;">{{ ti.cefr }}</span><span style="color:#475569;">{{ ti.genre }}</span><span style="font-weight:700;">{{ ti.total }}</span>
+              <span style="display:flex;flex-direction:column;gap:4px;"><span style="display:flex;height:8px;border-radius:999px;overflow:hidden;background:#F1F5F9;"><sc-for list="{{ ti.bar }}" as="sb" hint-placeholder-count="3"><span style="width:{{ sb.w }};background:{{ sb.c }};"></span></sc-for></span><span style="font-size:11px;color:#475569;">{{ ti.summary }}</span></span>
+              <button onClick="{{ ti.onToggle }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;padding:5px 10px;font-size:12px;">{{ ti.toggleLabel }}</button>
+            </div>
+            <sc-if value="{{ ti.open }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#F8FAFC;border-bottom:1px solid #E2E8F0;padding:10px 16px 14px 50px;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;">
+                <sc-for list="{{ ti.copyRows }}" as="cp" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;">{{ cp.bc }}</span><span style="color:#64748B;font-size:12px;flex:1;">{{ cp.branch }} · {{ cp.cond }}</span><span style="background:{{ cp.st.bg }};color:{{ cp.st.fg }};border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap;">{{ cp.st.label }}</span></div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <sc-if value="{{ addOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed;inset:0;background:rgba(8,47,73,0.55);z-index:60;display:flex;align-items:center;justify-content:center;padding:24px;">
+        <div style="width:100%;max-width:620px;background:#fff;border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:16px;box-shadow:0 24px 64px rgba(15,23,42,0.35);">
+          <div style="display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;font-size:18px;font-weight:800;">Add a title</h2><button onClick="{{ closeAdd }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;padding:5px 10px;">✕</button></div>
+          <div style="display:flex;gap:8px;"><input value="{{ addIsbn }}" onChange="{{ onAddIsbn }}" placeholder="Scan or type ISBN" style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;flex:1;width:auto;font-family:ui-monospace,Menlo,monospace;"><button onClick="{{ onLookup }}" style="background:#1B9DD9;color:#fff;border:0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">Look up</button></div>
+          <sc-if value="{{ addFound }}" hint-placeholder-val="{{ false }}">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+              <sc-for list="{{ addFields }}" as="af" hint-placeholder-count="6"><label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#334155;">{{ af.label }}<input value="{{ af.value }}" onChange="{{ af.onChange }}" style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;"></label></sc-for>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748B;">Copies per branch</span>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;"><sc-for list="{{ addCopies }}" as="ac" hint-placeholder-count="5"><label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#334155;">{{ ac.branch }}<input type="number" min="0" value="{{ ac.value }}" onChange="{{ ac.onChange }}" style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;"></label></sc-for></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:8px;"><button onClick="{{ closeAdd }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Cancel</button><button onClick="{{ onSaveTitle }}" style="background:#1B9DD9;color:#fff;border:0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">Save & print barcodes</button></div>
+          </sc-if>
+          <sc-if value="{{ addNotFound }}" hint-placeholder-val="{{ true }}"><div style="font-size:12px;color:#64748B;">Try <span style="font-family:ui-monospace,Menlo,monospace;">978-0-544-33626-1</span> — we’ll fill in the details from the ISBN.</div></sc-if>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isClass }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="S4 Class dashboard" style="display:flex;flex-direction:column;gap:16px;">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:12px;color:#64748B;font-weight:600;">Class</span><sc-for list="{{ classOpts }}" as="c" hint-placeholder-count="3"><button onClick="{{ c.onClick }}" style="background:{{ c.bg }};color:{{ c.fg }};border:1px solid {{ c.border }};border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">{{ c.label }}</button></sc-for><span style="flex:1;"></span><button onClick="{{ onExportClass }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Export report</button></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;"><sc-for list="{{ classKpis }}" as="k" hint-placeholder-count="4"><div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;"><span style="font-size:12px;color:#64748B;font-weight:600;">{{ k.label }}</span><span style="font-size:24px;font-weight:800;letter-spacing:-0.02em;color:#0F172A;">{{ k.value }}</span><span style="font-size:12px;font-weight:600;color:{{ k.dc }};">{{ k.delta }}</span></div></sc-for></div>
+    <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;">
+      <div style="flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:16px;">
+        <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;"><h2 style="margin:0;font-size:15px;font-weight:700;color:#0F172A;">Average pages per student · last 8 weeks</h2><span style="font-size:12px;color:#64748B;">School average: 164</span></div>
+          <div style="display:flex;align-items:flex-end;gap:10px;height:140px;padding-top:8px;">
+            <sc-for list="{{ weekChart }}" as="w" hint-placeholder-count="8"><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><span style="font-size:11px;font-weight:700;color:#475569;">{{ w.v }}</span><div style="width:100%;max-width:44px;height:{{ w.h }};background:{{ w.c }};border-radius:6px 6px 2px 2px;"></div><span style="font-size:11px;color:#64748B;">{{ w.l }}</span></div></sc-for>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;overflow-x:auto;">
+          <div style="min-width:760px;">
+            <div style="display:grid;gap:12px;align-items:center;padding:10px 16px;background:#F8FAFC;border-bottom:1px solid #E2E8F0;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748B;grid-template-columns:minmax(0,1.8fr) 90px 70px minmax(0,1.6fr) 130px 100px 120px;"><span>Student</span><span>Pages/wk</span><span>Streak</span><span>Reading now</span><span>Challenge</span><span>Last active</span><span>Flag</span></div>
+            <sc-for list="{{ roster }}" as="st" hint-placeholder-count="8">
+              <button onClick="{{ st.onClick }}" style="display:grid;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid #F1F5F9;font-size:13px;grid-template-columns:minmax(0,1.8fr) 90px 70px minmax(0,1.6fr) 130px 100px 120px;width:100%;background:{{ st.rowBg }};border-left:0;border-right:0;border-top:0;cursor:pointer;text-align:left;font-family:inherit;color:#0F172A;">
+                <span style="display:flex;align-items:center;gap:10px;min-width:0;"><span style="width:28px;height:28px;border-radius:50%;background:{{ st.av }};color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">{{ st.initials }}</span><strong>{{ st.name }}</strong></span>
+                <span style="font-weight:700;">{{ st.pages }}</span><span>{{ st.streak }}</span><span style="color:#475569;">{{ st.book }}</span>
+                <span style="display:flex;align-items:center;gap:6px;"><span style="flex:1;height:6px;background:#E2E8F0;border-radius:999px;overflow:hidden;"><span style="display:block;width:{{ st.chW }};height:100%;background:#1B9DD9;"></span></span><span style="font-size:11px;color:#475569;">{{ st.chLabel }}</span></span>
+                <span style="color:#475569;">{{ st.last }}</span>
+                <span><sc-if value="{{ st.hasFlag }}" hint-placeholder-val="{{ false }}"><span style="background:{{ st.flag.bg }};color:{{ st.flag.fg }};border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap;">{{ st.flag.label }}</span></sc-if></span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:14px;position:sticky;top:84px;">
+        <div style="display:flex;align-items:center;gap:12px;"><span style="width:44px;height:44px;border-radius:50%;background:{{ stu.av }};color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0;">{{ stu.initials }}</span><div><div style="font-size:16px;font-weight:800;">{{ stu.name }}</div><div style="font-size:12px;color:#64748B;">{{ stu.cls }} · reading {{ stu.book }}</div></div></div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;">
+          <div style="background:#F8FAFC;border-radius:8px;padding:10px;"><div style="font-size:18px;font-weight:800;">{{ stu.pages }}</div><div style="font-size:11px;color:#64748B;">pages / wk</div></div>
+          <div style="background:#F8FAFC;border-radius:8px;padding:10px;"><div style="font-size:18px;font-weight:800;">{{ stu.streak }}</div><div style="font-size:11px;color:#64748B;">day streak</div></div>
+          <div style="background:#F8FAFC;border-radius:8px;padding:10px;"><div style="font-size:18px;font-weight:800;">{{ stu.chLabel }}</div><div style="font-size:11px;color:#64748B;">verified</div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748B;">Recent activity</span>
+          <sc-for list="{{ stu.recent }}" as="rc" hint-placeholder-count="3"><div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid #F1F5F9;"><span><strong>{{ rc.a }}</strong> · {{ rc.b }}</span><span style="color:#64748B;font-size:12px;white-space:nowrap;">{{ rc.t }}</span></div></sc-for>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;"><button onClick="{{ onEncourage }}" style="background:#1B9DD9;color:#fff;border:0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">Send encouragement</button><button onClick="{{ onNoteParent }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Note to parent</button></div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isBuilder }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="S5 Challenge builder" style="display:flex;flex-direction:column;gap:16px;max-width:1080px;">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;"><sc-for list="{{ bSteps }}" as="bs" hint-placeholder-count="5"><button onClick="{{ bs.onClick }}" style="display:flex;align-items:center;gap:8px;background:{{ bs.bg }};color:{{ bs.fg }};border:1px solid {{ bs.border }};border-radius:999px;padding:5px 12px 5px 5px;font-size:13px;font-weight:700;cursor:pointer;"><span style="width:22px;height:22px;border-radius:50%;background:{{ bs.dotBg }};color:{{ bs.dotFg }};display:flex;align-items:center;justify-content:center;font-size:11px;">{{ bs.n }}</span>{{ bs.label }}</button></sc-for></div>
+    <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:18px;">
+      <sc-if value="{{ bDetails }}" hint-placeholder-val="{{ true }}">
+        <h2 style="margin:0;font-size:15px;font-weight:700;color:#0F172A;font-size:17px;">Challenge details</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#334155;grid-column:1/-1;">Title<input value="{{ draft.title }}" onChange="{{ onDTitle }}" style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;font-size:15px;"></label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#334155;grid-column:1/-1;">Description<textarea value="{{ draft.desc }}" onChange="{{ onDDesc }}" rows="3" style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;resize:vertical;"></textarea></label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#334155;">Starts<input type="date" value="{{ draft.start }}" onChange="{{ onDStart }}" style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;"></label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#334155;">Ends<input type="date" value="{{ draft.end }}" onChange="{{ onDEnd }}" style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;"></label>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;"><span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748B;">Who can take part</span><div style="display:flex;gap:6px;flex-wrap:wrap;"><sc-for list="{{ audOpts }}" as="ao" hint-placeholder-count="4"><button onClick="{{ ao.onClick }}" style="background:{{ ao.bg }};color:{{ ao.fg }};border:1px solid {{ ao.border }};border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">{{ ao.label }}</button></sc-for></div>
+          <sc-if value="{{ audNeedsAdmin }}" hint-placeholder-val="{{ false }}"><div style="background:#EDE9FE;color:#5B21B6;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;">Alliance challenges are sent to your school admin for approval before partner schools see them.</div></sc-if>
+        </div>
+      </sc-if>
+      <sc-if value="{{ bBooks }}" hint-placeholder-val="{{ false }}">
+        <h2 style="margin:0;font-size:15px;font-weight:700;color:#0F172A;font-size:17px;">Pick the books</h2>
+        <div style="display:flex;flex-wrap:wrap;gap:16px;">
+          <div style="flex:1 1 320px;display:flex;flex-direction:column;gap:8px;">
+            <input value="{{ bookSearch }}" onChange="{{ onBookSearch }}" placeholder="Search the school catalogue…" style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;">
+            <sc-for list="{{ bookPool }}" as="bp" hint-placeholder-count="6"><div style="display:flex;align-items:center;gap:10px;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px;"><span style="width:22px;height:33px;border-radius:3px;background:{{ bp.bg }};flex-shrink:0;box-shadow:0 1px 3px rgba(15,23,42,0.2);"></span><span style="flex:1;min-width:0;"><strong>{{ bp.title }}</strong><span style="display:block;font-size:12px;color:#64748B;">{{ bp.author }} · {{ bp.cefr }} · {{ bp.copies }} copies</span></span><button onClick="{{ bp.onClick }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;padding:5px 10px;font-size:12px;">{{ bp.label }}</button></div></sc-for>
+          </div>
+          <div style="flex:1 1 280px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;">
+            <span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748B;">In this challenge ({{ selCount }})</span>
+            <sc-for list="{{ selBooks }}" as="sb" hint-placeholder-count="2"><div style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px;"><span style="font-weight:800;color:#1580B5;width:16px;">{{ sb.n }}</span><span style="width:22px;height:33px;border-radius:3px;background:{{ sb.bg }};flex-shrink:0;box-shadow:0 1px 3px rgba(15,23,42,0.2);"></span><strong style="flex:1;">{{ sb.title }}</strong><span style="font-size:12px;color:#64748B;">{{ sb.qCount }} Q</span><button onClick="{{ sb.onRemove }}" style="background:none;border:0;color:#94A3B8;cursor:pointer;">✕</button></div></sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ bQuiz }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;"><h2 style="margin:0;font-size:15px;font-weight:700;color:#0F172A;font-size:17px;">Write the quizzes</h2><div style="display:flex;align-items:center;gap:6px;"><span style="font-size:12px;color:#64748B;">Pass mark</span><sc-for list="{{ passOpts }}" as="po" hint-placeholder-count="3"><button onClick="{{ po.onClick }}" style="background:{{ po.bg }};color:{{ po.fg }};border:1px solid {{ po.border }};border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">{{ po.label }}</button></sc-for></div></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid #E2E8F0;padding-bottom:10px;"><sc-for list="{{ quizTabs }}" as="qt" hint-placeholder-count="2"><button onClick="{{ qt.onClick }}" style="background:{{ qt.bg }};color:{{ qt.fg }};border:1px solid {{ qt.border }};border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">{{ qt.label }}</button></sc-for></div>
+        <sc-for list="{{ questions }}" as="qq" hint-placeholder-count="2">
+          <div style="border:1px solid #E2E8F0;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;align-items:center;gap:8px;"><span style="font-weight:800;color:#1580B5;">Q{{ qq.n }}</span><input value="{{ qq.q }}" onChange="{{ qq.onQ }}" placeholder="Question" style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;flex:1;width:auto;font-weight:600;"><button onClick="{{ qq.onDelete }}" style="background:#fff;color:#B4232A;border:1px solid #FFD6CF;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;padding:6px 10px;">Delete</button></div>
+            <sc-for list="{{ qq.opts }}" as="op" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:8px;padding-left:28px;"><button onClick="{{ op.onCorrect }}" title="Mark correct" style="width:22px;height:22px;border-radius:50%;border:2px solid {{ op.ring }};background:{{ op.fill }};color:#fff;font-size:11px;font-weight:800;cursor:pointer;padding:0;flex-shrink:0;">{{ op.mark }}</button><input value="{{ op.v }}" onChange="{{ op.onChange }}" placeholder="Answer option" style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;flex:1;width:auto;border-color:{{ op.ring }};"></div></sc-for>
+          </div>
+        </sc-for>
+        <button onClick="{{ onAddQ }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;align-self:flex-start;">+ Add question</button>
+      </sc-if>
+      <sc-if value="{{ bPrizes }}" hint-placeholder-val="{{ false }}">
+        <h2 style="margin:0;font-size:15px;font-weight:700;color:#0F172A;font-size:17px;">Points & prizes</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;"><sc-for list="{{ ptFields }}" as="pf" hint-placeholder-count="3"><label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#334155;">{{ pf.label }}<input type="number" value="{{ pf.v }}" onChange="{{ pf.onChange }}" style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;"></label></sc-for></div>
+        <div style="display:flex;flex-direction:column;gap:8px;"><span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748B;">Prizes</span>
+          <sc-for list="{{ prizeRows }}" as="pz" hint-placeholder-count="3"><div style="display:flex;gap:8px;align-items:center;"><input value="{{ pz.place }}" onChange="{{ pz.onPlace }}" style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;width:110px;font-weight:700;"><input value="{{ pz.text }}" onChange="{{ pz.onText }}" placeholder="Prize" style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;flex:1;width:auto;"><button onClick="{{ pz.onDelete }}" style="background:none;border:0;color:#94A3B8;cursor:pointer;font-size:14px;">✕</button></div></sc-for>
+          <button onClick="{{ onAddPrize }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;align-self:flex-start;">+ Add prize</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{ bReview }}" hint-placeholder-val="{{ false }}">
+        <sc-if value="{{ notPublished }}" hint-placeholder-val="{{ true }}">
+          <h2 style="margin:0;font-size:15px;font-weight:700;color:#0F172A;font-size:17px;">Review & publish</h2>
+          <div style="display:flex;flex-wrap:wrap;gap:16px;">
+            <div style="flex:1 1 320px;display:flex;flex-direction:column;gap:8px;">
+              <sc-for list="{{ summary }}" as="sm" hint-placeholder-count="6"><div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #F1F5F9;"><span style="color:#64748B;">{{ sm.k }}</span><strong style="text-align:right;">{{ sm.v }}</strong></div></sc-for>
+              <sc-if value="{{ hasWarnings }}" hint-placeholder-val="{{ false }}"><sc-for list="{{ warnings }}" as="wn" hint-placeholder-count="1"><div style="background:#FEF3C7;color:#92400E;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;">{{ wn.t }}</div></sc-for></sc-if>
+            </div>
+            <div style="flex:1 1 300px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px;">
+              <span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748B;">Student preview</span>
+              <div style="background:#fff;border:1.5px solid #1B9DD9;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px;">
+                <span style="align-self:flex-start;background:#E0F2FE;color:#075985;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;">{{ audLabel }}</span>
+                <strong style="font-family:'Source Serif 4',serif;font-size:19px;">{{ draft.title }}</strong>
+                <div style="display:flex;gap:4px;"><sc-for list="{{ selBooks }}" as="sb" hint-placeholder-count="2"><span style="width:22px;height:33px;border-radius:3px;background:{{ sb.bg }};flex-shrink:0;box-shadow:0 1px 3px rgba(15,23,42,0.2);"></span></sc-for></div>
+                <span style="font-size:12px;color:#64748B;">{{ dateLabel }}</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;"><button onClick="{{ onSaveDraft }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Save draft</button><button onClick="{{ onPublish }}" style="background:#1B9DD9;color:#fff;border:0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;padding:10px 18px;font-size:14px;">{{ publishLabel }}</button></div>
+        </sc-if>
+        <sc-if value="{{ published }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:24px 0;">
+            <span style="width:56px;height:56px;border-radius:50%;background:#DCFCE7;color:#166534;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;">✓</span>
+            <h2 style="margin:0;font-size:20px;font-weight:800;">{{ publishedTitle }}</h2>
+            <p style="margin:0;color:#475569;max-width:420px;line-height:1.5;">{{ publishedText }}</p>
+            <button onClick="{{ onNewChallenge }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Create another challenge</button>
+          </div>
+        </sc-if>
+      </sc-if>
+      <sc-if value="{{ showBNav }}" hint-placeholder-val="{{ true }}"><div style="display:flex;justify-content:space-between;gap:8px;border-top:1px solid #E2E8F0;padding-top:14px;"><button onClick="{{ onBPrev }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Back</button><button onClick="{{ onBNext }}" style="background:#1B9DD9;color:#fff;border:0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">Next: {{ nextStepLabel }}</button></div></sc-if>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isModeration }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="S6 Moderation queue" style="display:flex;flex-direction:column;gap:16px;">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"><sc-for list="{{ modTabs }}" as="mt" hint-placeholder-count="2"><button onClick="{{ mt.onClick }}" style="background:{{ mt.bg }};color:{{ mt.fg }};border:1px solid {{ mt.border }};border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">{{ mt.label }}</button></sc-for><span style="flex:1;"></span><span style="font-size:12px;color:#64748B;">Reports from your classes and school clubs · median response 2 h</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;">
+      <div style="flex:1 1 320px;display:flex;flex-direction:column;gap:8px;">
+        <sc-if value="{{ modEmpty }}" hint-placeholder-val="{{ false }}"><div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:24px;text-align:center;color:#64748B;">Nothing here. Nice.</div></sc-if>
+        <sc-for list="{{ reports }}" as="rp" hint-placeholder-count="4">
+          <button onClick="{{ rp.onClick }}" style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;border:1.5px solid {{ rp.border }};padding:12px 14px;display:flex;flex-direction:column;gap:6px;cursor:pointer;text-align:left;font-family:inherit;color:#0F172A;">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span style="background:{{ rp.reasonC.bg }};color:{{ rp.reasonC.fg }};border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap;">{{ rp.reason }}</span><span style="font-size:12px;color:#64748B;">{{ rp.kind }} · {{ rp.book }}</span><span style="margin-left:auto;font-size:11px;color:#94A3B8;">{{ rp.time }}</span></div>
+            <div style="font-size:13px;color:#334155;line-height:1.45;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">{{ rp.text }}</div>
+            <div style="font-size:12px;color:#64748B;">{{ rp.author }} · {{ rp.cls }} · {{ rp.reportersLabel }}</div>
+          </button>
+        </sc-for>
+      </div>
+      <sc-if value="{{ hasModSel }}" hint-placeholder-val="{{ true }}">
+        <div style="flex:999 1 480px;min-width:0;background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="background:{{ mod.reasonC.bg }};color:{{ mod.reasonC.fg }};border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap;">{{ mod.reason }}</span><span style="background:{{ mod.st.bg }};color:{{ mod.st.fg }};border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap;">{{ mod.st.label }}</span><span style="font-size:12px;color:#64748B;">{{ mod.kind }} on “{{ mod.book }}” · {{ mod.reportersLabel }}</span></div>
+          <sc-if value="{{ mod.auto }}" hint-placeholder-val="{{ false }}"><div style="background:#FFF1EE;border:1px solid #FFD6CF;color:#B4232A;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;">Phone number detected automatically — post hidden from students until reviewed.</div></sc-if>
+          <blockquote style="margin:0;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px;font-family:'Source Serif 4',serif;font-size:16px;line-height:1.55;color:#0F172A;">{{ mod.text }}</blockquote>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:#475569;"><span><strong style="color:#0F172A;">{{ mod.author }}</strong> · {{ mod.cls }}</span><span>{{ mod.history }}</span></div>
+          <sc-if value="{{ mod.isOpen }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <sc-for list="{{ modActions }}" as="ma" hint-placeholder-count="4"><button onClick="{{ ma.onClick }}" style="background:{{ ma.bg }};color:{{ ma.fg }};border:1px solid {{ ma.border }};border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer;">{{ ma.label }}</button></sc-for>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748B;">Reply as moderator (optional, visible to students)</span><textarea value="{{ modReply }}" onChange="{{ onModReply }}" rows="3" placeholder="e.g. Great point — please add a spoiler tag next time so others can enjoy the ending." style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;resize:vertical;"></textarea></div>
+          </sc-if>
+          <sc-if value="{{ mod.isResolved }}" hint-placeholder-val="{{ false }}"><div style="background:#DCFCE7;color:#166534;border-radius:8px;padding:10px 12px;font-weight:600;">Resolved · {{ mod.outcome }}</div></sc-if>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isAnalytics }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="S7 School analytics" style="display:flex;flex-direction:column;gap:16px;">
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;"><sc-for list="{{ rangeOpts }}" as="ro" hint-placeholder-count="3"><button onClick="{{ ro.onClick }}" style="background:{{ ro.bg }};color:{{ ro.fg }};border:1px solid {{ ro.border }};border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">{{ ro.label }}</button></sc-for><span style="flex:1;"></span><button onClick="{{ onExport }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Export CSV</button></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;"><sc-for list="{{ anKpis }}" as="k" hint-placeholder-count="4"><div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;"><span style="font-size:12px;color:#64748B;font-weight:600;">{{ k.label }}</span><span style="font-size:24px;font-weight:800;letter-spacing:-0.02em;color:#0F172A;">{{ k.value }}</span><span style="font-size:12px;font-weight:600;color:{{ k.dc }};">{{ k.delta }}</span></div></sc-for></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;">
+      <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;grid-column:1/-1;">
+        <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><h2 style="margin:0;font-size:15px;font-weight:700;color:#0F172A;">Weekly active readers (% of students)</h2><span style="font-size:12px;color:#64748B;">Last 12 weeks · all branches</span></div>
+        <div style="display:flex;align-items:flex-end;gap:8px;height:150px;"><sc-for list="{{ engage }}" as="e" hint-placeholder-count="12"><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><span style="font-size:10px;font-weight:700;color:#475569;">{{ e.v }}</span><div style="width:100%;max-width:40px;height:{{ e.h }};background:{{ e.c }};border-radius:5px 5px 2px 2px;"></div><span style="font-size:10px;color:#64748B;">{{ e.l }}</span></div></sc-for></div>
+      </div>
+      <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;">
+        <h2 style="margin:0;font-size:15px;font-weight:700;color:#0F172A;">Pages per student by branch</h2>
+        <sc-for list="{{ byBranch }}" as="bb" hint-placeholder-count="5"><div style="display:grid;grid-template-columns:90px minmax(0,1fr) 48px;gap:10px;align-items:center;"><span style="font-weight:600;">{{ bb.name }}</span><span style="height:10px;background:#F1F5F9;border-radius:999px;overflow:hidden;"><span style="display:block;width:{{ bb.w }};height:100%;background:#1B9DD9;border-radius:999px;"></span></span><strong style="text-align:right;">{{ bb.v }}</strong></div></sc-for>
+      </div>
+      <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;">
+        <h2 style="margin:0;font-size:15px;font-weight:700;color:#0F172A;">Pages per student by grade</h2>
+        <div style="display:flex;align-items:flex-end;gap:14px;height:150px;"><sc-for list="{{ byGrade }}" as="bg" hint-placeholder-count="5"><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><span style="font-size:11px;font-weight:700;">{{ bg.v }}</span><div style="width:100%;max-width:48px;height:{{ bg.h }};background:#075985;border-radius:6px 6px 2px 2px;"></div><span style="font-size:11px;color:#64748B;">{{ bg.l }}</span></div></sc-for></div>
+      </div>
+      <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+        <h2 style="margin:0;font-size:15px;font-weight:700;color:#0F172A;">Genre mix (books finished)</h2>
+        <div style="display:flex;height:14px;border-radius:999px;overflow:hidden;gap:2px;"><sc-for list="{{ genreMix }}" as="gm" hint-placeholder-count="5"><span style="width:{{ gm.w }};background:{{ gm.c }};"></span></sc-for></div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 16px;"><sc-for list="{{ genreMix }}" as="gm" hint-placeholder-count="5"><div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:3px;background:{{ gm.c }};"></span><span style="flex:1;">{{ gm.name }}</span><strong>{{ gm.w }}</strong></div></sc-for></div>
+      </div>
+      <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;">
+        <h2 style="margin:0;font-size:15px;font-weight:700;color:#0F172A;">Most borrowed</h2>
+        <sc-for list="{{ topBooks }}" as="tb" hint-placeholder-count="5"><div style="display:flex;align-items:center;gap:10px;padding:4px 0;"><span style="width:18px;font-weight:800;color:#1580B5;">{{ tb.n }}</span><span style="width:22px;height:33px;border-radius:3px;background:{{ tb.bg }};flex-shrink:0;box-shadow:0 1px 3px rgba(15,23,42,0.2);"></span><span style="flex:1;min-width:0;"><strong>{{ tb.title }}</strong><span style="display:block;font-size:12px;color:#64748B;">{{ tb.cefr }} · {{ tb.rating }}★ avg</span></span><strong>{{ tb.loans }}</strong><span style="font-size:12px;color:#64748B;">loans</span></div></sc-for>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isOrg }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="S8 Branches & users" style="display:flex;flex-direction:column;gap:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;"><h2 style="margin:0;font-size:15px;font-weight:700;color:#0F172A;">Branches</h2><button onClick="{{ onAddBranch }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">+ Add branch</button></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+      <sc-for list="{{ branches }}" as="br" hint-placeholder-count="5">
+        <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;"><strong style="font-size:15px;">{{ br.name }}</strong><span style="font-size:11px;color:#64748B;">{{ br.staff }} staff</span></div>
+          <div style="font-size:22px;font-weight:800;">{{ br.students }} <span style="font-size:12px;font-weight:600;color:#64748B;">students</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="height:6px;background:#E2E8F0;border-radius:999px;overflow:hidden;"><span style="display:block;width:{{ br.w }};height:100%;background:#1B9DD9;"></span></span><span style="font-size:11px;color:#475569;">{{ br.active }} weekly active</span></div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <h2 style="margin:0;font-size:15px;font-weight:700;color:#0F172A;margin-right:8px;">People</h2>
+      <sc-for list="{{ roleTabs }}" as="rt" hint-placeholder-count="5"><button onClick="{{ rt.onClick }}" style="background:{{ rt.bg }};color:{{ rt.fg }};border:1px solid {{ rt.border }};border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">{{ rt.label }}</button></sc-for>
+      <span style="flex:1;"></span>
+      <input value="{{ userQ }}" onChange="{{ onUserQ }}" placeholder="Search people" style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;width:220px;">
+      <button onClick="{{ onImport }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Import CSV</button>
+      <button onClick="{{ openInvite }}" style="background:#1B9DD9;color:#fff;border:0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">Invite people</button>
+    </div>
+    <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;overflow-x:auto;">
+      <div style="min-width:820px;">
+        <div style="display:grid;gap:12px;align-items:center;padding:10px 16px;background:#F8FAFC;border-bottom:1px solid #E2E8F0;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748B;grid-template-columns:minmax(0,1.6fr) minmax(0,1.8fr) 110px 100px 110px 100px 190px;"><span>Name</span><span>Email</span><span>Role</span><span>Branch</span><span>Status</span><span>Last active</span><span style="text-align:right;">Actions</span></div>
+        <sc-for list="{{ users }}" as="u" hint-placeholder-count="8">
+          <div style="display:grid;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid #F1F5F9;font-size:13px;grid-template-columns:minmax(0,1.6fr) minmax(0,1.8fr) 110px 100px 110px 100px 190px;">
+            <strong>{{ u.name }}</strong><span style="color:#475569;overflow:hidden;text-overflow:ellipsis;">{{ u.email }}</span>
+            <span style="background:{{ u.roleC.bg }};color:{{ u.roleC.fg }};border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap;justify-self:start;">{{ u.role }}</span><span>{{ u.branch }}</span>
+            <span style="background:{{ u.st.bg }};color:{{ u.st.fg }};border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap;justify-self:start;">{{ u.st.label }}</span><span style="color:#64748B;">{{ u.last }}</span>
+            <span style="display:flex;gap:6px;justify-content:flex-end;"><button onClick="{{ u.onEdit }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;padding:5px 10px;font-size:12px;">Edit</button><button onClick="{{ u.onToggle }}" style="background:#fff;color:{{ u.tFg }};border:1px solid {{ u.tBorder }};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;">{{ u.toggleLabel }}</button></span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <sc-if value="{{ inviteOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed;inset:0;background:rgba(8,47,73,0.55);z-index:60;display:flex;align-items:center;justify-content:center;padding:24px;">
+        <div style="width:100%;max-width:560px;background:#fff;border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:14px;box-shadow:0 24px 64px rgba(15,23,42,0.35);">
+          <div style="display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;font-size:18px;font-weight:800;">Invite people</h2><button onClick="{{ closeInvite }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;padding:5px 10px;">✕</button></div>
+          <div style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748B;">Role</span><div style="display:flex;gap:6px;flex-wrap:wrap;"><sc-for list="{{ inviteRoles }}" as="ir" hint-placeholder-count="4"><button onClick="{{ ir.onClick }}" style="background:{{ ir.bg }};color:{{ ir.fg }};border:1px solid {{ ir.border }};border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">{{ ir.label }}</button></sc-for></div></div>
+          <div style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748B;">Branch</span><div style="display:flex;gap:6px;flex-wrap:wrap;"><sc-for list="{{ inviteBranches }}" as="ib" hint-placeholder-count="5"><button onClick="{{ ib.onClick }}" style="background:{{ ib.bg }};color:{{ ib.fg }};border:1px solid {{ ib.border }};border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">{{ ib.label }}</button></sc-for></div></div>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748B;">Emails (one per line)<textarea value="{{ inviteEmails }}" onChange="{{ onInviteEmails }}" rows="4" placeholder="a.mammadova@hedef.az" style="width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;font-family:inherit;color:#0F172A;text-transform:none;letter-spacing:0;font-weight:400;resize:vertical;"></textarea></label>
+          <div style="font-size:12px;color:#64748B;">Students can also join with a school code: <span style="font-family:ui-monospace,Menlo,monospace;color:#0F172A;">HDF-NZM-2026</span></div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;"><button onClick="{{ closeInvite }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Cancel</button><button onClick="{{ onSendInvites }}" style="background:#1B9DD9;color:#fff;border:0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">Send invites</button></div>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isAlliances }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="S9 Alliances & data sharing" style="display:flex;flex-direction:column;gap:16px;">
+    <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:stretch;">
+      <div style="flex:2 1 460px;background:#082F49;color:#fff;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#7DD3FC;">Active alliance</span><span style="background:#DCFCE7;color:#166534;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;">Agreement active · renews Feb 2027</span></div>
+        <div style="font-family:'Source Serif 4',serif;font-size:26px;font-weight:700;">Baku Readers Alliance</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;"><span style="background:#1B9DD9;color:#fff;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700;">Hədəf (you)</span><span style="background:rgba(255,255,255,0.1);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;">Zəka Liseyi</span><span style="background:rgba(255,255,255,0.1);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;">Araz Akademiyası</span><span style="background:rgba(255,255,255,0.1);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;">Günəş Məktəbi</span></div>
+        <div style="display:flex;gap:24px;flex-wrap:wrap;font-size:12px;color:#BAE6FD;"><span><strong style="color:#fff;font-size:18px;">3</strong> live battles</span><span><strong style="color:#fff;font-size:18px;">1</strong> shared challenge</span><span><strong style="color:#fff;font-size:18px;">4,120</strong> students covered</span></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;"><button onClick="{{ onViewAgreement }}" style="background:#fff;color:#075985;border:0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;">View agreement</button><button onClick="{{ onLeave }}" style="background:transparent;color:#FFD6CF;border:1px solid rgba(255,214,207,0.5);border-radius:8px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;">Leave alliance…</button></div>
+      </div>
+      <div style="flex:1 1 320px;background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;border-color:{{ invBorder }};">
+        <span style="font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#5B21B6;">Invitation</span>
+        <strong style="font-size:16px;">Sumqayıt Reading League</strong>
+        <span style="color:#475569;line-height:1.5;">Ulduz Liseyi invites Hədəf to join a 3-school league for the spring term. Proposed sharing: first name + initial, grade, pages, quiz scores.</span>
+        <sc-if value="{{ invPending }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;"><button onClick="{{ onAcceptInv }}" style="background:#1B9DD9;color:#fff;border:0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">Accept</button><button onClick="{{ onReviewInv }}" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Review terms</button><button onClick="{{ onDeclineInv }}" style="background:#fff;color:#B4232A;border:1px solid #FFD6CF;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Decline</button></div></sc-if>
+        <sc-if value="{{ invDone }}" hint-placeholder-val="{{ false }}"><div style="background:{{ invDoneBg }};color:{{ invDoneFg }};border-radius:8px;padding:8px 12px;font-weight:700;">{{ invDoneLabel }}</div></sc-if>
+      </div>
+    </div>
+    <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;display:flex;flex-direction:column;">
+      <div style="padding:14px 16px;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;"><div><h2 style="margin:0;font-size:15px;font-weight:700;color:#0F172A;">What Hədəf shares with the alliance</h2><div style="font-size:12px;color:#64748B;margin-top:2px;">Changes are sent to partner schools and take effect in 7 days. Some fields can never be shared.</div></div><button onClick="{{ onSaveShare }}" style="background:#1B9DD9;color:#fff;border:0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">Save changes</button></div>
+      <sc-for list="{{ shareRows }}" as="sh" hint-placeholder-count="8">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #F1F5F9;background:{{ sh.rowBg }};">
+          <div style="flex:1;min-width:0;"><div style="font-weight:700;color:{{ sh.fg }};">{{ sh.label }}</div><div style="font-size:12px;color:#64748B;">{{ sh.note }}</div></div>
+          <sc-if value="{{ sh.locked }}" hint-placeholder-val="{{ false }}"><span style="background:#F1F5F9;color:#475569;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;">Never shared</span></sc-if>
+          <sc-if value="{{ sh.editable }}" hint-placeholder-val="{{ true }}"><button onClick="{{ sh.onToggle }}" aria-label="toggle" style="width:40px;height:24px;border-radius:999px;background:{{ sh.track }};border:0;position:relative;cursor:pointer;padding:0;"><span style="position:absolute;top:2px;left:{{ sh.knob }};width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(15,23,42,0.3);transition:left .2s;"></span></button></sc-if>
+        </div>
+      </sc-for>
+    </div>
+    <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px;">
+      <h2 style="margin:0;font-size:15px;font-weight:700;color:#0F172A;">Audit log</h2>
+      <sc-for list="{{ audit }}" as="al" hint-placeholder-count="3"><div style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid #F1F5F9;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#64748B;width:100px;flex-shrink:0;">{{ al.d }}</span><span style="font-weight:600;width:140px;flex-shrink:0;">{{ al.who }}</span><span style="color:#334155;">{{ al.what }}</span></div></sc-for>
+    </div>
+  </div>
+</sc-if>
+
+    </main>
+  </div>
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}"><div style="position:fixed;bottom:72px;left:50%;transform:translateX(-50%);background:#082F49;color:#fff;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;box-shadow:0 12px 32px rgba(15,23,42,0.3);z-index:70;">{{ toast }}</div></sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900},&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;librarian&quot;,&quot;teacher&quot;,&quot;admin&quot;],&quot;default&quot;:&quot;librarian&quot;,&quot;tsType&quot;:&quot;'librarian'|'teacher'|'admin'&quot;}}">
+const ROLES = {
+  librarian:{label:'Librarian',tint:'#CCFBF1',ink:'#115E59',accent:'#0D9488',user:'Səadət Kərimova',initials:'SK',where:'Nizami Branch library',nav:[['desk','Circulation desk'],['holds','Holds & overdue'],['inventory','Catalogue & inventory']]},
+  teacher:{label:'Teacher',tint:'#FEF3C7',ink:'#92400E',accent:'#D97706',user:'Günel Əliyeva',initials:'GƏ',where:'Literature · Nizami Branch',nav:[['class','Class dashboard'],['builder','Challenge builder'],['moderation','Moderation queue']]},
+  admin:{label:'School admin',tint:'#EDE9FE',ink:'#5B21B6',accent:'#7C3AED',user:'Rauf Hüseynli',initials:'RH',where:'All 5 branches',nav:[['analytics','Analytics'],['org','Branches & users'],['alliances','Alliances & data sharing']]}
+};
+const ST = {available:['Available','#DCFCE7','#166534'],onloan:['On loan','#E0F2FE','#075985'],hold:['On hold','#FEF3C7','#92400E'],overdue:['Overdue','#FFF1EE','#B4232A'],lost:['Lost','#F1F5F9','#475569'],damaged:['Damaged','#FFEDD5','#9A3412'],ready:['Ready for pickup','#CCFBF1','#115E59'],waiting:['Waiting','#FEF3C7','#92400E'],active:['Active','#DCFCE7','#166534'],invited:['Invited','#EDE9FE','#5B21B6'],suspended:['Suspended','#FFF1EE','#B4232A'],open:['Open','#FFF1EE','#B4232A'],resolved:['Resolved','#DCFCE7','#166534'],due:['Due','#E0F2FE','#075985']};
+const pill = k => ({label:ST[k][0],bg:ST[k][1],fg:ST[k][2]});
+const chip = on => ({bg:on?'#1B9DD9':'#fff',fg:on?'#fff':'#334155',border:on?'#1B9DD9':'#CBD5E1'});
+const PATRONS = [
+  {id:'s1',name:'Leyla Həsənova',initials:'LH',grade:'9-B',card:'HDF-10482',av:'#075985',loans:[['1984','5 Oct',false],['The Martian','28 Sep',false],['Kürk Mantolu Madonna','25 Sep',true]]},
+  {id:'s2',name:'Nicat Səfərov',initials:'NS',grade:'8-A',card:'HDF-10233',av:'#1B9DD9',loans:[['Project Hail Mary','8 Oct',false]]},
+  {id:'s3',name:'Aysel Məmmədova',initials:'AM',grade:'10-A',card:'HDF-09871',av:'#0E7490',loans:[['Fahrenheit 451','3 Oct',false],['Sapiens','30 Sep',false]]},
+  {id:'s4',name:'Murad Hüseynov',initials:'MH',grade:'7-C',card:'HDF-11020',av:'#7C3AED',loans:[]},
+  {id:'s5',name:'Tural Babayev',initials:'TB',grade:'9-A',card:'HDF-10577',av:'#B45309',loans:[['The Hobbit','19 Sep',true]]}
+];
+const SHELF = [{bc:'B-004211',title:'Animal Farm',bg:'#15803D'},{bc:'B-004212',title:'Animal Farm',bg:'#15803D'},{bc:'B-002144',title:'Wonder',bg:'#1D4ED8'},{bc:'B-003901',title:'The Alchemist',bg:'#CA8A04'},{bc:'B-001207',title:'Kitabi-Dədə Qorqud',bg:'#14532D'},{bc:'B-005530',title:'Dəli Kür',bg:'#1E3A8A'},{bc:'B-002280',title:'The Little Prince',bg:'#0C4A6E'},{bc:'B-000981',title:'Əli və Nino',bg:'#7C2D12'}];
+const ONLOAN = [
+  {bc:'B-003318',title:'Kürk Mantolu Madonna',patron:'Leyla Həsənova · 9-B',due:'25 Sep',od:1,hold:'Günay Əliyeva · 10-B',bg:'#1E293B'},
+  {bc:'B-001876',title:'The Hobbit',patron:'Tural Babayev · 9-A',due:'19 Sep',od:7,bg:'#365314'},
+  {bc:'B-002907',title:'The Martian',patron:'Leyla Həsənova · 9-B',due:'28 Sep',od:0,bg:'#B91C1C'},
+  {bc:'B-001554',title:'Fahrenheit 451',patron:'Aysel Məmmədova · 10-A',due:'3 Oct',od:0,hold:'Səbinə Rəhimova · 11-A',bg:'#EA580C'}
+];
+const ACT0 = [['10:42','in','Returned','The Hobbit','Murad Hüseynov · 7-C'],['10:31','out','Checked out','Wonder','Nicat Səfərov · 8-A'],['10:12','out','Checked out','1984','Leyla Həsənova · 9-B'],['09:58','hold','Hold ready','Sapiens','Aysel Məmmədova · 10-A'],['09:40','in','Returned','Animal Farm','Səbinə Rəhimova · 11-A']];
+const HOLDS0 = [
+  {id:'h1',title:'Kürk Mantolu Madonna',bg:'#1E293B',patron:'Günay Əliyeva',grade:'10-B',placed:'22 Sep',pos:'1 of 2',status:'waiting'},
+  {id:'h2',title:'Fahrenheit 451',bg:'#EA580C',patron:'Səbinə Rəhimova',grade:'11-A',placed:'20 Sep',pos:'1 of 1',status:'waiting'},
+  {id:'h3',title:'Sapiens',bg:'#F5F5F4',patron:'Aysel Məmmədova',grade:'10-A',placed:'18 Sep',pos:'1 of 1',status:'ready',pickup:'Pick up by 29 Sep'},
+  {id:'h4',title:'1984',bg:'#991B1B',patron:'Orxan Vəliyev',grade:'8-C',placed:'24 Sep',pos:'2 of 3',status:'waiting'},
+  {id:'h5',title:'To Kill a Mockingbird',bg:'#57534E',patron:'Nərmin Qasımova',grade:'11-B',placed:'15 Sep',pos:'1 of 2',status:'ready',pickup:'Pick up by 27 Sep'}
+];
+const OD0 = [
+  {id:'o3',patron:'Kamran Əhmədov',grade:'11-B',title:'Crime and Punishment',due:'8 Sep',days:18,rem:3,teacher:'Ms. Əliyeva'},
+  {id:'o5',patron:'Orxan Vəliyev',grade:'8-C',title:'Wonder',due:'12 Sep',days:14,rem:2,teacher:'Ms. Nəsibova'},
+  {id:'o1',patron:'Tural Babayev',grade:'9-A',title:'The Hobbit',due:'19 Sep',days:7,rem:2,teacher:'Mr. Quliyev'},
+  {id:'o4',patron:'Günay Əliyeva',grade:'10-B',title:'Pride and Prejudice',due:'22 Sep',days:4,rem:1,teacher:'Mr. Quliyev'},
+  {id:'o2',patron:'Leyla Həsənova',grade:'9-B',title:'Kürk Mantolu Madonna',due:'25 Sep',days:1,rem:0,teacher:'Ms. Əliyeva'}
+];
+const C = (bc,br,st,cond)=>({bc,branch:br,status:st,cond:cond||'Good'});
+const TITLES0 = [
+  {id:'t1',title:'Əli və Nino',author:'Qurban Səid',isbn:'978-9952-26-114-3',cefr:'B2',genre:'World Classics',bg:'#7C2D12',copies:[C('B-000981','Nizami','available'),C('B-000982','Nizami','available'),C('B-000983','Nizami','onloan'),C('B-000984','Yasamal','available','Worn'),C('B-000985','Nəsimi','onloan')]},
+  {id:'t2',title:'1984',author:'George Orwell',isbn:'978-0-14-118776-1',cefr:'B2',genre:'Science Fiction',bg:'#991B1B',copies:[C('B-001553','Nizami','onloan'),C('B-001555','Nizami','hold'),C('B-001556','Yasamal','onloan'),C('B-001557','Xətai','lost','—')]},
+  {id:'t3',title:'The Hobbit',author:'J.R.R. Tolkien',isbn:'978-0-261-10221-7',cefr:'B1',genre:'Fantasy',bg:'#365314',copies:[C('B-001876','Nizami','overdue'),C('B-001877','Nizami','available'),C('B-001878','Sumqayıt','available'),C('B-001879','Nəsimi','available')]},
+  {id:'t4',title:'Kürk Mantolu Madonna',author:'Sabahattin Ali',isbn:'978-975-363-806-9',cefr:'B2',genre:'World Classics',bg:'#1E293B',copies:[C('B-003318','Nizami','overdue'),C('B-003319','Yasamal','onloan')]},
+  {id:'t5',title:'Wonder',author:'R.J. Palacio',isbn:'978-0-375-86902-0',cefr:'A2',genre:'Fiction',bg:'#1D4ED8',copies:[C('B-002144','Nizami','available'),C('B-002145','Nizami','available'),C('B-002146','Nizami','onloan'),C('B-002147','Xətai','available'),C('B-002148','Sumqayıt','available'),C('B-002149','Yasamal','overdue')]},
+  {id:'t6',title:'Animal Farm',author:'George Orwell',isbn:'978-0-14-118270-4',cefr:'B1',genre:'Fiction',bg:'#15803D',copies:[C('B-004211','Nizami','available'),C('B-004212','Nizami','available'),C('B-004213','Nəsimi','onloan')]},
+  {id:'t7',title:'Sapiens',author:'Yuval Noah Harari',isbn:'978-0-06-231609-7',cefr:'C1',genre:'History',bg:'#A8A29E',copies:[C('B-005101','Nizami','hold'),C('B-005102','Yasamal','damaged','Water damage')]},
+  {id:'t8',title:'Dəli Kür',author:'İsmayıl Şıxlı',isbn:'978-9952-416-33-1',cefr:'C1',genre:'Azerbaijani Literature',bg:'#1E3A8A',copies:[C('B-005530','Nizami','available'),C('B-005531','Nəsimi','available'),C('B-005532','Xətai','available')]}
+];
+const BRANCH_NAMES = ['Nizami','Yasamal','Nəsimi','Xətai','Sumqayıt'];
+const ROSTER = [['Leyla Həsənova','LH',186,12,'1984',67,'Today',''],['Tural Babayev','TB',42,0,'The Hobbit',33,'9 days ago','inactive'],['Nərmin Qasımova','NQ',240,21,'Pride and Prejudice',100,'Today',''],['Elçin Məmmədli','EM',128,5,'Wonder',67,'Yesterday',''],['Aygün Rzayeva','AR',311,30,'Sapiens',100,'Today',''],['Rəşad Əliyev','RƏ',0,0,'—',0,'14 days ago','inactive'],['Fidan Qurbanova','FQ',96,3,'Animal Farm',33,'2 days ago','overdue'],['Kənan İsmayılov','Kİ',174,9,'The Martian',67,'Today',''],['Səma Hüseynova','SH',205,15,'Əli və Nino',100,'Today',''],['Orxan Vəliyev','OV',61,2,'Wonder',33,'4 days ago','overdue']];
+const AVC = ['#075985','#B45309','#0E7490','#7C3AED','#BE185D','#475569','#15803D','#1B9DD9','#9F1239','#0F766E'];
+const POOL = [{id:'animal',title:'Animal Farm',author:'George Orwell',cefr:'B1',bg:'#15803D',copies:9},{id:'wonder',title:'Wonder',author:'R.J. Palacio',cefr:'A2',bg:'#1D4ED8',copies:14},{id:'alch',title:'The Alchemist',author:'Paulo Coelho',cefr:'B1',bg:'#CA8A04',copies:11},{id:'hobbit',title:'The Hobbit',author:'J.R.R. Tolkien',cefr:'B1',bg:'#365314',copies:10},{id:'prince',title:'The Little Prince',author:'Antoine de Saint-Exupéry',cefr:'A2',bg:'#0C4A6E',copies:13},{id:'deli',title:'Dəli Kür',author:'İsmayıl Şıxlı',cefr:'C1',bg:'#1E3A8A',copies:7},{id:'mock',title:'To Kill a Mockingbird',author:'Harper Lee',cefr:'B2',bg:'#57534E',copies:4},{id:'orwell',title:'1984',author:'George Orwell',cefr:'B2',bg:'#991B1B',copies:8}];
+const DRAFT0 = () => ({title:'Books of November',desc:'Two short classics about fairness and belonging. Read both, pass the quizzes, and tell us which one changed your mind.',start:'2026-11-01',end:'2026-11-30',aud:'class',books:['animal','wonder'],
+  quiz:{animal:[{q:'Which pig is driven off the farm?',o:['Napoleon','Snowball','Squealer'],a:1},{q:'What is Boxer’s motto?',o:['I will work harder','Four legs good','All animals are equal'],a:0}],wonder:[{q:'What is the main character’s name?',o:['Jack','Julian','Auggie'],a:2}]},
+  pass:2,pts:{read:10,quiz:15,review:5},prizes:[{place:'1st',text:'Signed book of your choice'},{place:'2nd',text:'Bookstore voucher'},{place:'Everyone',text:'“Fair Reader” badge for finishing both'}]});
+const REPORTS0 = [
+  {id:'rp1',kind:'Review',reason:'Spoiler',reporters:3,time:'12 min ago',author:'Səbinə Rəhimova',cls:'11-A',book:'Əli və Nino',text:'The ending wrecked me. Ali choosing to stay and defend the city instead of fleeing with Nino is the only ending that makes sense for him.',history:'No previous reports',status:'open'},
+  {id:'rp2',kind:'Reply',reason:'Unkind',reporters:1,time:'1 h ago',author:'Tural Babayev',cls:'9-A',book:'Kürk Mantolu Madonna',text:'Only boring people would like this book lol. Zeynəb you have no taste.',history:'1 previous warning · 12 Sep',status:'open'},
+  {id:'rp3',kind:'Club thread',reason:'Personal info',reporters:2,time:'3 h ago',author:'Murad Hüseynov',cls:'7-C',book:'The Hobbit',text:'Anyone want to meet up after school and read together? my number is 050 *** ** **',history:'No previous reports',status:'open',auto:true},
+  {id:'rp4',kind:'Review',reason:'Off-topic',reporters:1,time:'Yesterday',author:'Günay Əliyeva',cls:'10-B',book:'1984',text:'Does anyone have the answers for the maths homework?',history:'No previous reports',status:'open'},
+  {id:'rp5',kind:'Review',reason:'Spoiler',reporters:2,time:'3 days ago',author:'Kamran Əhmədov',cls:'11-B',book:'Fahrenheit 451',text:'Can’t believe Beatty ends up…',history:'No previous reports',status:'resolved',outcome:'Spoiler tag added'}
+];
+const REASON = {'Spoiler':['#EDE9FE','#5B21B6'],'Unkind':['#FFF1EE','#B4232A'],'Personal info':['#FFEDD5','#9A3412'],'Off-topic':['#F1F5F9','#475569']};
+const USERS0 = [
+  {id:'u1',name:'Rauf Hüseynli',email:'r.huseynli@hedef.az',role:'Admin',branch:'All',status:'active',last:'Now'},
+  {id:'u2',name:'Səadət Kərimova',email:'s.kerimova@hedef.az',role:'Librarian',branch:'Nizami',status:'active',last:'2 min ago'},
+  {id:'u3',name:'Kamal Nəsirov',email:'k.nasirov@hedef.az',role:'Librarian',branch:'Sumqayıt',status:'invited',last:'—'},
+  {id:'u4',name:'Günel Əliyeva',email:'g.aliyeva@hedef.az',role:'Teacher',branch:'Nizami',status:'active',last:'10 min ago'},
+  {id:'u5',name:'Rəşad Quliyev',email:'r.quliyev@hedef.az',role:'Teacher',branch:'Yasamal',status:'active',last:'1 h ago'},
+  {id:'u6',name:'Lalə Nəsibova',email:'l.nasibova@hedef.az',role:'Teacher',branch:'Xətai',status:'active',last:'Yesterday'},
+  {id:'u7',name:'Leyla Həsənova',email:'HDF-10482 · student',role:'Student',branch:'Nizami',status:'active',last:'Today'},
+  {id:'u8',name:'Nicat Səfərov',email:'HDF-10233 · student',role:'Student',branch:'Nizami',status:'active',last:'Today'},
+  {id:'u9',name:'Aysel Məmmədova',email:'HDF-09871 · student',role:'Student',branch:'Yasamal',status:'active',last:'Today'},
+  {id:'u10',name:'Tural Babayev',email:'HDF-10577 · student',role:'Student',branch:'Nizami',status:'suspended',last:'9 days ago'}
+];
+const ROLEC = {Admin:['#EDE9FE','#5B21B6'],Librarian:['#CCFBF1','#115E59'],Teacher:['#FEF3C7','#92400E'],Student:['#E0F2FE','#075985']};
+const SHARE0 = [['first','First name + initial','Shown as “Leyla H.” on alliance leaderboards',true],['grade','Grade / class','Used to group results by age',true],['pages','Pages read','Totals only — no titles',true],['quiz','Quiz scores','For shared challenges',true],['badges','Badges earned','Shown on alliance profiles',true],['reviews','Review text','Names masked as initials',false]];
+const LOCKED = [['Full name','Protected for minors'],['Date of birth','Protected for minors'],['Loan history','Stays inside Hədəf'],['Private notes','Never leaves the student’s account']];
+const AUDIT0 = [['24 Sep 2026','Zəka Liseyi','Started battle “Autumn Head-to-Head” with Hədəf'],['15 Sep 2026','Rauf Hüseynli','Launched “Autumn Classics Relay” with 3 partner schools'],['2 Feb 2026','All 4 schools','Signed the Baku Readers Alliance agreement']];
+const GEN = [['Fiction','#0D9488',27],['World Classics','#BE123C',22],['Science Fiction','#7C3AED',19],['Fantasy','#16A34A',14],['History','#D97706',10],['Azerbaijani Literature','#EA580C',8]];
+const nowT = () => { const d=new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
+
+class Component extends DCLogic {
+  state = {screen:null,toast:null,deskMode:'out',patronQ:'',patronId:null,bookQ:'',cart:[],due:14,activity:ACT0,checkinQ:'',checkinBc:null,cond:'Good',returned:{},
+    holdsTab:'holds',holds:HOLDS0,overdue:OD0,odSel:{},lost:{},
+    invQ:'',invBranch:'All',titles:TITLES0,expanded:'t2',addOpen:false,addIsbn:'',addFound:false,addForm:null,addCopies:{Nizami:2,Yasamal:1,'Nəsimi':1,'Xətai':0,'Sumqayıt':1},
+    cls:'9-B',stuSel:0,
+    bStep:0,draft:DRAFT0(),bookSearch:'',quizBook:'animal',published:false,
+    modTab:'open',reports:REPORTS0,modSel:'rp1',modReply:'',
+    userRole:'All',userQ:'',users:USERS0,inviteOpen:false,inviteRole:'Teacher',inviteBranch:'Nizami',inviteEmails:'',
+    share:{first:true,grade:true,pages:true,quiz:true,badges:true,reviews:false},inv:'pending',audit:AUDIT0,range:'Month'};
+  flash(m){this.setState({toast:m});clearTimeout(this._t);this._t=setTimeout(()=>this.setState({toast:null}),2200);}
+  setDraft(p){this.setState(s=>({draft:{...s.draft,...p}}));}
+  go(id){this.setState({screen:id});window.scrollTo(0,0);}
+  renderVals(){
+    const s=this.state;const role=ROLES[this.props.role]?this.props.role:'librarian';const R=ROLES[role];
+    const scr=R.nav.some(n=>n[0]===s.screen)?s.screen:R.nav[0][0];
+    const openReports=s.reports.filter(r=>r.status==='open').length;
+    const readyHolds=s.holds.filter(h=>h.status==='ready').length;
+    const counts={holds:s.overdue.filter(o=>!s.lost[o.id]).length,moderation:openReports};
+    const out={roleInfo:R,toast:s.toast,pageTitle:R.nav.find(n=>n[0]===scr)[1],pageCrumb:role==='admin'?'Hədəf':'Hədəf · Nizami Branch',
+      nav:R.nav.map(([id,label])=>({label,bg:scr===id?'#0C4A6E':'transparent',fg:scr===id?'#fff':'#BAE6FD',dot:scr===id?'#7DD3FC':'rgba(186,230,253,0.3)',hasCount:!!counts[id],count:counts[id]||0,onClick:()=>this.go(id)})),
+      isDesk:scr==='desk',isHolds:scr==='holds',isInventory:scr==='inventory',isClass:scr==='class',isBuilder:scr==='builder',isModeration:scr==='moderation',isAnalytics:scr==='analytics',isOrg:scr==='org',isAlliances:scr==='alliances'};
+    Object.assign(out,this.librarian(s),this.teacher(s),this.admin(s));
+    return out;
+  }
+  librarian(s){
+    const pq=s.patronQ.trim().toLowerCase();
+    const patron=PATRONS.find(p=>p.id===s.patronId);
+    const inCart=bc=>s.cart.some(c=>c.bc===bc);
+    const bq=s.bookQ.trim().toLowerCase();
+    const shelf=SHELF.filter(b=>!inCart(b.bc)&&(!bq||b.title.toLowerCase().includes(bq)||b.bc.toLowerCase().includes(bq))).slice(0,6);
+    const dueD=new Date(2026,8,26+s.due);const dueDate=dueD.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][dueD.getMonth()];
+    const cq=s.checkinQ.trim().toLowerCase();
+    const onloan=ONLOAN.filter(o=>!s.returned[o.bc]&&(!cq||o.title.toLowerCase().includes(cq)||o.bc.toLowerCase().includes(cq)));
+    const ci=ONLOAN.find(o=>o.bc===s.checkinBc);
+    const addAct=(type,action,title,who)=>[[nowT(),type,action,title,who],...s.activity];
+    const lent=s.activity.filter(a=>a[1]==='out').length+33, ret=s.activity.filter(a=>a[1]==='in').length+27;
+    const odSel=Object.keys(s.odSel).filter(k=>s.odSel[k]);
+    const bars=t=>{const cs=t.copies.filter(c=>s.invBranch==='All'||c.branch===s.invBranch);const n=cs.length||1;const av=cs.filter(c=>c.status==='available').length;const bad=cs.filter(c=>c.status==='lost'||c.status==='damaged').length;const lo=cs.length-av-bad;
+      return {cs,bar:[{w:(av/n*100)+'%',c:'#16A34A'},{w:(lo/n*100)+'%',c:'#1B9DD9'},{w:(bad/n*100)+'%',c:'#94A3B8'}],summary:av+' available · '+lo+' out'+(bad?' · '+bad+' lost/damaged':'')};};
+    const iq=s.invQ.trim().toLowerCase();
+    const titles=s.titles.filter(t=>(!iq||(t.title+t.author+t.isbn).toLowerCase().includes(iq))&&(s.invBranch==='All'||t.copies.some(c=>c.branch===s.invBranch)));
+    const allCopies=s.titles.reduce((n,t)=>n+t.copies.length,0);
+    const f=s.addForm||{};
+    return {
+      deskKpis:[{label:'Checked out today',value:lent,delta:'+6 vs last Sat',dc:'#166534'},{label:'Returned today',value:ret,delta:'On track',dc:'#475569'},{label:'Overdue (branch)',value:s.overdue.length,delta:'2 over 14 days',dc:'#B4232A'},{label:'Holds ready',value:s.holds.filter(h=>h.status==='ready').length,delta:'Pickup shelf B',dc:'#475569'}],
+      deskModes:[['out','Check out'],['in','Check in']].map(([id,l])=>({label:l,bg:s.deskMode===id?'#082F49':'transparent',fg:s.deskMode===id?'#fff':'#475569',onClick:()=>this.setState({deskMode:id})})),
+      modeOut:s.deskMode==='out',modeIn:s.deskMode==='in',
+      patronQ:s.patronQ,onPatronQ:e=>this.setState({patronQ:e.target.value}),noPatron:!patron,hasPatron:!!patron,
+      patronResults:PATRONS.filter(p=>!pq||(p.name+p.card+p.grade).toLowerCase().includes(pq)).map(p=>({...p,loanCount:p.loans.length,hasOverdue:p.loans.some(l=>l[2]),onClick:()=>this.setState({patronId:p.id,patronQ:''})})),
+      patron:patron?{...patron,limitLabel:(patron.loans.length+s.cart.length)+' of 5 loans used · no fines',blocked:patron.loans.some(l=>l[2]),loanRows:patron.loans.map(l=>({title:l[0],...(l[2]?pill('overdue'):{label:'Due '+l[1],bg:'#E0F2FE',fg:'#075985'})}))}:{loanRows:[]},
+      clearPatron:()=>this.setState({patronId:null,cart:[]}),
+      bookQ:s.bookQ,onBookQ:e=>this.setState({bookQ:e.target.value}),
+      shelfResults:shelf.map(b=>({...b,onClick:()=>{if(patron&&patron.loans.length+s.cart.length>=5){this.flash('Loan limit reached (5)');return;}this.setState(st=>({cart:[...st.cart,b],bookQ:''}));}})),
+      cart:s.cart.map(c=>({...c,onRemove:()=>this.setState(st=>({cart:st.cart.filter(x=>x.bc!==c.bc)}))})),cartCount:s.cart.length,cartEmpty:!s.cart.length,dueDate,
+      dueOpts:[7,14,21].map(d=>({label:d+' days',...chip(s.due===d),onClick:()=>this.setState({due:d})})),
+      checkoutBg:s.cart.length?'#1B9DD9':'#94CFEA',
+      onCheckout:()=>{if(!s.cart.length)return;let act=s.activity;s.cart.forEach(c=>{act=[[nowT(),'out','Checked out',c.title,patron.name+' · '+patron.grade],...act];});this.setState({activity:act,cart:[],patronId:null});this.flash(s.cart.length+' item(s) lent to '+patron.name+' · due '+dueDate+'. Added to their diary.');},
+      checkinQ:s.checkinQ,onCheckinQ:e=>this.setState({checkinQ:e.target.value}),noCheckin:!ci,hasCheckin:!!ci,
+      onloanResults:onloan.map(o=>({...o,st:o.od>0?pill('overdue'):pill('due'),onClick:()=>this.setState({checkinBc:o.bc,cond:'Good'})})),
+      ciItem:ci?{...ci,isOverdue:ci.od>0,odLabel:'Returned '+ci.od+' day'+(ci.od>1?'s':'')+' late. The overdue reminder will stop automatically.',hasHold:!!ci.hold}:{},
+      clearCheckin:()=>this.setState({checkinBc:null}),
+      condOpts:['Good','Worn','Damaged'].map(c=>({label:c,...chip(s.cond===c),onClick:()=>this.setState({cond:c})})),
+      onCheckin:()=>{this.setState({activity:addAct('in','Returned',ci.title,ci.patron),returned:{...s.returned,[ci.bc]:true},checkinBc:null,checkinQ:''});this.flash(ci.hold?'Returned — place on holds shelf for '+ci.hold.split(' · ')[0]:'Returned · condition: '+s.cond);},
+      activity:s.activity.slice(0,8).map(a=>({time:a[0],dot:a[1]==='in'?'#16A34A':a[1]==='out'?'#1B9DD9':'#D97706',action:a[2],title:a[3],who:a[4]})),
+      holdTabs:[['holds','Holds queue',s.holds.length],['overdue','Overdue',s.overdue.length]].map(([id,l,c])=>({label:l,count:c,bg:s.holdsTab===id?'#082F49':'#fff',fg:s.holdsTab===id?'#fff':'#334155',border:s.holdsTab===id?'#082F49':'#CBD5E1',cBg:s.holdsTab===id?'rgba(255,255,255,0.2)':'#F1F5F9',cFg:s.holdsTab===id?'#fff':'#475569',onClick:()=>this.setState({holdsTab:id})})),
+      tabHolds:s.holdsTab==='holds',tabOverdue:s.holdsTab==='overdue',
+      holds:s.holds.map(hd=>({...hd,st:pill(hd.status),pickup:hd.pickup||'',primaryLabel:hd.status==='ready'?'Picked up':'Mark ready',
+        onPrimary:()=>{if(hd.status==='ready'){this.setState(st=>({holds:st.holds.filter(x=>x.id!==hd.id),activity:[[nowT(),'out','Hold collected',hd.title,hd.patron+' · '+hd.grade],...st.activity]}));this.flash('Checked out to '+hd.patron);}else{this.setState(st=>({holds:st.holds.map(x=>x.id===hd.id?{...x,status:'ready',pickup:'Pick up by 3 Oct'}:x)}));this.flash(hd.patron+' notified — ready for pickup');}},
+        onCancel:()=>{this.setState(st=>({holds:st.holds.filter(x=>x.id!==hd.id)}));this.flash('Hold cancelled');}})),
+      odSelCount:odSel.length,
+      onBulkRemind:()=>{if(!odSel.length){this.flash('Select students first');return;}this.setState(st=>({overdue:st.overdue.map(o=>st.odSel[o.id]?{...o,rem:o.rem+1}:o),odSel:{}}));this.flash(odSel.length+' reminders sent in the app and by email to parents');},
+      onBulkTeacher:()=>{if(!odSel.length){this.flash('Select students first');return;}this.setState({odSel:{}});this.flash('Class teachers notified');},
+      overdue:s.overdue.map(o=>{const sel=!!s.odSel[o.id];const lost=!!s.lost[o.id];return {...o,rowBg:sel?'#F0F9FF':lost?'#F8FAFC':'#fff',boxBg:sel?'#1B9DD9':'#fff',boxBorder:sel?'#1B9DD9':'#CBD5E1',check:sel?'✓':'',
+        daysLabel:lost?'Marked lost':o.days+' day'+(o.days>1?'s':''),dayFg:lost?'#64748B':o.days>=14?'#B4232A':o.days>=7?'#9A3412':'#92400E',lostLabel:lost?'Undo lost':'Mark lost',
+        onSel:()=>this.setState(st=>({odSel:{...st.odSel,[o.id]:!st.odSel[o.id]}})),
+        onRemind:()=>{this.setState(st=>({overdue:st.overdue.map(x=>x.id===o.id?{...x,rem:x.rem+1}:x)}));this.flash('Reminder sent to '+o.patron);},
+        onTeacher:()=>this.flash(o.teacher+' notified'),onLost:()=>this.setState(st=>({lost:{...st.lost,[o.id]:!st.lost[o.id]}}))};}),
+      invKpis:[{label:'Titles',value:s.titles.length*52,delta:'+14 this term',dc:'#166534'},{label:'Copies',value:(allCopies*211).toLocaleString('en-US'),delta:'Across 5 branches',dc:'#475569'},{label:'On loan now',value:'1,318',delta:'17% of copies',dc:'#475569'},{label:'Lost or damaged',value:'23',delta:'Review before term ends',dc:'#B4232A'}],
+      invQ:s.invQ,onInvQ:e=>this.setState({invQ:e.target.value}),
+      invBranches:['All',...BRANCH_NAMES].map(b=>({label:b==='All'?'All branches':b,...chip(s.invBranch===b),onClick:()=>this.setState({invBranch:b})})),
+      titles:titles.map(t=>{const b=bars(t);const open=s.expanded===t.id;return {...t,total:b.cs.length,bar:b.bar,summary:b.summary,open,toggleLabel:open?'Hide':'Copies',onToggle:()=>this.setState({expanded:open?null:t.id}),copyRows:b.cs.map(c=>({...c,st:pill(c.status)}))};}),
+      addOpen:s.addOpen,openAdd:()=>this.setState({addOpen:true,addFound:false,addIsbn:''}),closeAdd:()=>this.setState({addOpen:false}),
+      addIsbn:s.addIsbn,onAddIsbn:e=>this.setState({addIsbn:e.target.value}),
+      onLookup:()=>this.setState({addFound:true,addForm:{title:'The Giver',author:'Lois Lowry',isbn:s.addIsbn.trim()||'978-0-544-33626-1',publisher:'HMH Books',cefr:'B1',genre:'Science Fiction'}}),
+      addFound:s.addFound,addNotFound:!s.addFound,
+      addFields:[['title','Title'],['author','Author'],['isbn','ISBN'],['publisher','Publisher'],['cefr','CEFR level'],['genre','Genre']].map(([k,l])=>({label:l,value:f[k]||'',onChange:e=>this.setState(st=>({addForm:{...st.addForm,[k]:e.target.value}}))})),
+      addCopies:BRANCH_NAMES.map(b=>({branch:b,value:s.addCopies[b],onChange:e=>this.setState(st=>({addCopies:{...st.addCopies,[b]:Math.max(0,parseInt(e.target.value)||0)}}))})),
+      onSaveTitle:()=>{let n=6000;const copies=[];BRANCH_NAMES.forEach(b=>{for(let i=0;i<s.addCopies[b];i++)copies.push(C('B-00'+(n++),b,'available'));});
+        this.setState(st=>({titles:[{id:'t'+Date.now(),title:f.title,author:f.author,isbn:f.isbn,cefr:f.cefr,genre:f.genre,bg:'#0F766E',copies},...st.titles],addOpen:false,expanded:null}));this.flash(f.title+' added · '+copies.length+' barcode labels sent to printer');}
+    };
+  }
+  teacher(s){
+    const fac={'9-B':1,'8-A':0.82,'10-A':1.15}[s.cls];
+    const roster=ROSTER.map((r,i)=>({name:r[0],initials:r[1],pages:Math.round(r[2]*fac),streak:r[3],book:r[4],ch:r[5],last:r[6],flag:r[7],av:AVC[i]}));
+    const sel=roster[s.stuSel]||roster[0];
+    const active=roster.filter(r=>r.flag!=='inactive').length;
+    const weeks=[142,158,171,149,188,176,193,186].map(v=>Math.round(v*fac));const wmax=Math.max(...weeks);
+    const d=s.draft;const steps=['Details','Books','Quizzes','Prizes','Review'];
+    const bq=s.bookSearch.trim().toLowerCase();
+    const qb=d.books.includes(s.quizBook)?s.quizBook:d.books[0];
+    const qs=(d.quiz[qb]||[]);
+    const setQ=(fn)=>this.setState(st=>{const list=[...(st.draft.quiz[qb]||[])];fn(list);return {draft:{...st.draft,quiz:{...st.draft.quiz,[qb]:list}}};});
+    const AUD=[['class','My class · 9-B'],['grade','Grade 9 (4 classes)'],['school','Whole school'],['alliance','Baku Readers Alliance']];
+    const audLabel=AUD.find(a=>a[0]===d.aud)[1];
+    const warnings=d.books.filter(b=>(d.quiz[b]||[]).length<3).map(b=>({t:POOL.find(p=>p.id===b).title+' has '+(d.quiz[b]||[]).length+' question(s) — 3 recommended.'}));
+    const fmtD=x=>{const p=x.split('-');return parseInt(p[2])+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(p[1])-1];};
+    const rep=s.reports.filter(r=>s.modTab==='open'?r.status==='open':r.status==='resolved');
+    const mod=s.reports.find(r=>r.id===s.modSel&&rep.includes(r))||rep[0];
+    const resolve=(outcome)=>{const openNext=s.reports.find(r=>r.status==='open'&&r.id!==mod.id);this.setState(st=>({reports:st.reports.map(r=>r.id===mod.id?{...r,status:'resolved',outcome}:r),modReply:'',modSel:openNext?openNext.id:null}));this.flash('Resolved · '+outcome+(s.modReply.trim()?' · reply posted':''));};
+    return {
+      classOpts:['9-B','8-A','10-A'].map(c=>({label:c,...chip(s.cls===c),onClick:()=>this.setState({cls:c,stuSel:0})})),
+      onExportClass:()=>this.flash('Class report exported (PDF)'),
+      classKpis:[{label:'Active readers',value:active+' / '+roster.length,delta:roster.length-active+' inactive this week',dc:'#B4232A'},{label:'Avg pages this week',value:weeks[7],delta:'+'+(weeks[7]-weeks[6])+' vs last week',dc:weeks[7]>=weeks[6]?'#166534':'#B4232A'},{label:'Books of September',value:'61%',delta:'verified at least one book',dc:'#475569'},{label:'Reviews this month',value:Math.round(34*fac),delta:'3 flagged, all resolved',dc:'#475569'}],
+      weekChart:weeks.map((v,i)=>({v,h:(v/wmax*100)+'px',c:i===7?'#1B9DD9':'#BAE6FD',l:'W'+(32+i)})),
+      roster:roster.map((r,i)=>({...r,chW:r.ch+'%',chLabel:Math.round(r.ch/33.4)+'/3',rowBg:i===s.stuSel?'#F0F9FF':'#fff',hasFlag:!!r.flag,flag:r.flag==='inactive'?{label:'Inactive',bg:'#FFF1EE',fg:'#B4232A'}:{label:'Overdue book',bg:'#FEF3C7',fg:'#92400E'},onClick:()=>this.setState({stuSel:i})})),
+      stu:{...sel,cls:s.cls,chLabel:Math.round(sel.ch/33.4)+'/3',recent:sel.pages?[{a:'Logged '+Math.round(sel.pages/6)+' pages',b:sel.book,t:sel.last},{a:'Passed quiz 3/3',b:'Əli və Nino',t:'2 days ago'},{a:'Wrote a review',b:'Kitabi-Dədə Qorqud',t:'5 days ago'}]:[{a:'No reading logged',b:'last 14 days',t:'—'}]},
+      onEncourage:()=>this.flash('Encouragement sent to '+sel.name.split(' ')[0]),onNoteParent:()=>this.flash('Note sent to '+sel.name.split(' ')[0]+'’s parent'),
+      bSteps:steps.map((l,i)=>({label:l,n:i<s.bStep?'✓':i+1,bg:i===s.bStep?'#082F49':'#fff',fg:i===s.bStep?'#fff':i<s.bStep?'#075985':'#64748B',border:i===s.bStep?'#082F49':'#CBD5E1',dotBg:i<s.bStep?'#1B9DD9':i===s.bStep?'#fff':'#E2E8F0',dotFg:i<s.bStep?'#fff':i===s.bStep?'#082F49':'#64748B',onClick:()=>this.setState({bStep:i,published:false})})),
+      bDetails:s.bStep===0,bBooks:s.bStep===1,bQuiz:s.bStep===2,bPrizes:s.bStep===3,bReview:s.bStep===4,
+      draft:d,onDTitle:e=>this.setDraft({title:e.target.value}),onDDesc:e=>this.setDraft({desc:e.target.value}),onDStart:e=>this.setDraft({start:e.target.value}),onDEnd:e=>this.setDraft({end:e.target.value}),
+      audOpts:AUD.map(([id,l])=>({label:l,...chip(d.aud===id),onClick:()=>this.setDraft({aud:id})})),audNeedsAdmin:d.aud==='alliance',
+      bookSearch:s.bookSearch,onBookSearch:e=>this.setState({bookSearch:e.target.value}),
+      bookPool:POOL.filter(p=>!bq||(p.title+p.author).toLowerCase().includes(bq)).map(p=>{const on=d.books.includes(p.id);return {...p,label:on?'Added ✓':'+ Add',onClick:()=>this.setDraft({books:on?d.books.filter(x=>x!==p.id):[...d.books,p.id],quiz:{...d.quiz,[p.id]:d.quiz[p.id]||[{q:'',o:['','',''],a:0}]}})};}),
+      selCount:d.books.length,selBooks:d.books.map((b,i)=>{const p=POOL.find(x=>x.id===b);return {...p,n:i+1,qCount:(d.quiz[b]||[]).length,onRemove:()=>this.setDraft({books:d.books.filter(x=>x!==b)})};}),
+      passOpts:[1,2,3].map(n=>({label:n+' of 3',...chip(d.pass===n),onClick:()=>this.setDraft({pass:n})})),
+      quizTabs:d.books.map(b=>({label:POOL.find(p=>p.id===b).title+' ('+(d.quiz[b]||[]).length+')',...chip(b===qb),onClick:()=>this.setState({quizBook:b})})),
+      questions:qs.map((q,qi)=>({n:qi+1,q:q.q,onQ:e=>{const v=e.target.value;setQ(l=>{l[qi]={...l[qi],q:v};});},onDelete:()=>setQ(l=>{l.splice(qi,1);}),
+        opts:q.o.map((o,oi)=>{const ok=q.a===oi;return {v:o,ring:ok?'#16A34A':'#CBD5E1',fill:ok?'#16A34A':'#fff',mark:ok?'✓':'',onCorrect:()=>setQ(l=>{l[qi]={...l[qi],a:oi};}),onChange:e=>{const v=e.target.value;setQ(l=>{const oo=[...l[qi].o];oo[oi]=v;l[qi]={...l[qi],o:oo};});}};})})),
+      onAddQ:()=>setQ(l=>{l.push({q:'',o:['','',''],a:0});}),
+      ptFields:[['read','Points for reading'],['quiz','Points for passing quiz'],['review','Points for a review']].map(([k,l])=>({label:l,v:d.pts[k],onChange:e=>this.setDraft({pts:{...d.pts,[k]:parseInt(e.target.value)||0}})})),
+      prizeRows:d.prizes.map((p,i)=>({...p,onPlace:e=>{const v=e.target.value;this.setDraft({prizes:d.prizes.map((x,j)=>j===i?{...x,place:v}:x)});},onText:e=>{const v=e.target.value;this.setDraft({prizes:d.prizes.map((x,j)=>j===i?{...x,text:v}:x)});},onDelete:()=>this.setDraft({prizes:d.prizes.filter((x,j)=>j!==i)})})),
+      onAddPrize:()=>this.setDraft({prizes:[...d.prizes,{place:(d.prizes.length+1)+'th',text:''}]}),
+      summary:[{k:'Title',v:d.title},{k:'Audience',v:audLabel},{k:'Dates',v:fmtD(d.start)+' – '+fmtD(d.end)},{k:'Books',v:d.books.map(b=>POOL.find(p=>p.id===b).title).join(', ')},{k:'Quiz questions',v:d.books.reduce((n,b)=>n+(d.quiz[b]||[]).length,0)+' · pass '+d.pass+' of 3'},{k:'Points',v:'Read '+d.pts.read+' · Quiz '+d.pts.quiz+' · Review '+d.pts.review},{k:'Prizes',v:d.prizes.length+' prizes'}],
+      warnings,hasWarnings:warnings.length>0,audLabel,dateLabel:fmtD(d.start)+' – '+fmtD(d.end),
+      notPublished:!s.published,published:s.published,publishLabel:d.aud==='alliance'?'Send for admin approval':'Publish challenge',
+      publishedTitle:d.aud==='alliance'?'Sent for approval':'Challenge published',
+      publishedText:d.aud==='alliance'?'Rauf Hüseynli (school admin) will review it before partner schools can see it.':'“'+d.title+'” goes live for '+audLabel+' on '+fmtD(d.start)+'. Students will get a notification.',
+      onSaveDraft:()=>this.flash('Draft saved'),onPublish:()=>this.setState({published:true}),
+      onNewChallenge:()=>this.setState({draft:{...DRAFT0(),title:'',desc:'',books:[],quiz:{},prizes:[]},bStep:0,published:false}),
+      showBNav:!(s.bStep===4),onBPrev:()=>this.setState({bStep:Math.max(0,s.bStep-1)}),onBNext:()=>this.setState({bStep:Math.min(4,s.bStep+1)}),nextStepLabel:steps[Math.min(4,s.bStep+1)],
+      modTabs:[['open','Open ('+s.reports.filter(r=>r.status==='open').length+')'],['resolved','Resolved']].map(([id,l])=>({label:l,...chip(s.modTab===id),onClick:()=>this.setState({modTab:id,modSel:null})})),
+      modEmpty:!rep.length,hasModSel:!!mod,
+      reports:rep.map(r=>({...r,reasonC:{bg:REASON[r.reason][0],fg:REASON[r.reason][1]},reportersLabel:r.reporters+' report'+(r.reporters>1?'s':''),border:mod&&r.id===mod.id?'#1B9DD9':'#E2E8F0',onClick:()=>this.setState({modSel:r.id,modReply:''})})),
+      mod:mod?{...mod,reasonC:{bg:REASON[mod.reason][0],fg:REASON[mod.reason][1]},st:pill(mod.status),reportersLabel:mod.reporters+' report'+(mod.reporters>1?'s':''),auto:!!mod.auto,isOpen:mod.status==='open',isResolved:mod.status==='resolved'}:{reasonC:{},st:{}},
+      modActions:[['Keep visible','Kept — no action','#fff','#334155','#CBD5E1'],['Add spoiler tag','Spoiler tag added','#fff','#5B21B6','#DDD6FE'],['Hide post','Hidden from students','#fff','#B4232A','#FFD6CF'],['Hide & warn student','Hidden · student warned','#D93A41','#fff','#D93A41']].map(([l,o,bg,fg,b])=>({label:l,bg,fg,border:b,onClick:()=>resolve(o)})),
+      modReply:s.modReply,onModReply:e=>this.setState({modReply:e.target.value})
+    };
+  }
+  admin(s){
+    const f={Week:0.25,Month:1,Term:3.2}[s.range];
+    const eng=[58,61,64,60,66,69,71,68,72,74,73,76];
+    const byB=[['Sumqayıt',231],['Nizami',212],['Nəsimi',205],['Yasamal',198],['Xətai',176]];
+    const byG=[['7',188],['8',204],['9',196],['10',171],['11',142]];
+    const uq=s.userQ.trim().toLowerCase();
+    const users=s.users.filter(u=>(s.userRole==='All'||u.role===s.userRole)&&(!uq||(u.name+u.email).toLowerCase().includes(uq)));
+    const cnt=r=>s.users.filter(u=>r==='All'||u.role===r).length;
+    return {
+      rangeOpts:['Week','Month','Term'].map(r=>({label:r,...chip(s.range===r),onClick:()=>this.setState({range:r})})),onExport:()=>this.flash('Analytics exported (CSV)'),
+      anKpis:[{label:'Weekly active readers',value:'1,642',delta:'74% of 2,210 students',dc:'#166534'},{label:'Pages read',value:Math.round(412*f)+'k',delta:'+9% vs previous '+s.range.toLowerCase(),dc:'#166534'},{label:'Books borrowed',value:Math.round(3180*f).toLocaleString('en-US'),delta:'Top: Wonder',dc:'#475569'},{label:'Quiz-verified reads',value:Math.round(1204*f).toLocaleString('en-US'),delta:'81% pass rate',dc:'#475569'}],
+      engage:eng.map((v,i)=>({v:v+'%',h:(v/80*120)+'px',c:i===11?'#1B9DD9':'#BAE6FD',l:'W'+(28+i)})),
+      byBranch:byB.map(([n,v])=>({name:n,v:Math.round(v*f),w:(v/231*100)+'%'})),
+      byGrade:byG.map(([l,v])=>({l:'Grade '+l,v:Math.round(v*f),h:(v/204*110)+'px'})),
+      genreMix:GEN.map(([n,c,v])=>({name:n,c,w:v+'%'})),
+      topBooks:[['Wonder','A2',4.7,212,'#1D4ED8'],['Əli və Nino','B2',4.6,188,'#7C2D12'],['The Hobbit','B1',4.5,171,'#365314'],['Animal Farm','B1',4.3,149,'#15803D'],['1984','B2',4.4,133,'#991B1B']].map((b,i)=>({n:i+1,title:b[0],cefr:b[1],rating:b[2],loans:Math.round(b[3]*f),bg:b[4]})),
+      onAddBranch:()=>this.flash('New branch setup opened'),
+      branches:[['Nizami',612,38,74],['Yasamal',540,31,69],['Nəsimi',488,29,71],['Xətai',356,22,58],['Sumqayıt',214,14,81]].map(([n,st,sf,a])=>({name:n,students:st,staff:sf,active:a+'%',w:a+'%'})),
+      roleTabs:['All','Student','Teacher','Librarian','Admin'].map(r=>({label:(r==='All'?'All':r+'s')+' ('+cnt(r)+')',...chip(s.userRole===r),onClick:()=>this.setState({userRole:r})})),
+      userQ:s.userQ,onUserQ:e=>this.setState({userQ:e.target.value}),onImport:()=>this.flash('CSV import: map columns to name, email, role, branch'),
+      users:users.map(u=>({...u,roleC:{bg:ROLEC[u.role][0],fg:ROLEC[u.role][1]},st:pill(u.status),
+        toggleLabel:u.status==='invited'?'Resend':u.status==='suspended'?'Reactivate':'Suspend',tFg:u.status==='active'?'#B4232A':'#075985',tBorder:u.status==='active'?'#FFD6CF':'#BAE6FD',
+        onEdit:()=>this.flash('Editing '+u.name),
+        onToggle:()=>{if(u.status==='invited'){this.flash('Invite resent to '+u.email);return;}this.setState(st=>({users:st.users.map(x=>x.id===u.id?{...x,status:x.status==='active'?'suspended':'active'}:x)}));}})),
+      inviteOpen:s.inviteOpen,openInvite:()=>this.setState({inviteOpen:true}),closeInvite:()=>this.setState({inviteOpen:false}),
+      inviteRoles:['Teacher','Librarian','Admin','Student'].map(r=>({label:r,...chip(s.inviteRole===r),onClick:()=>this.setState({inviteRole:r})})),
+      inviteBranches:BRANCH_NAMES.map(b=>({label:b,...chip(s.inviteBranch===b),onClick:()=>this.setState({inviteBranch:b})})),
+      inviteEmails:s.inviteEmails,onInviteEmails:e=>this.setState({inviteEmails:e.target.value}),
+      onSendInvites:()=>{const em=s.inviteEmails.split(/[\s,]+/).filter(x=>x.includes('@'));if(!em.length){this.flash('Add at least one email');return;}
+        this.setState(st=>({users:[...em.map((e,i)=>({id:'n'+Date.now()+i,name:e.split('@')[0],email:e,role:st.inviteRole,branch:st.inviteBranch,status:'invited',last:'—'})),...st.users],inviteOpen:false,inviteEmails:''}));this.flash(em.length+' invite(s) sent');},
+      onViewAgreement:()=>this.flash('Opening agreement (PDF)'),onLeave:()=>this.flash('Leaving needs 30 days’ notice to partner schools'),
+      invPending:s.inv==='pending',invDone:s.inv!=='pending',invBorder:s.inv==='pending'?'#DDD6FE':'#E2E8F0',
+      invDoneLabel:s.inv==='accepted'?'Accepted — partner schools notified':'Declined',invDoneBg:s.inv==='accepted'?'#DCFCE7':'#F1F5F9',invDoneFg:s.inv==='accepted'?'#166534':'#475569',
+      onAcceptInv:()=>this.setState(st=>({inv:'accepted',audit:[['26 Sep 2026','Rauf Hüseynli','Accepted invitation to Sumqayıt Reading League'],...st.audit]})),
+      onDeclineInv:()=>this.setState(st=>({inv:'declined',audit:[['26 Sep 2026','Rauf Hüseynli','Declined invitation to Sumqayıt Reading League'],...st.audit]})),
+      onReviewInv:()=>this.flash('Opening proposed terms'),
+      onSaveShare:()=>{this.setState(st=>({audit:[['26 Sep 2026','Rauf Hüseynli','Updated sharing: '+SHARE0.filter(x=>st.share[x[0]]).map(x=>x[1]).join(', ')],...st.audit]}));this.flash('Sent to partner schools · takes effect in 7 days');},
+      shareRows:[...SHARE0.map(([k,l,n])=>{const on=!!s.share[k];return {label:l,note:n,locked:false,editable:true,fg:'#0F172A',rowBg:'#fff',track:on?'#1B9DD9':'#CBD5E1',knob:on?'18px':'2px',onToggle:()=>this.setState(st=>({share:{...st.share,[k]:!st.share[k]}}))};}),
+        ...LOCKED.map(([l,n])=>({label:l,note:n,locked:true,editable:false,fg:'#64748B',rowBg:'#F8FAFC',track:'#E2E8F0',knob:'2px',onToggle:()=>{}}))],
+      audit:s.audit.map(a=>({d:a[0],who:a[1],what:a[2]}))
+    };
+  }
+}
+</script>
+</body>
+</html>

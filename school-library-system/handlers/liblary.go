@@ -1,6 +1,10 @@
 package handlers
 
 import (
+	"school-library-system/catalog"
+	"strconv"
+
+	"gorm.io/gorm"
 	"school-library-system/database"
 	"school-library-system/models"
 	"time"
@@ -45,6 +49,12 @@ func AddBook(c *fiber.Ctx) error {
 	}
 
 	type BookReq struct {
+		// EditionID links this holding to a record already in the shared
+		// catalog — the normal path, taken when the librarian picked a search
+		// result. When it is absent the bibliographic fields below are used to
+		// find or create an edition instead.
+		EditionID *uint `json:"edition_id"`
+
 		Title               string `json:"title"`
 		CoverURL            string `json:"cover_url"`
 		ISBN                string `json:"isbn"`
@@ -92,8 +102,93 @@ func AddBook(c *fiber.Ctx) error {
 		FrequencyID:         req.FrequencyID,
 	}
 
-	database.DB.Create(&book)
-	return c.JSON(book)
+	// Every holding must point at a shared catalog edition, however it was
+	// created — otherwise the catalog drifts out of sync the moment someone
+	// adds a book through the old form.
+	var matchedBy string
+	err = database.DB.Transaction(func(tx *gorm.DB) error {
+		if req.EditionID != nil && *req.EditionID != 0 {
+			// The librarian picked an existing record. Trust the catalog for
+			// the bibliographic facts rather than whatever was in the form.
+			var ed models.Edition
+			if err := tx.First(&ed, *req.EditionID).Error; err != nil {
+				return fiber.NewError(fiber.StatusBadRequest, "Unknown edition")
+			}
+			applyEditionToBook(&book, &ed)
+			matchedBy = "linked"
+		} else {
+			in := catalog.EditionInput{
+				Title:           req.Title,
+				ISBN:            req.ISBN,
+				Language:        req.Language,
+				EditionLabel:    req.Edition,
+				CoverURL:        req.CoverURL,
+				CEFRLevel:       req.CEFRLevel,
+				PublicationYear: req.PublicationYear,
+				PageCount:       req.PageCount,
+			}
+			// The branch-scoped author/publisher lists are still how the form
+			// names them; resolve to text so the global catalog can match.
+			if req.AuthorID != nil {
+				var a models.Author
+				if err := tx.First(&a, *req.AuthorID).Error; err == nil {
+					in.AuthorName = a.Name
+				}
+			}
+			if req.PublisherID != nil {
+				var p models.Publisher
+				if err := tx.First(&p, *req.PublisherID).Error; err == nil {
+					in.PublisherName = p.Name
+				}
+			}
+
+			ed, info, err := catalog.Resolve(tx, in)
+			if err != nil {
+				return err
+			}
+			book.EditionID = &ed.ID
+			matchedBy = info.MatchedBy
+		}
+
+		return tx.Create(&book).Error
+	})
+	if err != nil {
+		if fe, ok := err.(*fiber.Error); ok {
+			return c.Status(fe.Code).JSON(fiber.Map{"error": fe.Message})
+		}
+		return c.Status(500).JSON(fiber.Map{"error": "Could not add book"})
+	}
+
+	database.DB.Preload("CatalogEdition").First(&book, book.ID)
+
+	// Embedding keeps the book's own fields at the top level, so callers that
+	// already read res.data.id keep working; catalog_match is purely additive.
+	return c.JSON(struct {
+		models.Book
+		CatalogMatch string `json:"catalog_match"`
+	}{Book: book, CatalogMatch: matchedBy})
+}
+
+// applyEditionToBook copies the catalog's bibliographic facts onto a holding.
+// The duplicated columns on Book are a migration artifact — Edition is the
+// source of truth — but they are still what the current UI reads, so they are
+// kept in step until those read paths move over.
+func applyEditionToBook(book *models.Book, ed *models.Edition) {
+	book.EditionID = &ed.ID
+	book.Title = ed.Title
+	book.Language = ed.Language
+	book.PublicationYear = ed.PublicationYear
+	book.PageCount = ed.PageCount
+	book.Edition = ed.EditionLabel
+	if ed.ISBN13 != "" {
+		book.ISBN = ed.ISBN13
+	}
+	if ed.CoverURL != "" {
+		book.CoverURL = ed.CoverURL
+	}
+	if ed.CEFRLevel != "" {
+		book.CEFRLevel = ed.CEFRLevel
+	}
 }
 
 func UpdateBook(c *fiber.Ctx) error {
@@ -225,13 +320,64 @@ func BulkUploadBooks(c *fiber.Ctx) error {
 	if err := c.BodyParser(&books); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid Data Format"})
 	}
-	for i := range books {
-		books[i].BranchID = branchID
-	}
-	if err := database.DB.Create(&books).Error; err != nil {
+
+	// A CSV import must go through the same catalog resolver as the book form,
+	// or a bulk upload silently creates holdings with no edition and the shared
+	// catalog drifts out of sync. Matching also means a spreadsheet of books
+	// another branch already stocks collapses onto the existing editions.
+	matched := 0
+	err = database.DB.Transaction(func(tx *gorm.DB) error {
+		for i := range books {
+			books[i].BranchID = branchID
+
+			in := catalog.EditionInput{
+				Title:           books[i].Title,
+				ISBN:            books[i].ISBN,
+				Language:        books[i].Language,
+				EditionLabel:    books[i].Edition,
+				CoverURL:        books[i].CoverURL,
+				CEFRLevel:       books[i].CEFRLevel,
+				PublicationYear: books[i].PublicationYear,
+				PageCount:       books[i].PageCount,
+			}
+			if books[i].AuthorID != nil {
+				var a models.Author
+				if err := tx.First(&a, *books[i].AuthorID).Error; err == nil {
+					in.AuthorName = a.Name
+				}
+			}
+			if books[i].PublisherID != nil {
+				var p models.Publisher
+				if err := tx.First(&p, *books[i].PublisherID).Error; err == nil {
+					in.PublisherName = p.Name
+				}
+			}
+
+			ed, info, err := catalog.Resolve(tx, in)
+			if err != nil {
+				return err
+			}
+			books[i].EditionID = &ed.ID
+			if !info.EditionCreated {
+				matched++
+			}
+		}
+		if len(books) == 0 {
+			return nil
+		}
+		return tx.Create(&books).Error
+	})
+	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Database Error"})
 	}
-	return c.JSON(fiber.Map{"message": "Bulk Upload Successful", "count": len(books)})
+
+	return c.JSON(fiber.Map{
+		"message": "Bulk Upload Successful",
+		"count":   len(books),
+		// How many rows matched a book already in the shared catalog rather
+		// than creating a new record.
+		"matched_existing": matched,
+	})
 }
 
 // --- BOOK COPIES ---
@@ -485,19 +631,42 @@ func ReturnBook(c *fiber.Ctx) error {
 		return c.Status(401).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	// The route is /return/:id, but the original handler ignored the path
+	// parameter and required {book_id, tracking_number} in the body — so the
+	// obvious call, POST /return/<loanId> with no body, failed with 400 and
+	// check-in appeared broken. Both forms now work:
+	//
+	//	POST /return/42                              -> 42 is the loan id
+	//	POST /return/x  {book_id, tracking_number}   -> the original form
 	type ReturnReq struct {
 		BookID         uint   `json:"book_id"`
 		TrackingNumber string `json:"tracking_number"`
 	}
-
 	var req ReturnReq
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid Input"})
-	}
+	_ = c.BodyParser(&req) // an empty body is fine; the path is then used
 
 	var copy models.BookCopy
-	if err := database.DB.Preload("Book").Where("book_id = ? AND tracking_number = ?", req.BookID, req.TrackingNumber).First(&copy).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "Copy not found by BookID and Tracking Number"})
+
+	if req.BookID != 0 && req.TrackingNumber != "" {
+		if err := database.DB.Preload("Book").
+			Where("book_id = ? AND tracking_number = ?", req.BookID, req.TrackingNumber).
+			First(&copy).Error; err != nil {
+			return c.Status(404).JSON(fiber.Map{"error": "Copy not found by BookID and Tracking Number"})
+		}
+	} else {
+		loanID, convErr := strconv.Atoi(c.Params("id"))
+		if convErr != nil || loanID <= 0 {
+			return c.Status(400).JSON(fiber.Map{
+				"error": "Provide a loan id in the path, or book_id and tracking_number in the body",
+			})
+		}
+		var byID models.Loan
+		if err := database.DB.Where("id = ? AND return_date IS NULL", loanID).First(&byID).Error; err != nil {
+			return c.Status(404).JSON(fiber.Map{"error": "No active loan with that id"})
+		}
+		if err := database.DB.Preload("Book").First(&copy, byID.BookCopyID).Error; err != nil {
+			return c.Status(404).JSON(fiber.Map{"error": "Copy not found"})
+		}
 	}
 
 	if copy.Book.BranchID != branchID {
@@ -533,6 +702,13 @@ func ReturnBook(c *fiber.Ctx) error {
 
 func GetStudentStats(c *fiber.Ctx) error {
 	studentID := c.Params("id")
+
+	// Reading statistics are personal data; scope them the same way as the
+	// library and the diary.
+	if err := requireStudentAccess(c, studentID); err != nil {
+		return err
+	}
+
 	var loans []models.Loan
 	database.DB.Preload("BookCopy.Book.Genre").Where("student_id = ?", studentID).Find(&loans)
 
@@ -583,6 +759,14 @@ func GetClassList(c *fiber.Ctx) error {
 
 func GetMyLibrary(c *fiber.Ctx) error {
 	studentID := c.Params("id")
+
+	// Without this, any signed-in student could read any other student's
+	// borrowed books, due dates and reading progress by changing the id in the
+	// URL. Same rule as the reading diary: yourself, a librarian in your
+	// branch, a manager in your school, or an admin.
+	if err := requireStudentAccess(c, studentID); err != nil {
+		return err
+	}
 
 	var loans []models.Loan
 	if err := database.DB.
@@ -723,6 +907,33 @@ func RequestReservation(c *fiber.Ctx) error {
 		return c.SendStatus(400)
 	}
 
+	// Whose reservation this is comes from the session, not the request body.
+	// Taking it from the body let any student reserve on another student's
+	// behalf, and let a caller who omitted it create an orphan row with
+	// student_id 0 that belonged to nobody and showed up on no one's screen.
+	// Staff may still reserve for a student at the desk, but only for one they
+	// are allowed to see.
+	uid, err := currentUserID(c)
+	if err != nil {
+		return c.Status(401).JSON(fiber.Map{"error": "Unauthorized"})
+	}
+	role, _ := c.Locals("role").(string)
+	isStaff := role == "librarian" || role == "manager" || role == "admin"
+
+	if !isStaff || r.StudentID == 0 {
+		r.StudentID = uid
+	} else if r.StudentID != uid {
+		ok, err := canAccessStudent(c, r.StudentID)
+		if err != nil || !ok {
+			return c.Status(403).JSON(fiber.Map{"error": "Not allowed to reserve for this student"})
+		}
+	}
+
+	var student models.Student
+	if err := database.DB.Where("user_id = ?", r.StudentID).First(&student).Error; err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Only a student can hold a reservation", "code": "NOT_STUDENT"})
+	}
+
 	var book models.Book
 	if err := database.DB.First(&book, r.BookID).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Book not found"})
@@ -783,7 +994,11 @@ func RequestReservation(c *fiber.Ctx) error {
 		Description: r.Description,
 	}
 
-	database.DB.Create(&reservation)
+	// A failed insert used to be swallowed, so the caller got 200 and an empty
+	// reservation. Report it.
+	if err := database.DB.Create(&reservation).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Could not create the reservation"})
+	}
 	return c.JSON(reservation)
 }
 

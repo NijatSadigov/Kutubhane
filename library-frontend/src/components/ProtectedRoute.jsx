@@ -24,7 +24,9 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
         if (user.role === 'admin') return <Navigate to="/admin" replace />;
         if (user.role === 'manager') return <Navigate to="/manager" replace />;
         if (user.role === 'librarian') return <Navigate to="/librarian" replace />;
-        if (user.role === 'student') return <Navigate to="/student" replace />;
+        // Students belong in the myredbookshelf app; /student is the legacy
+        // dashboard, still reachable directly until the new screens cover it.
+        if (user.role === 'student') return <Navigate to="/app" replace />;
         
         // Fallback
         return <Navigate to="/login" replace />;

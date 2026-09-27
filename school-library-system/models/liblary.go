@@ -66,10 +66,23 @@ type CopyStatus struct {
 // 2. UPDATED BOOK & COPY MODELS
 // ==========================================
 
+// Book is a branch's HOLDING: its decision to stock a particular Edition, plus
+// the local details that are nobody else's business — call number, local
+// classification, local notes, a locally uploaded e-book.
+//
+// The bibliographic facts (title, ISBN, publisher, year, page count, cover) are
+// properties of the global Edition, not of the holding. The duplicated columns
+// below are retained during the catalog migration and will be dropped once every
+// read path goes through Edition; treat Edition as the source of truth.
 type Book struct {
 	ID       uint   `json:"id" gorm:"primaryKey"`
 	BranchID uint   `json:"branch_id"`
 	Branch   Branch `json:"branch" gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+
+	// Link into the global catalog. Nullable only while the backfill runs; every
+	// holding is expected to carry one afterwards.
+	EditionID      *uint    `json:"edition_id" gorm:"index"`
+	CatalogEdition *Edition `json:"catalog_edition,omitempty" gorm:"foreignKey:EditionID"`
 
 	// Basic Info
 	Title               string `json:"title"`

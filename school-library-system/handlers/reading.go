@@ -31,6 +31,29 @@ func currentUserID(c *fiber.Ctx) (uint, error) {
 // canAccessStudent reports whether the caller may see a given student's reading
 // data: the student themselves, a librarian in the same branch, a manager in the
 // same school, or an admin. Scope is derived from the JWT identity, never a param.
+// requireStudentAccess is the guard every endpoint that returns one student's
+// personal data must call. It takes the raw :id path parameter, so handlers
+// cannot forget to parse and check it, and returns a ready-to-return fiber
+// error when access is refused.
+//
+// It exists because GetMyLibrary and GetStudentStats originally did no check at
+// all: any signed-in student could read another student's loans and reading
+// statistics simply by editing the id in the URL.
+func requireStudentAccess(c *fiber.Ctx, rawID string) error {
+	n, err := strconv.Atoi(rawID)
+	if err != nil || n <= 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid student id")
+	}
+	ok, err := canAccessStudent(c, uint(n))
+	if err != nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "Unauthorized")
+	}
+	if !ok {
+		return fiber.NewError(fiber.StatusForbidden, "Not allowed to view this student")
+	}
+	return nil
+}
+
 func canAccessStudent(c *fiber.Ctx, studentID uint) (bool, error) {
 	uid, err := currentUserID(c)
 	if err != nil {

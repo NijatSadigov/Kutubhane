@@ -21,10 +21,13 @@ const Login = () => {
     // an already-logged-in user lands on /login.
     useEffect(() => {
         if (!user) return;
+        // Students land in the myredbookshelf app, which is the product they
+        // are meant to use. Staff still go to their console until the Staff
+        // Console screens from the design replace those dashboards.
         const home = user.role === 'admin' ? '/admin'
             : user.role === 'manager' ? '/manager'
             : user.role === 'librarian' ? '/librarian'
-            : '/student';
+            : '/app';
         navigate(home, { replace: true });
     }, [user, navigate]);
 

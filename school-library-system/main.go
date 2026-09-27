@@ -24,6 +24,10 @@ func main() {
 		&models.Librarian{},
 		&models.Manager{},
 		&models.Student{},
+		&models.CatalogAuthor{},
+		&models.CatalogPublisher{},
+		&models.Work{},
+		&models.Edition{},
 		&models.Publisher{},
 		&models.Author{},
 		&models.Topic{},
@@ -40,7 +44,42 @@ func main() {
 		&models.ReadingLog{},
 		&models.BookRequest{},
 		&models.RegistrationToken{},
+		&models.ShelfItem{},
+		&models.Note{},
+		&models.Badge{},
+		&models.UserBadge{},
+		&models.Challenge{},
+		&models.ChallengeBook{},
+		&models.ChallengeParticipant{},
+		&models.ChallengeProgress{},
+		&models.QuizQuestion{},
+		&models.QuizAttempt{},
+		&models.Review{},
+		&models.ReviewVote{},
+		&models.ReviewReply{},
+		&models.ReviewReport{},
 	)
+	// 2b. Catalog integrity constraints that AutoMigrate cannot express.
+	//
+	// The resolver checks for an existing edition before creating one, but a
+	// check-then-insert is not atomic: two librarians adding the same ISBN at
+	// the same moment would both pass the check. These partial unique indexes
+	// make the database the final arbiter. They are partial because blank
+	// identifiers are common and must stay allowed, and because an edition
+	// merged into another keeps its identifier.
+	for _, stmt := range []string{
+		`CREATE UNIQUE INDEX IF NOT EXISTS uniq_editions_isbn13
+		   ON editions (isbn13) WHERE isbn13 <> '' AND merged_into_id IS NULL`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS uniq_works_match_key
+		   ON works (match_key) WHERE merged_into_id IS NULL`,
+	} {
+		if err := database.DB.Exec(stmt).Error; err != nil {
+			// Not fatal: an existing database may hold duplicates that must be
+			// merged first. Log loudly so it is not missed.
+			log.Printf("[catalog] WARNING: could not create index (%v). Duplicates may already exist — run the merge tool.", err)
+		}
+	}
+
 	// 3. Seed Default Statuses for Each Branch
 	var branches []models.Branch
 	database.DB.Find(&branches)
@@ -48,6 +87,9 @@ func main() {
 		database.SeedDefaultStatusesForBranch(branch.ID)
 		database.EnsureExpiredReservationStatus(branch.ID) // backfill for older branches
 	}
+	// Seed the badge definitions the design specifies. Idempotent.
+	database.SeedBadges()
+
 	// 3. Ensure upload directories exist
 	os.MkdirAll("uploads/covers", 0o755)
 	os.MkdirAll("uploads/ebooks", 0o755)
@@ -69,5 +111,11 @@ func main() {
 
 	routes.Setup(app)
 
-	log.Fatal(app.Listen(":8000"))
+	// The port is configurable so a second instance can be run against a
+	// scratch database for testing without fighting the real one for :8000.
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000"
+	}
+	log.Fatal(app.Listen(":" + port))
 }
