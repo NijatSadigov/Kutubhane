@@ -142,6 +142,13 @@ func copyHasActiveReservation(copyID uint) bool {
 
 // sweepExpiredReservations expires approved reservations whose pickup deadline has
 // passed and frees their copies. Called lazily when reservations are listed.
+//
+// An approved hold with a NULL deadline counts as stale too, measured from the
+// day it was requested plus the branch's pickup window. Skipping those — which
+// this did until 2026-09-27 — left a copy held forever: nothing could expire the
+// hold, and copyHasActiveReservation still counted it, so the copy could never
+// be reserved or issued to anybody else. Rows approved before the deadline
+// feature existed were in exactly that state, two of them since July.
 func sweepExpiredReservations(branchID uint) {
 	var expired models.ReservationStatus
 	if database.DB.Where("code = 'EXPIRED' AND branch_id = ?", branchID).First(&expired).Error != nil {
@@ -150,12 +157,23 @@ func sweepExpiredReservations(branchID uint) {
 	var avail models.CopyStatus
 	database.DB.Where("code = 'AVAILABLE' AND branch_id = ?", branchID).First(&avail)
 
+	// The window a deadline-less hold is judged by.
+	var br models.Branch
+	window := 7
+	if database.DB.First(&br, branchID).Error == nil && br.MaxPickupDays > 0 {
+		window = br.MaxPickupDays
+	}
+
+	now := time.Now()
 	var stale []models.Reservation
 	database.DB.
 		Joins("JOIN book_copies ON book_copies.id = reservations.book_copy_id").
 		Joins("JOIN books ON books.id = book_copies.book_id").
 		Joins("JOIN reservation_statuses ON reservation_statuses.id = reservations.status_id").
-		Where("books.branch_id = ? AND reservation_statuses.code = 'APPROVED' AND reservations.pickup_deadline IS NOT NULL AND reservations.pickup_deadline < ?", branchID, time.Now()).
+		Where("books.branch_id = ? AND reservation_statuses.code = 'APPROVED'", branchID).
+		Where(`(reservations.pickup_deadline IS NOT NULL AND reservations.pickup_deadline < ?)
+		    OR (reservations.pickup_deadline IS NULL AND reservations.request_date < ?)`,
+			now, now.AddDate(0, 0, -window)).
 		Find(&stale)
 
 	for _, r := range stale {

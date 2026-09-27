@@ -1047,10 +1047,18 @@ func HandleReservation(c *fiber.Ctx) error {
 	if req.Action == "Approved" {
 		var appStatus models.ReservationStatus
 		database.DB.Where("code = 'APPROVED' AND branch_id = ?", branchID).First(&appStatus)
-		// Start the pickup countdown now: the student has PickupDays to collect it.
+		// Start the pickup countdown now: the student has PickupDays to collect
+		// it. Where they chose nothing, fall back to the branch's own window
+		// rather than a hardcoded week — that setting is a librarian's to make
+		// (Kitabxana ayarları → Borc qaydaları), so it has to be what applies.
 		days := res.PickupDays
 		if days < 1 {
-			days = 7
+			var br models.Branch
+			if database.DB.First(&br, branchID).Error == nil && br.MaxPickupDays > 0 {
+				days = br.MaxPickupDays
+			} else {
+				days = 7
+			}
 		}
 		deadline := time.Now().AddDate(0, 0, days)
 		res.PickupDeadline = &deadline
