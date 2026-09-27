@@ -209,6 +209,20 @@ func readChecks() []check {
 		add("student", p, denied, "student must not reach manager data")
 	}
 
+	// --- texniki dəstək (tickets) ---
+	// The librarian raises and reads their own branch; the queue belongs to the
+	// administration, where a manager is scoped to their school and an admin is
+	// not scoped at all.
+	add("librarian", "/api/tickets", ok, "own branch's tickets")
+	add("student", "/api/tickets", denied, "students have no support channel")
+	add("", "/api/tickets", []int{401}, "tickets need a session")
+	add("manager", "/api/manager/tickets", ok, "the school's queue")
+	add("manager", "/api/manager/tickets?status=open", ok, "queue filtered to open")
+	add("admin", "/api/manager/tickets", ok, "admin sees every school's queue")
+	add("librarian", "/api/manager/tickets", denied, "librarian must not read the queue")
+	add("student", "/api/manager/tickets", denied, "student must not read the queue")
+	add("manager", "/api/manager/tickets?status=NONSENSE", []int{400}, "bad status filter")
+
 	// --- my shelf ---
 	for _, r := range []string{"student", "librarian"} {
 		add(r, "/api/shelf", ok, "")
@@ -264,6 +278,13 @@ func writeChecks() []check {
 		{role: "student", method: "POST", path: "/api/registration-tokens", want: denied, note: "students cannot issue invite codes"},
 		{role: "student", method: "POST", path: "/api/books/bulk", want: denied, note: "students cannot bulk import"},
 		{role: "student", method: "PUT", path: "/api/student/11/limit", want: denied, note: "students cannot set a borrow limit"},
+		// Texniki dəstək: the channel is librarian → administration, and each
+		// side may only write to its own end of it.
+		{role: "student", method: "POST", path: "/api/tickets", want: denied, note: "students cannot raise a ticket"},
+		{role: "student", method: "POST", path: "/api/tickets/1/replies", want: denied, note: "students cannot reply to a ticket"},
+		{role: "librarian", method: "PUT", path: "/api/manager/tickets/1", want: denied, note: "librarian cannot set a queue status"},
+		{role: "librarian", method: "POST", path: "/api/manager/tickets/1/replies", want: denied, note: "librarian cannot answer as the administration"},
+		{role: "student", method: "PUT", path: "/api/manager/tickets/1", want: denied, note: "students cannot touch the queue"},
 	}
 }
 

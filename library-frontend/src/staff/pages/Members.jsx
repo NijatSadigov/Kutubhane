@@ -8,6 +8,9 @@
 //
 // So this borrows S8's shape — a KPI strip, a searchable 44px table, a side
 // panel for the selected row — scoped to one branch and one role.
+//
+// The invite codes used to be a modal here; they are now the domain's second
+// screen, in `MemberInvites.jsx`.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../../api/axios';
@@ -24,7 +27,6 @@ export default function Members() {
   const [students, setStudents] = useState([]);
   const [q, setQ] = useState('');
   const [selected, setSelected] = useState(null);
-  const [invites, setInvites] = useState(false);
   const [toast, setToast] = useState('');
 
   const say = useCallback((m) => { setToast(m); setTimeout(() => setToast(''), 2600); }, []);
@@ -72,9 +74,6 @@ export default function Members() {
           placeholder={t('staff.mem.search')}
           style={{ flex: '1 1 260px', width: 'auto' }}
         />
-        <Btn onClick={() => setInvites(true)} style={{ padding: '9px 14px' }}>
-          {t('staff.mem.inviteLinks')}
-        </Btn>
       </div>
 
       <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -150,8 +149,6 @@ export default function Members() {
           />
         )}
       </div>
-
-      {invites && <InviteLinks t={t} say={say} onClose={() => setInvites(false)} />}
 
       {toast && (
         <div style={{
@@ -281,111 +278,6 @@ function Stat({ label, value }) {
       <div style={{ fontSize: 11, color: ink.dim, fontWeight: 600 }}>{label}</div>
       <div style={{ fontSize: 18, fontWeight: 800 }}>{value}</div>
     </div>
-  );
-}
-
-/* ------------------------------------------------------- invite links */
-
-// How a student gets an account: the librarian issues a branch code and gives
-// it to a class. The design's Admin has an Invite modal, but it is school-wide
-// and role-based; this is the branch-scoped one the system already had.
-function InviteLinks({ t, say, onClose }) {
-  const [tokens, setTokens] = useState([]);
-  const [label, setLabel] = useState('');
-  const [days, setDays] = useState('30');
-  const [busy, setBusy] = useState(false);
-
-  const load = useCallback(() => {
-    api.get('/registration-tokens').then((r) => setTokens(r.data || [])).catch(() => {});
-  }, []);
-  useEffect(() => { load(); }, [load]);
-
-  const create = async () => {
-    setBusy(true);
-    try {
-      await api.post('/registration-tokens', { label: label.trim(), days: Number(days) || 30 });
-      setLabel('');
-      say(t('staff.mem.inviteCreated'));
-      load();
-    } catch { say(t('msg.opFailed')); }
-    finally { setBusy(false); }
-  };
-
-  const revoke = async (id) => {
-    try { await api.delete(`/registration-tokens/${id}`); say(t('staff.mem.inviteRevoked')); load(); }
-    catch { say(t('msg.opFailed')); }
-  };
-
-  const copy = async (tok) => {
-    try {
-      await navigator.clipboard.writeText(tok);
-      say(t('staff.mem.copied'));
-    } catch { say(tok); }
-  };
-
-  return (
-    <Dialog title={t('staff.mem.inviteLinks')} onClose={onClose} wide t={t}>
-      <div style={{ fontSize: 13, color: ink.body, marginTop: -8, lineHeight: 1.5 }}>
-        {t('staff.mem.inviteHint')}
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <label style={{
-          flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4,
-          fontSize: 12, fontWeight: 600, color: ink.strong,
-        }}>
-          {t('staff.mem.inviteLabel')}
-          <Input value={label} onChange={(e) => setLabel(e.target.value)}
-            placeholder={t('staff.mem.inviteLabelHint')} />
-        </label>
-        <label style={{
-          width: 120, display: 'flex', flexDirection: 'column', gap: 4,
-          fontSize: 12, fontWeight: 600, color: ink.strong,
-        }}>
-          {t('staff.mem.inviteDays')}
-          <Input type="number" min={1} value={days} onChange={(e) => setDays(e.target.value)} />
-        </label>
-        <Btn onClick={create} disabled={busy}>{t('staff.mem.inviteCreate')}</Btn>
-      </div>
-
-      {tokens.length === 0 ? (
-        <Alert tone="action">{t('staff.mem.noInvites')}</Alert>
-      ) : (
-        <div style={{
-          border: '1px solid ' + shell.border, borderRadius: radius.control, overflow: 'hidden',
-        }}>
-          {tokens.map((tok) => {
-            const dead = tok.revoked || new Date(tok.expires_at) < new Date();
-            return (
-              <div key={tok.id} style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                borderBottom: '1px solid ' + shell.rowLine, fontSize: 13,
-                opacity: dead ? 0.55 : 1, flexWrap: 'wrap',
-              }}>
-                <Mono style={{ color: ink.text, fontSize: 13 }}>{tok.token}</Mono>
-                <span style={{ flex: 1, minWidth: 0, color: ink.dim }}>
-                  {tok.label || t('staff.mem.untitled')}
-                </span>
-                <span style={{ color: ink.dim, fontSize: 12 }}>
-                  {t('staff.mem.usedN', { n: tok.use_count || 0 })} · {fmtDate(tok.expires_at)}
-                </span>
-                {dead
-                  ? <Pill colors={pill('lost')}>{t('staff.mem.expired')}</Pill>
-                  : <Pill colors={pill('active')}>{t('staff.mem.active')}</Pill>}
-                <Btn kind="secondary" onClick={() => copy(tok.token)} style={{ padding: '5px 10px', fontSize: 12 }}>
-                  {t('staff.mem.copy')}
-                </Btn>
-                {!dead && (
-                  <Btn kind="danger" onClick={() => revoke(tok.id)} style={{ padding: '5px 10px', fontSize: 12 }}>
-                    {t('staff.mem.revoke')}
-                  </Btn>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </Dialog>
   );
 }
 

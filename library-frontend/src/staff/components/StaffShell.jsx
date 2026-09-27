@@ -2,13 +2,20 @@
 // `Staff Design System.dc.html`.
 //
 // A 236px #082F49 sidebar holding the inverted wordmark, the school card, the
-// role's workspace nav with live count badges and the signed-in user at the
-// foot; a sticky white top bar carrying the crumb, the 19px/800 page title,
-// the catalogue search and the role chip; and a #F1F5F9 canvas at 24/28.
+// *domains* of the school's operation with live count badges, and the signed-in
+// user at the foot; a sticky white top bar whose first row carries the crumb,
+// the 19px/800 page title, the catalogue search and the role chip, and whose
+// second row carries the screens inside the selected domain; and a #F1F5F9
+// canvas at 24/28.
 //
-// Which sections appear depends on the role. A librarian never sees the admin
-// sections, and the nav is built from what the signed-in person can actually
-// reach rather than greyed-out items.
+// The design's own console is a flat nine-screen list with no top bar, so the
+// second level is built from the one pattern the design already uses for
+// screens-within-a-screen: S2's outlined tab buttons — 8px radius, 8px 14px,
+// 13px/700, #082F49 when active, count pill inside.
+//
+// Which domains and screens appear depends on the role, and the nav is built
+// from what the signed-in person can actually reach rather than greyed-out
+// items. `nav.js` holds that table; nothing here hardcodes a path.
 
 import { useContext, useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -17,17 +24,10 @@ import { AuthContext } from '../../context/AuthContext';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { shell, ink, radius, font, roleOf, SIDEBAR_WIDTH } from '../theme';
 import { useSchoolLabel } from '../../mrb/useSchoolLabel';
+import {
+  visibleDomains, visibleScreens, domainPath, screenPath, domainBadge, locate,
+} from '../nav';
 import '../../mrb/responsive.css';
-
-// [path, label key, roles that see it, badge key from the desk summary]
-const SECTIONS = [
-  ['desk', 'staff.nav.desk', ['librarian', 'manager', 'admin'], null],
-  ['holds', 'staff.nav.holds', ['librarian', 'manager', 'admin'], 'holds_pending'],
-  ['inventory', 'staff.nav.inventory', ['librarian', 'manager', 'admin'], null],
-  ['members', 'staff.nav.members', ['librarian', 'manager', 'admin'], null],
-  ['requests', 'staff.nav.requests', ['librarian', 'manager', 'admin'], 'requests_pending'],
-  ['settings', 'staff.nav.settings', ['librarian', 'manager', 'admin'], null],
-];
 
 export default function StaffShell({ children }) {
   const { t } = useTranslation();
@@ -53,13 +53,17 @@ export default function StaffShell({ children }) {
   const name = user?.librarian?.name || user?.manager?.name || user?.email || '';
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2)
     .map((w) => w[0]).join('').toUpperCase() || '·';
-  const visible = SECTIONS.filter(([, , roles]) => roles.includes(role));
 
-  // The top bar names the page. Deriving it from the route keeps the title and
-  // the nav from ever disagreeing.
-  const current = visible.find(([path]) => loc.pathname === `/staff/${path}`)
-    || (loc.pathname === '/staff' ? visible[0] : null);
-  const pageTitle = current ? t(current[1]) : t('staff.console');
+  const domains = visibleDomains(role);
+  // Which domain and screen the URL is in. Deriving both from the route keeps
+  // the rail, the top bar and the title from ever disagreeing.
+  const { domain, screen } = locate(loc.pathname, role);
+  const screens = domain ? visibleScreens(domain, role) : [];
+
+  // The crumb names the domain, the title names the screen inside it — so the
+  // two levels of the nav are both readable from the header.
+  const domainLabel = domain ? t(domain.labelKey) : '';
+  const pageTitle = screen ? t(screen.labelKey) : (domainLabel || t('staff.console'));
 
   return (
     <div className="staff-shell" style={{
@@ -106,31 +110,37 @@ export default function StaffShell({ children }) {
             color: '#7DD3FC', padding: '0 10px 6px',
           }}>{t('staff.workspace', { role: roleLabel })}</span>
 
-          {visible.map(([path, key, , badgeKey]) => {
-            const n = badgeKey ? badges[badgeKey] : 0;
+          {domains.map((d) => {
+            const n = domainBadge(d, role, badges);
+            const isActive = domain?.key === d.key;
             return (
-              <NavLink key={path} to={`/staff/${path}`} end={path === 'desk'}
-                style={({ isActive }) => ({
+              <NavLink key={d.key} to={domainPath(d, role)}
+                style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   background: isActive ? shell.navActive : 'transparent',
-                  color: isActive ? '#fff' : shell.navText,
+                  // A placeholder domain reads as quieter than a working one,
+                  // but stays clickable: it explains itself when opened.
+                  color: isActive ? '#fff' : (d.soon ? 'rgba(186,230,253,0.65)' : shell.navText),
                   border: 0, borderRadius: radius.control, padding: '9px 10px',
                   fontSize: 13, fontWeight: 600, textDecoration: 'none', textAlign: 'left',
-                })}>
-                {({ isActive }) => (
-                  <>
-                    <span style={{
-                      width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                      background: isActive ? '#7DD3FC' : 'rgba(186,230,253,0.3)',
-                    }} />
-                    <span style={{ flex: 1 }}>{t(key)}</span>
-                    {n > 0 && (
-                      <span style={{
-                        background: '#F2545B', color: '#fff', borderRadius: 999,
-                        padding: '0 7px', fontSize: 11, fontWeight: 800,
-                      }}>{n}</span>
-                    )}
-                  </>
+                }}>
+                <span style={{
+                  width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                  background: isActive ? '#7DD3FC' : 'rgba(186,230,253,0.3)',
+                }} />
+                <span style={{ flex: 1 }}>{t(d.labelKey)}</span>
+                {d.soon && (
+                  <span style={{
+                    background: 'rgba(255,255,255,0.12)', color: '#7DD3FC',
+                    borderRadius: 999, padding: '1px 7px', fontSize: 10, fontWeight: 800,
+                    letterSpacing: '0.04em', whiteSpace: 'nowrap',
+                  }}>{t('staff.soonPill')}</span>
+                )}
+                {!d.soon && n > 0 && (
+                  <span style={{
+                    background: '#F2545B', color: '#fff', borderRadius: 999,
+                    padding: '0 7px', fontSize: 11, fontWeight: 800,
+                  }}>{n}</span>
                 )}
               </NavLink>
             );
@@ -174,12 +184,16 @@ export default function StaffShell({ children }) {
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <header className="staff-topbar" style={{
           position: 'sticky', top: 0, zIndex: 20, background: '#fff',
-          borderBottom: '1px solid ' + shell.border, padding: '12px 28px',
+          borderBottom: '1px solid ' + shell.border,
+          display: 'flex', flexDirection: 'column',
+        }}>
+        <div className="staff-topbar-head" style={{
+          padding: '12px 28px',
           display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
         }}>
           <div style={{ flex: '1 1 240px', minWidth: 0 }}>
             <div style={{ fontSize: 11, color: ink.dim, fontWeight: 600 }}>
-              {[roleLabel, school.label].filter(Boolean).join(' · ')}
+              {[roleLabel, domainLabel, school.label].filter(Boolean).join(' · ')}
             </div>
             <h1 style={{ margin: 0, fontSize: 19, fontWeight: 800, letterSpacing: '-0.01em' }}>
               {pageTitle}
@@ -190,7 +204,7 @@ export default function StaffShell({ children }) {
             className="staff-search"
             onSubmit={(e) => {
               e.preventDefault();
-              if (q.trim()) nav(`/staff/inventory?q=${encodeURIComponent(q.trim())}`);
+              if (q.trim()) nav(`/staff/library/catalogue?q=${encodeURIComponent(q.trim())}`);
             }}
             style={{
               flex: '0 1 360px', display: 'flex', alignItems: 'center', gap: 8,
@@ -213,6 +227,42 @@ export default function StaffShell({ children }) {
             background: theme.chip[0], color: theme.chip[1], borderRadius: 999,
             padding: '4px 12px', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap',
           }}>{t('staff.roleMode', { role: roleLabel })}</span>
+        </div>
+
+          {/* The second level: the screens inside the selected domain. A
+              placeholder domain, or one with a single screen, has no row to
+              draw — the rail already said where you are. */}
+          {screens.length > 1 && (
+            <nav className="staff-screentabs" style={{
+              display: 'flex', gap: 4, flexWrap: 'wrap',
+              padding: '0 28px 12px',
+            }}>
+              {screens.map((sc) => {
+                const on = screen?.path === sc.path;
+                const n = sc.badge ? Number(badges[sc.badge] || 0) : 0;
+                return (
+                  <NavLink key={sc.path || 'index'} to={screenPath(domain, sc)} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    background: on ? '#082F49' : '#fff',
+                    color: on ? '#fff' : ink.body,
+                    border: '1px solid ' + (on ? '#082F49' : shell.control),
+                    borderRadius: radius.control, padding: '8px 14px',
+                    fontSize: 13, fontWeight: 700, textDecoration: 'none',
+                    whiteSpace: 'nowrap', fontFamily: font.ui,
+                  }}>
+                    {t(sc.labelKey)}
+                    {n > 0 && (
+                      <span style={{
+                        background: on ? 'rgba(255,255,255,0.2)' : shell.canvas,
+                        color: on ? '#fff' : ink.body,
+                        borderRadius: 999, padding: '0 7px', fontSize: 11,
+                      }}>{n}</span>
+                    )}
+                  </NavLink>
+                );
+              })}
+            </nav>
+          )}
         </header>
 
         <main className="staff-main" style={{

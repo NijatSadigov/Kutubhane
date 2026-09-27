@@ -1,0 +1,148 @@
+// The staff console's two-level navigation, in one place.
+//
+// The left rail is *domains* — the parts of the school's operation. The top bar
+// is the *screens* inside whichever domain the rail has selected. One table
+// drives the rail, the top bar, the routes and the page title, so those four
+// can never disagree the way the old flat list let them (see HANDOFF.md on the
+// four places that decided where a librarian lands).
+//
+// `badge` names a field of GET /desk/summary. A screen shows its own count; a
+// domain shows the sum of its screens', so an unattended queue is visible from
+// the rail without opening the domain.
+//
+// `roles` is who can actually reach the thing, not who is allowed to see it
+// greyed out. A domain with no screens for your role does not appear at all.
+
+export const STAFF_ROOT = '/staff';
+
+const ALL_STAFF = ['librarian', 'manager', 'admin'];
+// The librarian side of Texniki dəstək needs a branch to raise a ticket from,
+// which only a librarian profile has. A manager or admin reads the queue.
+const BRANCH_ONLY = ['librarian'];
+const ADMIN_SIDE = ['manager', 'admin'];
+
+export const DOMAINS = [
+  {
+    key: 'library',
+    labelKey: 'staff.dom.library',
+    roles: ALL_STAFF,
+    screens: [
+      { path: 'desk', labelKey: 'staff.nav.desk', roles: ALL_STAFF },
+      { path: 'catalogue', labelKey: 'staff.nav.inventory', roles: ALL_STAFF },
+      { path: 'reservations', labelKey: 'staff.nav.reservations', badge: 'holds_pending', roles: ALL_STAFF },
+      { path: 'loans', labelKey: 'staff.nav.loans', roles: ALL_STAFF },
+      { path: 'requests', labelKey: 'staff.nav.requests', badge: 'requests_pending', roles: ALL_STAFF },
+    ],
+  },
+  {
+    key: 'textbooks',
+    labelKey: 'staff.dom.textbooks',
+    roles: ALL_STAFF,
+    soon: true,
+  },
+  {
+    key: 'projects',
+    labelKey: 'staff.dom.projects',
+    roles: ALL_STAFF,
+    soon: true,
+  },
+  {
+    key: 'members',
+    labelKey: 'staff.dom.members',
+    roles: ALL_STAFF,
+    screens: [
+      { path: '', labelKey: 'staff.nav.members', roles: ALL_STAFF },
+      { path: 'invites', labelKey: 'staff.nav.invites', roles: ALL_STAFF },
+    ],
+  },
+  {
+    key: 'settings',
+    labelKey: 'staff.dom.settings',
+    roles: ALL_STAFF,
+    screens: [
+      { path: 'lists', labelKey: 'staff.nav.lists', roles: ALL_STAFF },
+      { path: 'statuses', labelKey: 'staff.nav.statuses', roles: ALL_STAFF },
+      { path: 'limits', labelKey: 'staff.nav.limits', roles: ALL_STAFF },
+    ],
+  },
+  {
+    key: 'textbook-settings',
+    labelKey: 'staff.dom.textbookSettings',
+    roles: ALL_STAFF,
+    soon: true,
+  },
+  {
+    key: 'support',
+    labelKey: 'staff.dom.support',
+    roles: ALL_STAFF,
+    screens: [
+      { path: '', labelKey: 'staff.nav.myTickets', badge: 'tickets_unread', roles: BRANCH_ONLY },
+      { path: 'new', labelKey: 'staff.nav.newTicket', roles: BRANCH_ONLY },
+      { path: 'inbox', labelKey: 'staff.nav.ticketInbox', roles: ADMIN_SIDE },
+    ],
+  },
+];
+
+// Old flat paths → their new home, so bookmarks and the top bar's ?q= deep
+// link into the catalogue keep working.
+export const LEGACY_REDIRECTS = {
+  desk: 'library/desk',
+  holds: 'library/reservations',
+  overdue: 'library/loans',
+  inventory: 'library/catalogue',
+  requests: 'library/requests',
+  settings: 'settings/lists',
+};
+
+// A screen's full path. A screen with an empty path is the domain's own index.
+export function screenPath(domain, screen) {
+  const base = `${STAFF_ROOT}/${domain.key}`;
+  return screen.path ? `${base}/${screen.path}` : base;
+}
+
+// Where a domain goes when the rail is clicked: its first screen this role can
+// reach, or the domain itself when it is a placeholder.
+export function domainPath(domain, role) {
+  if (domain.soon) return `${STAFF_ROOT}/${domain.key}`;
+  const first = visibleScreens(domain, role)[0];
+  return first ? screenPath(domain, first) : `${STAFF_ROOT}/${domain.key}`;
+}
+
+export function visibleScreens(domain, role) {
+  if (!domain.screens) return [];
+  return domain.screens.filter((s) => s.roles.includes(role));
+}
+
+// A domain is reachable when the role is allowed it *and* it has something
+// inside — a placeholder counts, an empty screen list does not.
+export function visibleDomains(role) {
+  return DOMAINS.filter((d) => {
+    if (!d.roles.includes(role)) return false;
+    return d.soon || visibleScreens(d, role).length > 0;
+  });
+}
+
+// Which domain and screen a pathname is inside. Used for the rail's active
+// state, the top bar's contents and the page title, so all three read the URL
+// rather than tracking their own state.
+export function locate(pathname, role) {
+  const rest = pathname.replace(/^\/staff\/?/, '').replace(/\/+$/, '');
+  const [domainKey, ...tail] = rest.split('/');
+  const domain = visibleDomains(role).find((d) => d.key === domainKey);
+  if (!domain) return { domain: null, screen: null };
+
+  const screens = visibleScreens(domain, role);
+  const screenPathStr = tail.join('/');
+  const screen = screens.find((s) => s.path === screenPathStr)
+    // A domain's index falls back to its first screen.
+    || (screenPathStr === '' ? screens[0] : null);
+  return { domain, screen };
+}
+
+// The rail's count for a domain: everything unattended inside it.
+export function domainBadge(domain, role, badges) {
+  return visibleScreens(domain, role).reduce(
+    (n, s) => n + (s.badge ? Number(badges?.[s.badge] || 0) : 0),
+    0,
+  );
+}

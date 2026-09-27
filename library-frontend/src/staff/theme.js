@@ -83,3 +83,13 @@ export const ALERT = {
 };
 
 export const pill = (kind) => STATUS_PILL[kind] || STATUS_PILL.neutral;
+
+// One 44px row of a ScrollTable, as a style rather than a component, because
+// several screens add a selected background or a click handler to it.
+export function scrollRowStyle(columns) {
+  return {
+    display: 'grid', gridTemplateColumns: columns, gap: 12, alignItems: 'center',
+    padding: '10px 16px', borderBottom: '1px solid ' + shell.rowLine, fontSize: 13,
+    minHeight: ROW_HEIGHT,
+  };
+}

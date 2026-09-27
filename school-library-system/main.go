@@ -59,6 +59,8 @@ func main() {
 		&models.ReviewVote{},
 		&models.ReviewReply{},
 		&models.ReviewReport{},
+		&models.Ticket{},
+		&models.TicketReply{},
 	)
 	// 2b. Catalog integrity constraints that AutoMigrate cannot express.
 	//

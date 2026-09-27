@@ -6,26 +6,14 @@ who has never seen it.
 
 ---
 
-## ⚠️ Nothing is committed
+## Committed, but still no remote
 
-Three sessions of work sit in the working tree, unpushed and **uncommitted**,
-on branch `backend-dynamic-categories`. There is no remote. Commit before
-doing anything else:
+Everything is committed on `backend-dynamic-categories`. There is still **no
+remote and no backup** beyond this machine — `git push` has nowhere to go, so
+the whole history is one disk failure from gone. Setting up a remote is the
+cheapest insurance left undone.
 
-```bash
-git add -A && git commit -m "Design-fidelity pass, guest site, librarian console, cleanup"
-```
-
-Nine files are new and untracked — `git add -A` catches them, `git commit -a`
-does not:
-
-```
-src/home.js                      src/i18n/dates.js
-src/mrb/PublicShell.jsx          src/mrb/components/SiteHeader.jsx
-src/mrb/guest.js                 src/mrb/responsive.css
-src/mrb/useSchoolLabel.js        src/staff/pages/InventoryDialogs.jsx
-src/staff/pages/Members.jsx
-```
+New files still need `git add -A`; `git commit -a` does not catch them.
 
 Database backups are at `../db-backups/`.
 
@@ -57,7 +45,7 @@ cd school-library-system && go test ./... && go run ./cmd/apiaudit -writes
 cd library-frontend && npm run build && npx eslint src/mrb src/staff src/i18n
 ```
 
-Last run: 23 Go tests, **148 API checks**, build clean, `src/mrb` + `src/staff`
+Last run: 23 Go tests, **162 API checks**, build clean, `src/mrb` + `src/staff`
 + `src/i18n` lint clean. (`npx eslint src` still reports ~20 errors, all
 pre-existing in the old dashboards and shared components.)
 
@@ -83,7 +71,7 @@ was exercised without touching real data.
 | Path | What |
 |---|---|
 | `library-frontend/src/mrb/` | myredbookshelf reader app — `/` landing, `/catalogue` + `/book/:id` for guests, `/app/*` for members |
-| `library-frontend/src/staff/` | staff console — `/staff/*`, **where librarians now land** |
+| `library-frontend/src/staff/` | staff console — `/staff/<domain>/<screen>`, **where librarians now land**. `staff/nav.js` is the one table the rail, top bar, routes and titles are built from |
 | `library-frontend/src/pages/` | the **old** dashboards, still live at `/librarian`, `/manager`, `/admin`, `/student` |
 | `library-frontend/src/home.js` | one place deciding where each role lands after login |
 | `library-frontend/src/i18n/dates.js` | language-aware dates — see the Intl warning below |

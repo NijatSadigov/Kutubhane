@@ -34,7 +34,7 @@ demo activity and takes `BASE` to choose which server.
 cd library-frontend && npm run build && npx eslint src/mrb src/staff
 ```
 
-Last run: 23 Go tests pass, **148 API checks pass**, 33/33 loan-lifecycle
+Last run: 23 Go tests pass, **162 API checks pass**, 33/33 loan-lifecycle
 checks pass, build and lint clean.
 
 **Where things live.** `library-frontend/src/mrb/` is the new myredbookshelf UI
@@ -45,45 +45,24 @@ checks pass, build and lint clean.
 
 ## Now
 
-- [ ] **Restructure the staff console navigation into two levels** (buyer,
-      2026-09-27). The left rail becomes *domains*, the top bar becomes the
-      screens inside the domain the rail has selected. Today the console is one
-      flat list of six items in the rail and nothing on top.
+- [ ] **The manager tier inside the console.** Now that a manager reaches
+      `/staff` for the ticket inbox, the gap shows: the rail still lists
+      Kitabxana, Üzvlər and Kitabxana ayarları for them, and every screen in
+      those is branch-scoped, so `/desk/summary` answers a manager
+      403 *Librarians Only* and the desk draws em-dashes instead of numbers.
+      It degrades rather than crashes, and it predates the two-level nav — the
+      old flat rail listed the same six items for a manager. Decide whether a
+      manager gets a read-only branch workspace (the parity item below) or
+      whether those domains are scoped to `librarian` in `staff/nav.js`.
+      A manager still lands on `/manager`; `homePathFor()` in `src/home.js` is
+      the one place that decides
 
-      Left rail:
-
-      | Section | State |
-      |---|---|
-      | Kitabxana | built — needs its top bar |
-      | Dərslik sistemi | **coming soon** placeholder |
-      | Layihələr | **coming soon** placeholder |
-      | Üzvlər | built |
-      | Kitabxana ayarları | built (the current Settings) |
-      | Dərslik sistemi ayarları | **coming soon** placeholder |
-      | Texniki dəstək | **new feature** — see below |
-
-      Top bar for **Kitabxana**: `Kitabxana` · `Rezerv edilən kitablar` ·
-      `Verilən kitablar` · `Kitab sorğuları`. Every other section gets its own
-      top bar on the same principle.
-
-      Mapping onto what exists: the circulation desk is *Kitabxana*; Holds &
-      overdue splits into *Rezerv edilən kitablar* and *Verilən kitablar* (it
-      already has those as internal tabs, plus the overdue list); Requests is
-      *Kitab sorğuları*. Catalogue & inventory needs a home in the Kitabxana
-      top bar too. Nothing should be lost in the move.
-
-- [ ] **Texniki dəstək — a ticketing system.** A librarian raises a ticket with
-      the school admin: ask for a book to be added to the system, report a
-      problem, anything else needing the admin. Needs a `Ticket` model
-      (author, school/branch, subject, body, status, thread of replies), staff
-      endpoints, a librarian view and an admin queue. None of this exists yet —
-      design it before building.
-
-- [ ] **Wire the borrow-limit policy UI.** `GET/PUT /branch-settings` and
-      `GET/PUT /loan-limit` exist and are tested but nothing calls them — the
-      branch-wide default has no screen. The per-student override is already on
-      the Members panel. Until this lands, do not "clean up" those endpoints:
-      they are unwired, not dead
+- [ ] **Escalating a student's book request into a ticket.** A librarian
+      looking at `Kitab sorğuları` has no way to pass one up to the
+      administration except retyping it as a `BOOK_REQUEST` ticket. The two
+      models are deliberately separate (student → librarian vs librarian →
+      administration), but a "raise this with the school" button on a request
+      row would join them
 
 - [ ] **Retire the old dashboards.** Librarians now land on `/staff`, with a
       "Classic dashboard" link in the sidebar as a fallback. Watch whether
@@ -135,9 +114,9 @@ checks pass, build and lint clean.
   - [x] E-book upload and "open e-book" — on the title's edit dialog
   - [x] Branch student invite links — on Members
   - [ ] Manager tier: librarian tracking + read-only branch workspace
-  - [x] Loan editing — the "All loans" tab on Holds & overdue
-  - [x] Borrow-limit settings UI — per student, on the Members side panel.
-        The branch-wide default still has no UI
+  - [x] Loan editing — the "Hamısı" filter on Verilən kitablar
+  - [x] Borrow-limit settings UI — per student on the Members side panel, and
+        the branch-wide default on Kitabxana ayarları → Borc qaydaları
   - [ ] Platform admin above the school admin
 - [ ] **Public screens**: Join stepper with parent consent, Book clubs,
       Libraries & bookstores, Reader home
@@ -183,6 +162,59 @@ checks pass, build and lint clean.
 - [ ] Nothing pushed to a remote; single machine, no backup
 
 ## Done
+
+- [x] **The staff console is two levels** (buyer, 2026-09-27). The left rail is
+      *domains*, the top bar is the screens inside the selected one.
+      `staff/nav.js` is the single table the rail, the top bar, the routes and
+      the page title are all built from, so they cannot disagree the way the
+      flat list let them. Paths are `/staff/<domain>/<screen>`; every old flat
+      path redirects to its new home, query string included, so a bookmark on
+      `/staff/holds` still lands on the hold queue.
+
+      | Rail | Top bar |
+      |---|---|
+      | Kitabxana | Kitab verilişi · Kataloq və inventar · Rezerv edilən kitablar · Verilən kitablar · Kitab sorğuları |
+      | Dərslik sistemi | *tezliklə* |
+      | Layihələr | *tezliklə* |
+      | Üzvlər | Üzvlər · Dəvət linkləri |
+      | Kitabxana ayarları | Kataloq siyahıları · Status və vəziyyətlər · Borc qaydaları |
+      | Dərslik sistemi ayarları | *tezliklə* |
+      | Texniki dəstək | Müraciətlərim · Yeni müraciət — or Gələn müraciətlər for the administration |
+
+      Nothing was lost in the move. Holds & overdue split: its `holds` tab is
+      now *Rezerv edilən kitablar*, and its `overdue` and `loans` tabs merged
+      into *Verilən kitablar* with the tab control demoted to a Hamısı /
+      Gecikmiş filter — an overdue book is a book that was given out. The
+      invite-links modal became the Üzvlər domain's second screen. The nine
+      settings tables split where their meaning splits: the vocabulary a title
+      is catalogued with on one screen, the lifecycle a copy and its loans move
+      through on the other. The placeholders are clickable and say what will
+      live there and what it waits on, rather than being greyed out.
+
+      The second level is drawn with the one pattern the design already owns for
+      screens-within-a-screen — S2's outlined tab buttons, 8px radius, 8px 14px,
+      13px/700, #082F49 when active — because the design's own console is a flat
+      nine-screen list with no top bar. Verified against the live page with
+      `getComputedStyle`, not the markup.
+
+- [x] **Texniki dəstək — the librarian → administration ticket channel.**
+      `Ticket` + `TicketReply`, shaped after `BookRequest` (branch-scoped
+      author, school-scoped queue, scope from the caller's profile and never the
+      request body). Three kinds — ask for a book to be added, report a problem,
+      anything else. A thread with a reply endpoint on each side, a denormalised
+      reply count so the list needs no join per row, and one `SeenAt` stamp per
+      side driving the nav badge rather than a per-user read table. A manager is
+      the school administrator and sees their own school; a platform admin has
+      no school and sees every one. Answering an untouched ticket moves it to
+      IN_PROGRESS; the branch can withdraw its own; a closed ticket takes no
+      more replies. `desk/summary` gained `tickets_unread`. API audit is **162
+      checks**
+
+- [x] **The branch-wide borrow policy has a screen** — `Kitabxana ayarları →
+      Borc qaydaları`, wiring `GET/PUT /branch-settings`, which had been tested
+      but unwired since the borrow-limit work. Both the default limit and the
+      pickup window, with the form refusing the values the endpoint would
+      silently clamp. The per-student override stays on the Members panel
 
 - [x] **Design-fidelity pass finished on every screen that had one.** Catalogue,
       Book detail, My Shelf, Challenges, Landing, the staff shell and the three

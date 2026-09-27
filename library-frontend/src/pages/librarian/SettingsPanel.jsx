@@ -19,9 +19,15 @@ const SECTIONS = [
     { key: 'reservation-statuses', labelKey: 'set.resStatuses', endpoint: '/reservation-statuses', system: true, fields: [{ name: 'name', labelKey: 'set.name' }] },
 ];
 
-const SettingsPanel = ({ onDataChanged }) => {
+// `only` narrows the panel to a subset of SECTIONS, keyed by `key`. The staff
+// console's Kitabxana ayarları domain splits these nine tables across two
+// screens in its top bar — the catalogue's vocabulary on one, the copy and loan
+// lifecycle on the other — rather than making a librarian scan all nine.
+// Omitting the prop keeps the old behaviour: every section, in one panel.
+const SettingsPanel = ({ onDataChanged, only }) => {
     const { t } = useTranslation();
-    const [activeKey, setActiveKey] = useState('authors');
+    const sections = only ? SECTIONS.filter(s => only.includes(s.key)) : SECTIONS;
+    const [activeKey, setActiveKey] = useState(sections[0].key);
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -29,7 +35,7 @@ const SettingsPanel = ({ onDataChanged }) => {
     const [editingId, setEditingId] = useState(null);
     const [form, setForm] = useState({});
 
-    const section = SECTIONS.find(s => s.key === activeKey);
+    const section = sections.find(s => s.key === activeKey) || sections[0];
     const primaryField = section.fields[0].name;
 
     // SECTIONS is module-level, so `section` is stable per activeKey and this won't loop.
@@ -90,7 +96,7 @@ const SettingsPanel = ({ onDataChanged }) => {
         <div>
             {/* Category picker */}
             <div className="flex flex-wrap gap-2 mb-6">
-                {SECTIONS.map(s => (
+                {sections.map(s => (
                     <button
                         key={s.key}
                         onClick={() => setActiveKey(s.key)}

@@ -153,6 +153,15 @@ func Setup(app *fiber.App) {
 	api.Get("/book-requests", middleware.IsLibrarian, handlers.GetBranchBookRequests)
 	api.Put("/book-requests/:id", middleware.IsLibrarian, handlers.UpdateBookRequestStatus)
 
+	// Texniki dəstək — a librarian raising something with the school
+	// administration. Branch-scoped: the author's own branch raised it.
+	api.Post("/tickets", middleware.IsLibrarian, handlers.CreateTicket)
+	api.Get("/tickets", middleware.IsLibrarian, handlers.GetBranchTickets)
+	api.Get("/tickets/:id", middleware.IsLibrarian, handlers.GetTicket)
+	api.Post("/tickets/:id/replies", middleware.IsLibrarian, handlers.ReplyToTicket)
+	api.Post("/tickets/:id/seen", middleware.IsLibrarian, handlers.MarkTicketSeen)
+	api.Put("/tickets/:id/close", middleware.IsLibrarian, handlers.CloseTicket)
+
 	// Class & Student Data
 	api.Get("/class-list", middleware.IsLibrarian, handlers.GetClassList)
 
@@ -270,4 +279,12 @@ func Setup(app *fiber.App) {
 	// Manager sees/handles book requests across their whole school
 	api.Get("/manager/book-requests", middleware.IsManager, handlers.GetSchoolBookRequests)
 	api.Put("/manager/book-requests/:id", middleware.IsManager, handlers.ManagerUpdateBookRequestStatus)
+
+	// The support queue. IsManager admits a manager and an admin; the handlers
+	// then scope a manager to their own school and let an admin see every one.
+	api.Get("/manager/tickets", middleware.IsManager, handlers.GetQueueTickets)
+	api.Get("/manager/tickets/:id", middleware.IsManager, handlers.GetQueueTicket)
+	api.Put("/manager/tickets/:id", middleware.IsManager, handlers.UpdateQueueTicketStatus)
+	api.Post("/manager/tickets/:id/replies", middleware.IsManager, handlers.ReplyToQueueTicket)
+	api.Post("/manager/tickets/:id/seen", middleware.IsManager, handlers.MarkQueueTicketSeen)
 }
