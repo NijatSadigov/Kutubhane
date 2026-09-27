@@ -2,7 +2,11 @@ import axios from 'axios';
 
 // Backend origin (without the /api suffix) — used to resolve uploaded file
 // paths like "/uploads/covers/x.jpg" that the API stores as relative URLs.
-export const API_ORIGIN = 'http://localhost:8000';
+//
+// Override with VITE_API_ORIGIN to point the UI at a second server running
+// against a scratch database, which is how the loan flows are exercised
+// without touching the real one. See HANDOFF.md.
+export const API_ORIGIN = import.meta.env.VITE_API_ORIGIN || 'http://localhost:8000';
 
 const api = axios.create({
     baseURL: API_ORIGIN + '/api',

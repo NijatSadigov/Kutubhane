@@ -19,6 +19,13 @@ func Setup(app *fiber.App) {
 	// Books for the logged-out landing page: bibliographic facts and loan
 	// counts only, never who borrowed what.
 	app.Get("/api/public/books", handlers.GetPublicBooks)
+	app.Get("/api/public/challenge", handlers.GetPublicChallenge)
+	// The logged-out site: browse the catalogue and read reviews with the
+	// authors reduced to initials. See handlers/public.go.
+	app.Get("/api/public/catalog", handlers.GetPublicCatalogue)
+	app.Get("/api/public/works/:id/reviews", handlers.GetPublicWorkReviews)
+	app.Get("/api/public/reviews", handlers.GetPublicReviews)
+	app.Get("/api/public/challenges", handlers.GetPublicChallenges)
 
 	api := app.Group("/api", middleware.IsAuthenticated)
 
@@ -54,6 +61,9 @@ func Setup(app *fiber.App) {
 	api.Get("/shelf/summary", handlers.GetShelfSummary)
 	api.Get("/shelf/badges", handlers.GetBadges)
 	api.Post("/shelf/badges/:id/pin", handlers.PinBadge)
+	api.Get("/shelf/goal", handlers.GetReadingGoal)
+	api.Put("/shelf/goal", handlers.SetReadingGoal)
+	api.Put("/shelf/bio", handlers.SetBio)
 	api.Get("/notes", handlers.GetNotes)
 	api.Post("/notes", handlers.SaveNote)
 	api.Delete("/notes/:id", handlers.DeleteNote)

@@ -111,6 +111,11 @@ changes for the librarian if done right.
 - [x] **2.3** Global shell — sticky blurred header, 1360px canvas, logo +
       wordmark, school pill, nav, search with quick filters and a live
       suggestion dropdown, AZ/TR/EN switcher, streak pill, avatar
+- [x] **2.4a** **Fidelity pass, 2026-09-27.** Catalogue, Book detail, My Shelf,
+      Challenges and Landing rebuilt from the prototype's markup, as Discover
+      already had been — literal sizes, colours and spacing, verified with
+      `getComputedStyle` against the source rather than by eye. See the Log
+      entry for the backend work it required
 - [x] **2.4** **Catalogue** screen, wired to real data: scope switch with
       counts, filter panel (search, availability toggle, CEFR chips, genre
       facets with colour dots and counts, edition-language chips, length
@@ -150,7 +155,16 @@ changes for the librarian if done right.
 - [ ] **2.11** Staff Console: librarian circulation desk, teacher class
       dashboard / challenge builder / moderation queue, admin analytics /
       branches & users / alliances. Read `Staff Console.dc.html` as the spec —
-      the prototype freezes when opened
+      the prototype freezes when opened.
+      **Shell and the three librarian screens are done to the design** (S1–S3,
+      2026-09-27): the 236px `#082F49` sidebar with the school card and the
+      workspace nav, the sticky top bar with crumb / 19px-800 title / search /
+      role chip, the 24/800 KPI strip, the desk's numbered check-out flow with
+      a basket, the barcode check-in with its overdue and hold alerts, the
+      holds queue with placed date and queue position, and inventory with
+      segmented availability bars. **Teacher (S4–S6) and admin (S7–S9) are not
+      built** — they are features, not restyling, and S4/S6 need the `teacher`
+      role first
 - [ ] **2.12** Replace the remaining role dashboards once the new screens cover
       them, and translate the `ComingSoon` scaffolding away. Students already
       land in the new app after login; `/student` stays reachable directly, and
@@ -188,6 +202,20 @@ home in the new UI. Reviewed 2026-09-26.
 | Reservation pickup deadlines and auto-expiry | **Partly** — holds can be marked ready or cancelled, with no deadline concept | Keep; surface the deadline in the holds queue |
 | Borrow limits: branch default plus per-student override | **Partly** — check-out mentions a limit but there is no settings UI | Build the UI in Settings — still missing in both |
 | Platform admin across many schools | **No** — the design's Admin is a single school's admin | Keep the platform tier above the school Admin console |
+
+Found during the 2026-09-27 fidelity pass — designed features with nothing
+behind them yet:
+
+| Designed element | Where | Status |
+|---|---|---|
+| Book synopsis under the title (Source Serif 18/1.65) | Book detail | Field exposed as `synopsis` off `Work.Description`; **nothing writes one**, so no title has it. The book form needs the field |
+| "Fresh from the community" review cards | Landing | Deliberately an empty state: every reviewer is a student or teen, and the design's own caption says those reviews are members-only |
+| Book clubs card with real clubs | Landing | Feature does not exist (Phase "Later"); the card says coming soon |
+| Overdue reminders, "notify class teachers", "mark lost" | Staff · Holds & overdue | No notification channel, no teacher role, and no LOST copy status. The bulk bar states this instead of pretending |
+| Teacher line under each overdue student | Staff · Holds & overdue | Blocked on the `teacher` role |
+| School battles and the alliance card | Challenges | Blocked on Phase 3 tenancy |
+| Per-branch copy counts when adding a title | Staff · Inventory | The add flow links one holding for the caller's own branch; multi-branch stocking needs the manager tier |
+| ISBN lookup when adding a title | Staff · Inventory | Replaced by a shared-catalogue search, which is the equivalent this system actually has — an external bibliographic service would be new scope |
 
 ## Phase 4 — Social layer backend
 
@@ -245,6 +273,198 @@ them.
 ---
 
 ## Log
+
+**2026-09-27 (dead code sweep)** — Looked for unused endpoints and found almost
+none: **every one of the 152 routes is referenced** by the UI, the API audit or
+`tools/`. Five are referenced only by the audit, and all five are kept
+deliberately:
+
+| Route | Why it stays |
+|---|---|
+| `GET/PUT /branch-settings` | The branch-wide borrow limit. The parity table lists its UI as still to build — deleting the backend would delete the feature |
+| `GET/PUT /loan-limit` | Same policy pair |
+| `GET /catalog/editions/:id` | The canonical single-edition read. Book Detail currently filters `/catalog/browse` instead, which is the thing that should change |
+
+The dead code was in the **frontend**. Walking the import graph from
+`main.jsx`: 52 modules reachable, 6 not. Deleted four —
+`pages/Login.jsx`, `pages/Register.jsx` (superseded by
+`mrb/pages/AuthPages.jsx`), `pages/PublicHome.jsx` (superseded by the landing
+page) and `App.css`.
+
+The other two were **not** dead, and one was a latent bug: `App.jsx` imported
+`./pages/student/StudentDashBoard` while the file is `StudentDashboard.jsx`.
+Windows does not care; a Linux build would have failed on it. Fixed, which also
+un-orphans `components/BookRequestModal.jsx`.
+
+Then 104 translation keys that nothing referenced any more — 312 lines across
+the three locales. The detector has to understand both spellings of a dynamic
+key, `t('mrb.scope.' + scope)` **and** ``tr(t, `mrb.badge.${code}.name`)``; the
+first pass missed the template-literal form and would have deleted every badge
+name. Afterwards all 13 screens plus both old dashboards were scanned for raw
+`dotted.key` text: none.
+
+**2026-09-27 (the console was unreachable)** — The librarian console had been
+built for two sessions and nobody could see it: signing in as a librarian went
+to `/librarian`, the *old* dashboard, while the rebuilt console sat unvisited
+at `/staff`. Worth remembering — "is it wired up?" is a different question from
+"is it built?", and only the first one the buyer can answer.
+
+Four places decided where a signed-in user goes and they disagreed. The live
+login is `mrb/pages/AuthPages.jsx`; `pages/Login.jsx` is dead code that still
+carried its own copy of the rule, and I edited that one first and watched
+nothing change. They now all defer to `homePathFor()` in `src/home.js`.
+
+A librarian lands on `/staff`, which by now covers everything their old
+dashboard did — desk, holds and overdue, all loans, catalogue with copies,
+members with invite codes, requests, settings. **Managers and admins keep
+their own consoles**: the staff console has no screens for them yet (S7–S9,
+analytics and branches & users, are unbuilt), so routing them there would take
+tools away rather than give them any. The sidebar keeps a "Classic dashboard"
+link while the console beds in.
+
+**2026-09-27 (profile & challenges)** — Compared My Shelf and Challenges against
+the running prototype rather than its markup, which showed three real gaps.
+
+*The profile banner* was a row short. The prototype's text column has four:
+name + handle, three pills, the pinned badges, and a **bio** — and the pills are
+school · branch, year group and **reading level**, not the grade/branch/streak
+mine carried (the streak is already a statistic below and a pill in the header).
+So: `Student.Bio` added with `PUT /shelf/bio` (deliberately outside
+`UpdateProfile`, which gates every change behind the current password — right
+for an email, absurd for a sentence about liking science fiction), and
+`reading_level` on `/shelf/summary`, derived from the commonest CEFR among the
+books the reader has finished. Students have no CEFR field and inventing one
+from their year group would be fiction.
+
+*Badges*, on the buyer's instruction, now deviate from the prototype
+deliberately: the design puts a 160px-card grid directly under the profile,
+which fills the screen before the reader reaches what they are actually
+reading. The section moved below the shelves, the cards went to 120px (56px
+medallions, description demoted to a tooltip), and it folds away — collapsed by
+default, and the choice is remembered per reader. 600px of page became 99px.
+
+*Challenges* had three wording mismatches with the prototype: the organiser
+pill said a generic "School" where the design names it ("Hədəf · all 5
+branches"), the card's progress counted sub-steps where the design counts
+**books verified**, and Frontrunners lacked the reader's own rank ("You're #6
+of 418"). The API gained `organiser`, `branch_count` and `verified` to say it
+properly.
+
+**2026-09-27 (librarian pass)** — **Loan system verified, and the librarian
+features the design never covered given a home.**
+
+*Loans.* `tools/test_loan_lifecycle.py` passes 33/33 against a scratch clone,
+and the rebuilt Circulation Desk was driven by hand through a full cycle:
+pick a student → see their live limit readout → search a copy → basket → check
+out → check in with a condition. The KPI strip, the day's log and the database
+all agreed at every step; the copy came back AVAILABLE with its condition
+recorded, and the hold alert fired on the return because another reader was
+waiting for it.
+
+*The gap.* `Staff Console.dc.html` gives the librarian three screens. The
+working system has always had more, and the new console had quietly dropped
+them — most seriously, **there was no way to add a physical copy**. Added, in
+the staff design system's language:
+
+- **Inventory** — add / edit / delete copies (a new copy defaults to the
+  branch's AVAILABLE status, or it lands in limbo: countable by nobody and
+  lendable to nobody), edit a holding's shelf mark and genre, upload a cover or
+  an e-book, delete a title, and CSV bulk import. Title and author stay
+  read-only: they belong to the shared catalogue.
+- **Members** (new nav item) — the branch's readers with a KPI strip, search,
+  and a side panel carrying their statistics, what they have out and the one
+  setting a librarian may change, their borrow limit. Plus the branch invite
+  codes students register with. This borrows S8's shape, scoped to one branch
+  and one role.
+- **Holds & overdue** — a third tab, "All loans", with the action the design
+  never gave the desk: change a due date.
+
+Fixed on the way: `/class-list` did not preload the loan's book, so the reader
+panel said "A book" instead of the title; and `API_ORIGIN` is now overridable
+with `VITE_API_ORIGIN`, which is how the UI was pointed at the scratch server
+so none of this testing touched the real database.
+
+**2026-09-27 (later)** — **Four corrections after review.**
+
+1. **The landing page was not the guest view.** The prototype uses *one*
+   header for members and guests — same logo, nav, search and quick filters,
+   only the tail differs (avatar vs "Log in / Join"). The landing had its own
+   search-less header, which is what made it look like a different page. The
+   header is now `mrb/components/SiteHeader.jsx`, shared by the app, the
+   landing and the public screens. The two empty sections are filled with real
+   data: recent reviews and the challenges schools are reading together.
+
+2. **Dates ignored the chosen language.** 37 `toLocaleDateString()` calls with
+   no locale meant an Azerbaijani page said "Sunday, September 27". They now go
+   through `i18n/dates.js`. Note for anyone tempted to use `Intl` for this:
+   Chrome reports `az` as supported and then formats it "M09 27, Sun", so the
+   Azerbaijani month and weekday names are tabulated in that file. The default
+   language is now `az` rather than `tr`, which is the other half of why the
+   UI read as half-translated. The remaining hardcoded Turkish in the old
+   dashboards is translated too.
+
+3. **Responsiveness.** The design is desktop-first and relies on `flex-wrap`;
+   at 375px the header stacked into six rows 570px tall before any content, and
+   the search box pushed its quick filters off the edge. `mrb/responsive.css`
+   holds the few rules that need a media query: a gutter that shrinks from 40px
+   to 16px, a three-row mobile header (165px), display sizes on `clamp()`, and
+   the staff sidebar becoming a horizontal bar under 900px.
+
+4. **School students only — no individual sign-ups** (confirmed with the buyer
+   on 2026-09-27). The landing leads with the school code instead of "join
+   free"; the "readers aged 13+" framing, the adult book clubs and the adult
+   public reviews are gone. What replaced them is real: reviews by school
+   readers and challenges at partner schools.
+
+   A logged-out visitor may now browse the catalogue and read a book page
+   (`/catalogue`, `/book/:id`), with every action routing to sign-in — the
+   design's guest persona. Reviews are visible to guests **with author names
+   reduced to initials and no grade or branch**, because they are written by
+   minors: `maskReviewAuthors` in `handlers/review.go`, served by
+   `/api/public/catalog`, `/api/public/works/:id/reviews` and
+   `/api/public/reviews`. The authenticated endpoints are untouched.
+
+**2026-09-27** — **Design-fidelity pass on the remaining reader screens and the
+staff console.** Discover had already been rebuilt from the prototype's markup;
+the same treatment is now done for Catalogue, Book detail, My Shelf, Challenges,
+Landing, the staff shell and the three librarian screens. Each was written by
+opening that screen's block in `myredbookshelf.dc.html` (or
+`Staff Console.dc.html` / `Staff Design System.dc.html`) and transcribing the
+literal sizes, colours and spacing, then checked against the source with
+`getComputedStyle` rather than by eye.
+
+The pass turned up backend gaps, because several designed elements had no data
+behind them:
+
+- `scope=shelf` on `/catalog/browse` still returned 501 from before `ShelfItem`
+  existed. It now browses the reader's own works, so the design's three-way
+  scope switch works.
+- The sort menu names four orders; the backend had three, and "most borrowed"
+  actually sorted by *copies held*. Added a real `borrow_count` (loans per
+  edition, all branches) and a `rating` order that sinks unrated titles.
+- Book detail needed `synopsis` (from `Work.Description`) and `my_loan_id`, so
+  the diary button can write against the open loan.
+- The review feed's caption says "sorted by most helpful" — it was newest
+  first. Sorted after decoration, stably, so ties stay newest-first.
+- `review_step_available: false` was stale: reviewing a challenge book has
+  ticked its step since reviews landed. The step is live again.
+- `/shelf/summary` gained the second line under each statistic — books this
+  month, member since, percentile within the year group, best streak — plus the
+  sidebar's genre mix.
+- Added `ReadingGoal` (one row per reader per year) with `GET/PUT /shelf/goal`,
+  for the design's year-goal card.
+- Added `GET /public/challenge` so the landing page's open-challenge card and
+  hero badge show the real challenge rather than a mock.
+- The desk summary gained the same-weekday-last-week comparison behind the
+  design's "+6 vs last Sat", and `POST /return/:id` now records the copy's
+  condition from the branch's own condition rows.
+
+Three designed elements were deliberately **not** faked, and say so on screen:
+the landing page's "fresh from the community" strip (every reviewer here is a
+student or teen, and the privacy rule keeps their reviews for members — which
+is exactly what the design's own caption states), the book-clubs card (the
+feature does not exist), and overdue reminders (there is no notification
+channel yet). Book synopses render when present; nothing writes one yet.
 
 **2026-09-26** — Wrote `PROJECT_BRIEF.md` (designer-facing description of the
 system) and this roadmap. Agreed the four-level catalog and the

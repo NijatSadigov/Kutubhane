@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import api, { assetUrl } from '../../api/axios';
 import { AuthContext } from '../../context/AuthContext';
 import { useTranslation } from '../../i18n/LanguageContext';
+import { fmtDate, fmtNum, fmtWeekdayDay } from '../../i18n/dates';
 import { coverColors, cefrColors } from '../theme';
 
 /* Literal design values, kept together so they read like the spec. */
@@ -87,9 +88,9 @@ export default function Discover() {
       {/* ------------------------------------------------------ greeting */}
       <div>
         <div style={{ fontSize: 13, fontWeight: 600, color: C.brandHi, marginBottom: 6 }}>
-          {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
+          {fmtWeekdayDay(new Date())}
         </div>
-        <h1 style={{
+        <h1 className="mrb-h-page" style={{
           margin: 0, fontFamily: SERIF, fontSize: 38, fontWeight: 600,
           letterSpacing: '-0.02em', color: C.ink,
         }}>{greeting(t)}{first ? `, ${first}.` : '.'}</h1>
@@ -257,7 +258,7 @@ function BookwormCard({ reader, allTime, t, nav }) {
             <div style={{
               fontFamily: SERIF, fontSize: 44, fontWeight: 700, lineHeight: 1,
               color: C.deep, letterSpacing: '-0.02em',
-            }}>{reader.pages.toLocaleString()}</div>
+            }}>{fmtNum(reader.pages)}</div>
             <div style={{ fontSize: 13, color: C.body, marginTop: 4 }}>
               {t('mrb.disc.pagesInPeriod', { n: reader.books })}{allTime ? ' · ' + t('mrb.disc.allTime') : ''}
             </div>
@@ -423,7 +424,7 @@ function LeagueCard({ league, rows, mineRow, myRank, period, setPeriod, scope, s
       }}>
         <span>{t('mrb.disc.yourContribution')}</span>
         <strong style={{ color: '#fff' }}>
-          {t('mrb.disc.nPages', { n: (league?.my_pages ?? 0).toLocaleString() })}
+          {t('mrb.disc.nPages', { n: fmtNum(league?.my_pages ?? 0) })}
         </strong>
       </div>
     </div>
@@ -579,7 +580,7 @@ function PostCard({ row, t, nav, reload }) {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
           <span style={{ fontSize: 12, color: C.mute, marginRight: 6 }}>
-            {new Date(r.created_at).toLocaleDateString()}
+            {fmtDate(r.created_at)}
           </span>
           <button
             disabled={busy}
@@ -645,7 +646,7 @@ function TopReaders({ readers, allTime, t }) {
             <div style={{ fontSize: 12, color: C.dim }}>{[r.grade, r.branch].filter(Boolean).join(' · ')}</div>
           </div>
           <span style={{ fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-            {r.pages.toLocaleString()}
+            {fmtNum(r.pages)}
           </span>
         </div>
       ))}
@@ -670,7 +671,7 @@ function ChallengeTeaser({ ch, t, nav }) {
         }}>
           {ch.state === 'active'
             ? t('mrb.disc.challengeDays', { n: Math.max(0, ch.days_left) })
-            : ch.state === 'upcoming' ? t('mrb.ch.startsOn', { date: new Date(ch.starts_at).toLocaleDateString() })
+            : ch.state === 'upcoming' ? t('mrb.ch.startsOn', { date: fmtDate(ch.starts_at) })
             : t('mrb.ch.finished')}
         </span>
       </div>

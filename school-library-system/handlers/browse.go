@@ -35,6 +35,12 @@ type BrowseCard struct {
 	Genre     string `json:"genre"`
 	CoverURL  string `json:"cover_url"`
 
+	// Synopsis is the blurb the book page sets in Source Serif under the
+	// title. It is a fact about the work, not about a branch's copy, so it
+	// comes off Work.Description; nothing writes it yet, and the page simply
+	// omits the paragraph when it is empty rather than inventing one.
+	Synopsis string `json:"synopsis"`
+
 	// Availability, from the caller's own branch.
 	HeldHere        bool `json:"held_here"`
 	Copies          int  `json:"copies"`
@@ -61,31 +67,32 @@ type BrowseCard struct {
 	MyDueDate        *time.Time `json:"my_due_date"`
 	MyPickupDeadline *time.Time `json:"my_pickup_deadline"`
 	MyReservationID  *uint      `json:"my_reservation_id"`
+	// MyLoanID is the open loan behind MyStatus ON_LOAN. A diary entry is
+	// written against a loan, so the book page needs it to offer the design's
+	// "log today's reading" button.
+	MyLoanID *uint `json:"my_loan_id"`
 
 	// ShelfStatus is OWNED / WANT / READING / READ when the book is on their
 	// shelf; IsFavorite is independent of it.
 	ShelfStatus string `json:"shelf_status"`
 	IsFavorite  bool   `json:"is_favorite"`
+
+	// BorrowCount is how many times this edition has ever been lent, across
+	// every branch. It is what "Most borrowed" in the design's sort menu means;
+	// counting copies instead made a title with three copies and no readers
+	// outrank one that had been read forty times.
+	BorrowCount int `json:"borrow_count"`
 }
 
 // BrowseCatalogue backs the reader-facing Catalogue screen.
 //
-// Scopes:
+// Scopes, the three the design's segmented control offers:
 //
+//	shelf   — only works on the caller's own shelf, whatever their status
 //	library — everything the caller's own branch holds (the default)
 //	global  — the whole shared catalogue, including titles no branch here holds
-//
-// The "shelf" scope in the design needs a Shelf model that does not exist yet;
-// asking for it returns an explicit 501 rather than silently showing the wrong
-// books.
 func BrowseCatalogue(c *fiber.Ctx) error {
 	scope := c.Query("scope", "library")
-	if scope == "shelf" {
-		return c.Status(501).JSON(fiber.Map{
-			"error": "The personal shelf is not implemented yet",
-			"code":  "NOT_IMPLEMENTED",
-		})
-	}
 
 	branchID, branchErr := getUserBranchID(c)
 
@@ -93,7 +100,36 @@ func BrowseCatalogue(c *fiber.Ctx) error {
 	var editions []models.Edition
 	holdingByEdition := map[uint]*models.Book{}
 
-	if scope == "global" {
+	if scope == "shelf" {
+		ids, err := shelfEditionIDs(c)
+		if err != nil {
+			return c.Status(401).JSON(fiber.Map{"error": "Unauthorized"})
+		}
+		if len(ids) > 0 {
+			q := database.DB.Model(&models.Edition{}).
+				Select("editions.*").
+				Where("editions.id IN ?", ids)
+			q = applyBrowseFilters(c, q)
+			if err := q.Preload("Work").Preload("Work.Author").Preload("Publisher").
+				Find(&editions).Error; err != nil {
+				return c.Status(500).JSON(fiber.Map{"error": "Catalogue query failed"})
+			}
+		}
+		// The reader's own branch still decides availability and the borrow
+		// action, exactly as in the other two scopes.
+		if branchErr == nil {
+			var own []models.Book
+			database.DB.
+				Preload("Genre").Preload("Copies").Preload("Copies.Status").
+				Where("branch_id = ?", branchID).
+				Find(&own)
+			for i := range own {
+				if own[i].EditionID != nil {
+					holdingByEdition[*own[i].EditionID] = &own[i]
+				}
+			}
+		}
+	} else if scope == "global" {
 		q := database.DB.Model(&models.Edition{}).
 			Select("editions.*").
 			Where("editions.merged_into_id IS NULL")
@@ -171,6 +207,20 @@ func BrowseCatalogue(c *fiber.Ctx) error {
 		holdingCount[r.EditionID] = r.N
 	}
 
+	// How many times each edition has ever been lent, across every branch —
+	// what the design's "Most borrowed" sort actually orders by.
+	var borrowRows []cnt
+	database.DB.Model(&models.Loan{}).
+		Select("books.edition_id as edition_id, count(*) as n").
+		Joins("JOIN book_copies ON book_copies.id = loans.book_copy_id").
+		Joins("JOIN books ON books.id = book_copies.book_id").
+		Where("books.edition_id IN ?", editionIDs).
+		Group("books.edition_id").Scan(&borrowRows)
+	borrowCount := map[uint]int{}
+	for _, r := range borrowRows {
+		borrowCount[r.EditionID] = r.N
+	}
+
 	// --- ratings, per work, in one query ---
 	workIDs := make([]uint, 0, len(editions))
 	for _, e := range editions {
@@ -197,6 +247,7 @@ func BrowseCatalogue(c *fiber.Ctx) error {
 		due      *time.Time
 		deadline *time.Time
 		resID    *uint
+		loanID   *uint
 	}
 	mine := map[uint]myState{}   // keyed by branch book (holding) id
 	shelfBy := map[uint]string{} // keyed by work id
@@ -212,7 +263,8 @@ func BrowseCatalogue(c *fiber.Ctx) error {
 			Find(&loans)
 		for i := range loans {
 			due := loans[i].DueDate
-			mine[loans[i].BookCopy.BookID] = myState{status: "ON_LOAN", due: &due}
+			id := loans[i].ID
+			mine[loans[i].BookCopy.BookID] = myState{status: "ON_LOAN", due: &due, loanID: &id}
 		}
 
 		// Open reservations, pending or approved.
@@ -262,6 +314,7 @@ func BrowseCatalogue(c *fiber.Ctx) error {
 			LangCode:  e.LanguageKey,
 			CEFR:      e.CEFRLevel,
 			CoverURL:  e.CoverURL,
+			Synopsis:  e.Work.Description,
 		}
 		if card.Title == "" {
 			card.Title = e.Work.Title
@@ -290,6 +343,7 @@ func BrowseCatalogue(c *fiber.Ctx) error {
 				card.MyDueDate = st.due
 				card.MyPickupDeadline = st.deadline
 				card.MyReservationID = st.resID
+				card.MyLoanID = st.loanID
 			}
 		}
 		if r, ok := ratingBy[e.WorkID]; ok && r.N > 0 {
@@ -303,6 +357,7 @@ func BrowseCatalogue(c *fiber.Ctx) error {
 				card.OtherBranches = n - 1
 			}
 		}
+		card.BorrowCount = borrowCount[e.ID]
 
 		cards = append(cards, card)
 	}
@@ -384,11 +439,31 @@ func applyBrowseFilters(c *fiber.Ctx, q *gorm.DB) *gorm.DB {
 	return q
 }
 
+// sortBrowseCards orders the grid. The mode names are the four the design's
+// sort menu offers — popular / rating / newest / title; "borrowed" is kept as
+// an alias because the first build of the screen sent that.
 func sortBrowseCards(cards []BrowseCard, mode string) {
 	switch mode {
-	case "borrowed":
+	case "popular", "borrowed":
 		sort.SliceStable(cards, func(i, j int) bool {
-			return cards[i].OtherBranches+cards[i].Copies > cards[j].OtherBranches+cards[j].Copies
+			if cards[i].BorrowCount != cards[j].BorrowCount {
+				return cards[i].BorrowCount > cards[j].BorrowCount
+			}
+			// Never borrowed either way: the better-stocked title goes first.
+			return cards[i].Copies > cards[j].Copies
+		})
+	case "rating":
+		// Unrated titles sink to the bottom rather than sorting as zero, and a
+		// rating backed by more reviews wins a tie.
+		sort.SliceStable(cards, func(i, j int) bool {
+			a, b := cards[i].Rating, cards[j].Rating
+			if (a == nil) != (b == nil) {
+				return a != nil
+			}
+			if a != nil && *a != *b {
+				return *a > *b
+			}
+			return cards[i].RatingsCount > cards[j].RatingsCount
 		})
 	case "newest":
 		sort.SliceStable(cards, func(i, j int) bool { return cards[i].Year > cards[j].Year })
@@ -397,4 +472,47 @@ func sortBrowseCards(cards []BrowseCard, mode string) {
 			return catalog.NormalizeKey(cards[i].Title) < catalog.NormalizeKey(cards[j].Title)
 		})
 	}
+}
+
+// shelfEditionIDs resolves the caller's shelf to a set of edition ids, so the
+// "My shelf" scope can be browsed and filtered with the same machinery as the
+// other two. A shelf item records the edition the reader shelved when they
+// said so; for the ones that only name a work, any live edition of it stands
+// in, because the reader means the book rather than a particular printing.
+func shelfEditionIDs(c *fiber.Ctx) ([]uint, error) {
+	uid, err := currentUserID(c)
+	if err != nil {
+		return nil, err
+	}
+
+	var items []models.ShelfItem
+	if err := database.DB.Where("user_id = ?", uid).Find(&items).Error; err != nil {
+		return nil, err
+	}
+
+	ids := make([]uint, 0, len(items))
+	var loose []uint // works shelved without an edition
+	for _, it := range items {
+		if it.EditionID != nil {
+			ids = append(ids, *it.EditionID)
+		} else {
+			loose = append(loose, it.WorkID)
+		}
+	}
+
+	if len(loose) > 0 {
+		var stand []models.Edition
+		database.DB.
+			Where("work_id IN ? AND merged_into_id IS NULL", loose).
+			Order("work_id, id").
+			Find(&stand)
+		seen := map[uint]bool{}
+		for _, e := range stand {
+			if !seen[e.WorkID] {
+				seen[e.WorkID] = true
+				ids = append(ids, e.ID)
+			}
+		}
+	}
+	return ids, nil
 }

@@ -1,18 +1,27 @@
 import { createContext, useContext, useState, useCallback } from 'react';
 import { translations, LANGUAGES } from './translations';
+import { setDateLang } from './dates';
 
 const LanguageContext = createContext();
 
-const DEFAULT_LANG = 'tr';
+// The schools this runs in are Azerbaijani and so is every book in the
+// catalogue, so an Azerbaijani interface is the sane default. It used to open
+// in Turkish, which read as a half-finished translation.
+const DEFAULT_LANG = 'az';
 
 export const LanguageProvider = ({ children }) => {
     const [lang, setLangState] = useState(() => {
         const saved = localStorage.getItem('lang');
-        return translations[saved] ? saved : DEFAULT_LANG;
+        const initial = translations[saved] ? saved : DEFAULT_LANG;
+        // Dates format from a module-level language; set it before the first
+        // render so nothing paints in the wrong one.
+        setDateLang(initial);
+        return initial;
     });
 
     const setLang = useCallback((code) => {
         if (!translations[code]) return;
+        setDateLang(code);
         setLangState(code);
         localStorage.setItem('lang', code);
     }, []);

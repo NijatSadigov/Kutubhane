@@ -1,30 +1,56 @@
-// Catalogue — screen 2 of the handoff.
+// Catalogue — screen "04 Catalogue" of the handoff.
 //
-// Scope switch (My shelf / My library / Global) · left filter panel
-// (search, "available at my library" toggle, CEFR chips, genre checkboxes
-// with colour dot + count, edition-language chips, length chips) · results
-// grid with removable active-filter chips, sort select and an empty state.
+// Transcribed from the prototype's `isCatalog` block rather than from the
+// README's summary: the 24px screen rhythm, the school eyebrow and the result
+// label flanking a Source Serif 38/600 title, the 12px-radius white scope
+// switch with its count pills and hint line beneath, the filter panel as a
+// 260px white card (search row on #F8FAFC, the "available at my library"
+// switch on #F0F9FF/#BAE6FD, 12px/700/0.08em group labels, 999px chips at
+// 5px 12px, genre rows with an 18px check box and an 8px square swatch), the
+// 36px filter/sort bar, and the 180px card grid at 28px/22px with its 19px
+// serif cover title, 10px absolute badges, plain-text availability line and
+// the dashed sky empty state.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api, { assetUrl } from '../../api/axios';
 import { useTranslation } from '../../i18n/LanguageContext';
-import { brand, slate, radius, font, genreColors } from '../theme';
-import {
-  BookCover, CefrBadge, GenreChip, RatingLine, AvailabilityPill, Button, Toast,
-} from '../components/primitives';
+import { fmtDate } from '../../i18n/dates';
+import { coverColors, genreColors, cefrColors } from '../theme';
+import { useSchoolLabel } from '../useSchoolLabel';
+import { useReaderApi } from '../guest';
+import { Toast } from '../components/primitives';
+
+/* Literal design values, kept together so they read like the spec. */
+const C = {
+  ink: '#0F172A', body: '#475569', slate: '#334155', dim: '#64748B', mute: '#94A3B8',
+  line: '#E2E8F0', line2: '#CBD5E1', wash: '#F8FAFC',
+  tint: '#F0F9FF', sky100: '#E0F2FE', sky200: '#BAE6FD',
+  deep: '#075985', brand: '#1B9DD9', brandHi: '#1580B5',
+  okBg: '#DCFCE7', okFg: '#166534', coralFg: '#B4232A',
+};
+const SERIF = "'Source Serif 4', Georgia, serif";
+const CARD_SHADOW = '0 1px 2px rgba(15,23,42,0.04)';
 
 const CEFR_LEVELS = ['A2', 'B1', 'B2', 'C1'];
 const LANGS = [['az', 'Azərbaycanca'], ['tr', 'Türkçe'], ['en', 'English'], ['ru', 'Русский']];
 const LENGTHS = [['short', 'mrb.len.short'], ['mid', 'mrb.len.mid'], ['long', 'mrb.len.long']];
-const SORTS = [['borrowed', 'mrb.sort.borrowed'], ['newest', 'mrb.sort.newest'], ['title', 'mrb.sort.title']];
+// The four the design's sort menu offers, in its order.
+const SORTS = [
+  ['popular', 'mrb.sort.borrowed'], ['rating', 'mrb.sort.rating'],
+  ['newest', 'mrb.sort.newest'], ['title', 'mrb.sort.title'],
+];
+const SCOPE_KEYS = ['shelf', 'library', 'global'];
 
 export default function Catalogue() {
   const { t } = useTranslation();
   const nav = useNavigate();
   const [params, setParams] = useSearchParams();
+  const { label: schoolLabel, short: branchShort } = useSchoolLabel();
+  const { guest, http, browse, bookPath } = useReaderApi();
 
-  const [scope, setScope] = useState('library');
+  // A guest has no library and no shelf, so only the global scope exists.
+  const [scope, setScope] = useState(guest ? 'global' : 'library');
   const [q, setQ] = useState(params.get('q') || '');
   const [available, setAvailable] = useState(false);
   const [cefr, setCefr] = useState([]);
@@ -34,7 +60,7 @@ export default function Catalogue() {
   const [sort, setSort] = useState('title');
 
   const [items, setItems] = useState([]);
-  const [counts, setCounts] = useState({ library: 0, global: 0 });
+  const [counts, setCounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
@@ -51,7 +77,7 @@ export default function Catalogue() {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const res = await api.get('/catalog/browse', {
+      const res = await http.get(browse, {
         params: {
           scope,
           q: q.trim() || undefined,
@@ -64,31 +90,28 @@ export default function Catalogue() {
         },
       });
       setItems(res.data.items || []);
-    } catch (err) {
-      if (err.response?.data?.code === 'NOT_IMPLEMENTED') {
-        setItems([]);
-        setError(t('mrb.shelfNotReady'));
-      } else {
-        setError(t('msg.opFailed'));
-      }
+    } catch {
+      setError(t('msg.opFailed'));
     } finally { setLoading(false); }
-  }, [scope, q, cefr, langs, len, sort, available, genres, t]);
+  }, [scope, q, cefr, langs, len, sort, available, genres, t, http, browse]);
 
   useEffect(() => { load(); }, [load]);
 
-  // Scope counts, fetched once and unfiltered so the segmented control shows
-  // the size of each scope rather than the size of the current result set.
+  // Scope counts, unfiltered, so the segmented control reports the size of each
+  // scope rather than the size of the current result set.
   useEffect(() => {
     (async () => {
-      try {
-        const [lib, glob] = await Promise.all([
-          api.get('/catalog/browse', { params: { scope: 'library' } }),
-          api.get('/catalog/browse', { params: { scope: 'global' } }),
-        ]);
-        setCounts({ library: lib.data.total || 0, global: glob.data.total || 0 });
-      } catch { /* counts are a nicety */ }
+      const got = {};
+      const keys = guest ? ['global'] : SCOPE_KEYS;
+      await Promise.all(keys.map(async (s) => {
+        try {
+          const res = await http.get(browse, { params: { scope: s } });
+          got[s] = res.data.total || 0;
+        } catch { /* counts are a nicety */ }
+      }));
+      setCounts(got);
     })();
-  }, []);
+  }, [guest, http, browse]);
 
   // Genre facets come from what is actually in the current scope, because
   // genres are per-branch rows a librarian names, not a fixed list.
@@ -98,144 +121,183 @@ export default function Catalogue() {
     return [...m.entries()].sort((a, b) => b[1] - a[1]);
   }, [items]);
 
+  const availCount = useMemo(
+    () => items.filter((i) => i.available_copies > 0).length, [items],
+  );
+
   const toggle = (list, setList, v) =>
     setList(list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 
-  const activeChips = [
-    ...cefr.map((v) => ({ label: v, clear: () => setCefr(cefr.filter((x) => x !== v)) })),
-    ...genres.map((v) => ({ label: v, clear: () => setGenres(genres.filter((x) => x !== v)) })),
-    ...langs.map((v) => ({ label: (LANGS.find((l) => l[0] === v) || ['', v])[1], clear: () => setLangs(langs.filter((x) => x !== v)) })),
-    ...(len ? [{ label: t(LENGTHS.find((l) => l[0] === len)[1]), clear: () => setLen('') }] : []),
-    ...(available ? [{ label: t('mrb.availableHere'), clear: () => setAvailable(false) }] : []),
-    ...(q ? [{ label: `“${q}”`, clear: () => { setQ(''); setParams({}); } }] : []),
+  const activeFilters = [
+    ...cefr.map((v) => ({ label: v, onRemove: () => setCefr(cefr.filter((x) => x !== v)) })),
+    ...genres.map((v) => ({ label: v, onRemove: () => setGenres(genres.filter((x) => x !== v)) })),
+    ...langs.map((v) => ({
+      label: (LANGS.find((l) => l[0] === v) || ['', v])[1],
+      onRemove: () => setLangs(langs.filter((x) => x !== v)),
+    })),
+    ...(len ? [{ label: t(LENGTHS.find((l) => l[0] === len)[1]), onRemove: () => setLen('') }] : []),
+    ...(available ? [{ label: t('mrb.availableHere'), onRemove: () => setAvailable(false) }] : []),
+    ...(q ? [{ label: `“${q}”`, onRemove: () => { setQ(''); setParams({}); } }] : []),
   ];
 
-  const clearAll = () => {
+  const clearFilters = () => {
     setCefr([]); setGenres([]); setLangs([]); setLen(''); setAvailable(false);
     setQ(''); setParams({});
   };
 
-  const SCOPES = [
-    ['shelf', t('mrb.scope.shelf'), null],
-    ['library', t('mrb.scope.library'), counts.library],
-    ['global', t('mrb.scope.global'), counts.global],
-  ];
+  const scopeTotal = counts[scope];
+  const resultLabel = loading ? t('common.loading')
+    : activeFilters.length && scopeTotal != null && scopeTotal !== items.length
+      ? t('mrb.cat.resultFiltered', { n: items.length, total: scopeTotal })
+      : t('mrb.nResults', { n: items.length });
 
   return (
-    <>
-      <div style={{ fontSize: 12, color: slate.dim, marginBottom: 6 }}>{t('mrb.nav.catalogue')}</div>
-      <h1 style={{ fontFamily: font.display, fontSize: 38, fontWeight: 600, margin: '0 0 18px', letterSpacing: '-0.02em' }}>
-        {t('mrb.nav.catalogue')}
-      </h1>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* -------------------------------------------------------- heading */}
+      <div style={{
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
+        gap: 16, flexWrap: 'wrap',
+      }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.brandHi, marginBottom: 6 }}>
+            {(guest ? t('mrb.guest.publicCatalogue') : schoolLabel) || ' '}
+          </div>
+          <h1 className="mrb-h-page" style={{
+            margin: 0, fontFamily: SERIF, fontSize: 38, fontWeight: 600, letterSpacing: '-0.02em',
+          }}>{t('mrb.nav.catalogue')}</h1>
+        </div>
+        <div style={{ fontSize: 14, color: C.body }}>{resultLabel}</div>
+      </div>
 
-      {/* scope switch */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
-        <div style={{
-          display: 'inline-flex', gap: 4, background: slate.surface,
-          border: '1px solid ' + slate.border, borderRadius: 999, padding: 4, flexWrap: 'wrap',
+      {/* --------------------------------------------------- scope switch */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {!guest && <div style={{
+          display: 'flex', gap: 4, background: '#fff', border: '1px solid ' + C.line,
+          borderRadius: 12, padding: 4, alignSelf: 'flex-start', flexWrap: 'wrap',
+          boxShadow: CARD_SHADOW,
         }}>
-          {SCOPES.map(([key, label, n]) => {
-            const active = scope === key;
+          {SCOPE_KEYS.map((key) => {
+            const on = scope === key;
             return (
               <button key={key} onClick={() => setScope(key)} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 7,
-                background: active ? '#fff' : 'transparent',
-                color: active ? brand.deep : slate.body,
-                border: active ? '1px solid ' + slate.border : '1px solid transparent',
-                boxShadow: active ? '0 1px 2px rgba(15,23,42,.06)' : 'none',
-                padding: '7px 14px', borderRadius: 999, fontSize: 13, fontWeight: 700,
-                cursor: 'pointer', fontFamily: font.ui, whiteSpace: 'nowrap',
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: on ? C.sky100 : 'transparent',
+                color: on ? C.deep : C.body,
+                border: 0, borderRadius: 8, padding: '9px 16px',
+                fontSize: 14, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+                fontFamily: 'inherit',
               }}>
-                {label}
-                {n != null && (
+                {t('mrb.scope.' + key)}
+                {counts[key] != null && (
                   <span style={{
-                    background: active ? brand.tint100 : slate.border, color: active ? brand.deep : slate.body,
-                    borderRadius: 999, padding: '1px 7px', fontSize: 11, fontWeight: 800,
-                  }}>{n}</span>
+                    background: on ? '#fff' : C.line, color: on ? C.deep : C.body,
+                    borderRadius: 999, padding: '1px 8px', fontSize: 11, fontWeight: 700,
+                  }}>{counts[key]}</span>
                 )}
               </button>
             );
           })}
+        </div>}
+        <div style={{ fontSize: 13, color: C.body }}>
+          {guest ? t('mrb.guest.browseHint') : t('mrb.scope.' + scope + 'Hint')}
         </div>
-        <span style={{ fontSize: 13, color: slate.dim }}>
-          {scope === 'library' ? t('mrb.scope.libraryHint') : scope === 'global' ? t('mrb.scope.globalHint') : t('mrb.scope.shelfHint')}
-        </span>
       </div>
 
-      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap', marginTop: 20 }}>
-        {/* ------------------------------------------------ filter panel */}
-        <aside style={{ flex: '0 1 260px', minWidth: 230, display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={t('mrb.searchPlaceholder')}
-            style={{
-              width: '100%', border: '1px solid ' + slate.border, background: '#fff',
-              borderRadius: radius.input, padding: '10px 12px', fontSize: 13,
-              outline: 'none', fontFamily: font.ui, color: slate.text,
-            }}
-          />
-
-          <label style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-            background: brand.tint50, border: '1px solid ' + brand.tint200,
-            borderRadius: radius.smallCard, padding: '12px 14px', cursor: 'pointer',
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 28, alignItems: 'flex-start' }}>
+        {/* ---------------------------------------------- filter panel */}
+        <aside style={{
+          flex: '0 1 260px', minWidth: 220, display: 'flex', flexDirection: 'column', gap: 20,
+          background: '#fff', border: '1px solid ' + C.line, borderRadius: 16, padding: 20,
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, border: '1px solid ' + C.line,
+            borderRadius: 10, padding: '8px 12px', background: C.wash,
           }}>
-            <span>
-              <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: brand.deep }}>{t('mrb.availableHere')}</span>
-              <span style={{ display: 'block', fontSize: 11, color: slate.dim, marginTop: 2 }}>
-                {t('mrb.availableHereHint', { n: items.filter((i) => i.available_copies > 0).length })}
+            <span style={{ color: C.dim }}>⌕</span>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={t('mrb.searchPlaceholder')}
+              style={{
+                flex: 1, minWidth: 0, border: 0, background: 'transparent',
+                outline: 'none', fontSize: 14, color: C.ink, fontFamily: 'inherit',
+              }}
+            />
+          </div>
+
+          {!guest && <button
+            onClick={() => setAvailable(!available)}
+            role="switch" aria-checked={available}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12, background: C.tint,
+              border: '1px solid ' + C.sky200, borderRadius: 12, padding: 12,
+              cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+            }}
+          >
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: C.deep }}>
+                {t('mrb.availableHere')}
+              </span>
+              <span style={{ display: 'block', fontSize: 12, color: C.body, marginTop: 2 }}>
+                {t('mrb.availableHereAt', { branch: branchShort || '—', n: availCount })}
               </span>
             </span>
-            <span
-              role="switch" aria-checked={available}
-              onClick={() => setAvailable(!available)}
-              style={{
-                width: 42, height: 24, borderRadius: 999, flexShrink: 0,
-                background: available ? brand.primary : slate.border2,
-                position: 'relative', transition: 'background .15s',
-              }}
-            >
+            <span style={{
+              width: 40, height: 24, borderRadius: 999, flexShrink: 0, position: 'relative',
+              background: available ? C.brand : C.line2, transition: 'background .2s',
+            }}>
               <span style={{
-                position: 'absolute', top: 3, left: available ? 21 : 3, width: 18, height: 18,
-                borderRadius: '50%', background: '#fff', transition: 'left .15s',
-                boxShadow: '0 1px 3px rgba(15,23,42,.3)',
+                position: 'absolute', top: 2, left: available ? 18 : 2, width: 20, height: 20,
+                borderRadius: '50%', background: '#fff', transition: 'left .2s',
+                boxShadow: '0 1px 3px rgba(15,23,42,0.3)',
               }} />
             </span>
-            <input type="checkbox" checked={available} onChange={() => setAvailable(!available)} style={{ display: 'none' }} />
-          </label>
+          </button>}
 
           <FilterGroup label={t('mrb.filter.cefr')}>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {CEFR_LEVELS.map((lv) => (
-                <Chip key={lv} active={cefr.includes(lv)} onClick={() => toggle(cefr, setCefr, lv)}>{lv}</Chip>
+                <Chip key={lv} on={cefr.includes(lv)} onClick={() => toggle(cefr, setCefr, lv)}>{lv}</Chip>
               ))}
             </div>
           </FilterGroup>
 
-          <FilterGroup label={t('mrb.filter.genre')}>
-            {genreFacets.length === 0 && <div style={{ fontSize: 12, color: slate.muted }}>—</div>}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-              {genreFacets.map(([name, n]) => {
-                const [dot] = genreColors(name);
-                const on = genres.includes(name);
-                return (
-                  <label key={name} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
-                    <input type="checkbox" checked={on} onChange={() => toggle(genres, setGenres, name)}
-                      style={{ accentColor: brand.primary, width: 14, height: 14 }} />
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: dot, flexShrink: 0 }} />
-                    <span style={{ flex: 1, color: on ? slate.text : slate.body, fontWeight: on ? 700 : 400 }}>{name}</span>
-                    <span style={{ fontSize: 11, color: slate.muted }}>{n}</span>
-                  </label>
-                );
-              })}
-            </div>
-          </FilterGroup>
+          {/* Genre rows sit tighter than the other groups: 4px, per the source. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <GroupLabel style={{ marginBottom: 4 }}>{t('mrb.filter.genre')}</GroupLabel>
+            {genreFacets.length === 0 && (
+              <div style={{ fontSize: 13, color: C.mute }}>{t('mrb.cat.noGenres')}</div>
+            )}
+            {genreFacets.map(([name, n]) => {
+              const [dot] = genreColors(name);
+              const on = genres.includes(name);
+              return (
+                <button key={name} onClick={() => toggle(genres, setGenres, name)} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 0,
+                  borderRadius: 8, padding: '6px 4px', cursor: 'pointer', textAlign: 'left',
+                  fontSize: 14, color: C.slate, fontFamily: 'inherit',
+                }}>
+                  <span style={{
+                    width: 18, height: 18, borderRadius: 5,
+                    background: on ? C.brand : '#fff',
+                    border: '1.5px solid ' + (on ? C.brand : C.line2),
+                    color: '#fff', fontSize: 12, fontWeight: 800,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}>{on ? '✓' : ''}</span>
+                  <span style={{ width: 8, height: 8, borderRadius: 2, background: dot, flexShrink: 0 }} />
+                  <span style={{ flex: 1 }}>{name}</span>
+                  <span style={{ fontSize: 12, color: C.mute }}>{n}</span>
+                </button>
+              );
+            })}
+          </div>
 
           <FilterGroup label={t('mrb.filter.language')}>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {LANGS.map(([code, label]) => (
-                <Chip key={code} active={langs.includes(code)} onClick={() => toggle(langs, setLangs, code)}>{label}</Chip>
+                <Chip key={code} on={langs.includes(code)} onClick={() => toggle(langs, setLangs, code)}>
+                  {label}
+                </Chip>
               ))}
             </div>
           </FilterGroup>
@@ -243,110 +305,120 @@ export default function Catalogue() {
           <FilterGroup label={t('mrb.filter.length')}>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {LENGTHS.map(([key, lk]) => (
-                <Chip key={key} active={len === key} onClick={() => setLen(len === key ? '' : key)}>{t(lk)}</Chip>
+                <Chip key={key} on={len === key} onClick={() => setLen(len === key ? '' : key)}>
+                  {t(lk)}
+                </Chip>
               ))}
             </div>
           </FilterGroup>
         </aside>
 
-        {/* ---------------------------------------------------- results */}
-        <section style={{ flex: '999 1 560px', minWidth: 300 }}>
+        {/* -------------------------------------------------- results */}
+        <div style={{ flex: '999 1 400px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            gap: 12, flexWrap: 'wrap', marginBottom: 16,
+            display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minHeight: 36,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              {activeChips.map((c, i) => (
-                <button key={i} onClick={c.clear} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6, background: brand.tint100,
-                  color: brand.deep, border: 0, borderRadius: 999, padding: '5px 10px',
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: font.ui,
-                }}>{c.label} <span style={{ opacity: 0.7 }}>✕</span></button>
-              ))}
-              {activeChips.length > 0 && (
-                <button onClick={clearAll} style={{
-                  background: 'none', border: 0, color: slate.dim, fontSize: 12,
-                  fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: font.ui,
-                }}>{t('mrb.clearAll')}</button>
-              )}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12, color: slate.dim }}>{t('mrb.sortBy')}</span>
+            {activeFilters.map((af, i) => (
+              <button key={i} onClick={af.onRemove} style={{
+                display: 'flex', alignItems: 'center', gap: 6, background: C.sky100, color: C.deep,
+                border: 0, borderRadius: 999, padding: '5px 10px 5px 12px',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+              }}>{af.label}<span style={{ fontSize: 11 }}>✕</span></button>
+            ))}
+            {activeFilters.length > 0 && (
+              <button onClick={clearFilters} style={{
+                background: 'none', border: 0, padding: '5px 8px', fontSize: 13, fontWeight: 600,
+                color: C.body, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit',
+              }}>{t('mrb.clearAll')}</button>
+            )}
+            <span style={{ flex: 1 }} />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.body }}>
+              {t('mrb.sortBy')}
               <select value={sort} onChange={(e) => setSort(e.target.value)} style={{
-                border: '1px solid ' + slate.border, background: '#fff', borderRadius: 10,
-                padding: '7px 10px', fontSize: 13, fontFamily: font.ui, color: slate.strong, cursor: 'pointer',
+                border: '1px solid ' + C.line, borderRadius: 8, padding: '7px 10px',
+                fontSize: 13, fontWeight: 600, color: C.ink, background: '#fff',
+                fontFamily: 'inherit', cursor: 'pointer',
               }}>
                 {SORTS.map(([v, k]) => <option key={v} value={v}>{t(k)}</option>)}
               </select>
-            </div>
+            </label>
           </div>
 
-          {loading && <div style={{ padding: 40, textAlign: 'center', color: slate.muted, fontSize: 14 }}>{t('common.loading')}</div>}
-
-          {!loading && error && (
+          {error && (
             <div style={{
-              padding: 32, textAlign: 'center', background: '#fff',
-              border: '1px dashed ' + slate.border2, borderRadius: radius.card, color: slate.body, fontSize: 14,
+              border: '1px dashed ' + C.line2, background: '#fff', borderRadius: 16,
+              padding: 40, textAlign: 'center', fontSize: 14, color: C.body,
             }}>{error}</div>
           )}
 
-          {!loading && !error && items.length === 0 && (
+          {!error && items.length > 0 && (
             <div style={{
-              padding: 48, textAlign: 'center', background: '#fff',
-              border: '1px dashed ' + slate.border2, borderRadius: radius.card,
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+              gap: '28px 22px',
             }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: slate.strong, marginBottom: 6 }}>{t('mrb.noResults')}</div>
-              <div style={{ fontSize: 13, color: slate.dim, marginBottom: 16 }}>{t('mrb.noResultsHint')}</div>
-              <Button kind="soft" onClick={clearAll}>{t('mrb.clearAll')}</Button>
+              {items.map((b) => (
+                <BookCard key={b.edition_id} book={b} t={t} reload={load} say={say}
+                  onOpen={() => nav(bookPath(b.edition_id))} guest={guest} />
+              ))}
             </div>
           )}
 
-          {!loading && !error && items.length > 0 && (
-            <>
-              <div style={{ fontSize: 12, color: slate.dim, marginBottom: 12 }}>
-                {t('mrb.nResults', { n: items.length })}
+          {!error && !loading && items.length === 0 && (
+            <div style={{
+              border: '1px dashed ' + C.sky200, background: C.tint, borderRadius: 16, padding: 40,
+              textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center',
+            }}>
+              <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: C.deep }}>
+                {t('mrb.noResults')}
               </div>
-              <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 22,
-              }}>
-                {items.map((b) => (
-                  <BookCard key={b.edition_id} book={b} t={t} reload={load}
-                    onOpen={() => nav(`/app/book/${b.edition_id}`)} say={say} />
-                ))}
-              </div>
-            </>
+              <div style={{ fontSize: 14, color: C.body }}>{t('mrb.noResultsHint')}</div>
+              <button onClick={clearFilters} style={{
+                background: C.brand, color: '#fff', border: 0, borderRadius: 10, padding: '9px 16px',
+                fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              }}>{t('mrb.clearAllFilters')}</button>
+            </div>
           )}
-        </section>
+        </div>
       </div>
 
       <Toast message={toast} />
-    </>
+    </div>
+  );
+}
+
+/* --------------------------------------------------------- filter panel */
+
+function GroupLabel({ children, style }) {
+  return (
+    <div style={{
+      fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+      color: C.dim, ...style,
+    }}>{children}</div>
   );
 }
 
 function FilterGroup({ label, children }) {
   return (
-    <div>
-      <div style={{
-        fontSize: 11, fontWeight: 800, letterSpacing: '0.09em', textTransform: 'uppercase',
-        color: slate.muted, marginBottom: 9,
-      }}>{label}</div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <GroupLabel>{label}</GroupLabel>
       {children}
     </div>
   );
 }
 
-function Chip({ active, onClick, children }) {
+function Chip({ on, onClick, children }) {
   return (
     <button onClick={onClick} style={{
-      background: active ? brand.deep : '#fff',
-      color: active ? '#fff' : slate.body,
-      border: '1px solid ' + (active ? brand.deep : slate.border),
-      padding: '6px 11px', borderRadius: 999, fontSize: 12, fontWeight: 700,
-      cursor: 'pointer', fontFamily: font.ui, whiteSpace: 'nowrap',
+      background: on ? C.deep : '#fff',
+      color: on ? '#fff' : C.body,
+      border: '1px solid ' + (on ? C.deep : C.line),
+      borderRadius: 999, padding: '5px 12px', fontSize: 13, fontWeight: 600,
+      cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
     }}>{children}</button>
   );
 }
+
+/* ----------------------------------------------------------------- card */
 
 // A card shows two actions at most:
 //
@@ -357,12 +429,19 @@ function Chip({ active, onClick, children }) {
 // When the reader already has something going on with the book — it is in
 // their bag, or the desk is holding it for them — the second slot says so
 // instead of offering a reserve button that the backend would only reject.
-function BookCard({ book, onOpen, say, t, reload }) {
+// The prototype draws a single action button; these two are the same shape.
+function BookCard({ book, onOpen, say, t, reload, guest }) {
   const [busy, setBusy] = useState(false);
+  const [lift, setLift] = useState(false);
   const canBorrow = book.held_here && book.available_copies > 0 && !book.my_status;
   // "On my shelf" means the reader has the book — their own copy. Wanting to
   // read it is a different list, and starring it is different again.
   const onShelf = book.shelf_status === 'OWNED';
+
+  const [coverBg, coverFg] = coverColors(book.title);
+  const [cefrBg, cefrFg] = cefrColors(book.cefr);
+  const [gDot, , gFg] = genreColors(book.genre);
+  const starW = ((Math.max(0, Math.min(5, Number(book.rating) || 0)) / 5) * 100) + '%';
 
   const stop = (e) => e.stopPropagation();
 
@@ -411,97 +490,196 @@ function BookCard({ book, onOpen, say, t, reload }) {
     finally { setBusy(false); }
   };
 
+  // Availability as a coloured line, not a pill: sky when a copy is free here,
+  // coral when every copy is out, slate when this library does not hold it.
+  //
+  // A guest has no library, so "not held here" would be false as well as
+  // unhelpful — they are told how many school libraries carry it instead.
+  let availFg = C.dim, availDot = C.mute, availLabel = t('mrb.notHeld');
+  if (guest) {
+    const n = (book.other_branches || 0) + (book.held_here ? 1 : 0);
+    availFg = n > 0 ? C.deep : C.dim;
+    availDot = n > 0 ? C.brand : C.mute;
+    availLabel = n > 0 ? t('mrb.guest.heldAt', { n }) : t('mrb.guest.notStocked');
+  } else if (book.held_here && book.available_copies > 0) {
+    availFg = C.deep; availDot = C.brand;
+    availLabel = t('mrb.availableN', { n: book.available_copies, total: book.copies });
+  } else if (book.held_here) {
+    availFg = C.coralFg; availDot = '#F2545B';
+    availLabel = t('mrb.allOnLoan');
+  }
+
   return (
-    <article onClick={onOpen} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 9 }}>
-      <div style={{ position: 'relative' }}>
-        <BookCover title={book.title} author={book.author} src={book.cover_url ? assetUrl(book.cover_url) : ''} />
-        {book.cefr && (
-          <span style={{ position: 'absolute', top: 8, right: 8 }}><CefrBadge level={book.cefr} /></span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+      <button
+        onClick={onOpen}
+        onMouseEnter={() => setLift(true)} onMouseLeave={() => setLift(false)}
+        style={{ position: 'relative', border: 0, padding: 0, background: 'none', cursor: 'pointer', textAlign: 'left' }}
+      >
+        {book.cover_url ? (
+          <img src={assetUrl(book.cover_url)} alt={book.title} style={{
+            width: '100%', aspectRatio: '2/3', borderRadius: 8, objectFit: 'cover', display: 'block',
+            boxShadow: 'inset 4px 0 0 rgba(255,255,255,0.14), 0 6px 16px rgba(15,23,42,0.14)',
+            transform: lift ? 'translateY(-3px)' : 'none', transition: 'transform .15s',
+          }} />
+        ) : (
+          <div style={{
+            width: '100%', aspectRatio: '2/3', background: coverBg, color: coverFg,
+            borderRadius: 8, padding: '16px 14px', display: 'flex', flexDirection: 'column',
+            justifyContent: 'space-between',
+            boxShadow: 'inset 4px 0 0 rgba(255,255,255,0.14), 0 6px 16px rgba(15,23,42,0.14)',
+            transform: lift ? 'translateY(-3px)' : 'none', transition: 'transform .15s',
+          }}>
+            <div style={{
+              fontFamily: SERIF, fontWeight: 700, fontSize: 19, lineHeight: 1.1,
+              textWrap: 'balance', paddingRight: 28, overflow: 'hidden',
+            }}>{book.title}</div>
+            <div style={{
+              fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.85,
+            }}>{book.author}</div>
+          </div>
         )}
-        <button
-          onClick={toggleFavorite} disabled={busy}
+
+        {book.cefr && (
+          <span style={{
+            position: 'absolute', top: 10, right: 10, background: cefrBg, color: cefrFg,
+            fontSize: 11, fontWeight: 800, borderRadius: 999, padding: '2px 8px',
+            boxShadow: '0 1px 3px rgba(15,23,42,0.2)',
+          }}>{book.cefr}</span>
+        )}
+
+        {/* The status tag the design puts on a shelved book's cover. */}
+        {book.shelf_status && (
+          <span style={{
+            position: 'absolute', bottom: 10, left: 10, background: 'rgba(15,23,42,0.72)',
+            color: '#fff', fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '3px 9px',
+          }}>{t('mrb.shelfState.' + book.shelf_status)}</span>
+        )}
+
+        {/* Favourite is an independent flag, so it gets its own control. */}
+        {!guest && <span
+          role="button" tabIndex={0}
+          onClick={toggleFavorite}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleFavorite(e); }}
           title={book.is_favorite ? t('mrb.cat.unfavorite') : t('mrb.cat.favorite')}
           aria-label={book.is_favorite ? t('mrb.cat.unfavorite') : t('mrb.cat.favorite')}
           style={{
-            position: 'absolute', top: 6, left: 6, width: 30, height: 30, borderRadius: '50%',
-            border: 0, cursor: 'pointer', lineHeight: 1, fontSize: 15,
-            background: book.is_favorite ? 'rgba(255,255,255,.94)' : 'rgba(15,23,42,.42)',
+            position: 'absolute', top: 10, left: 10, width: 28, height: 28, borderRadius: '50%',
+            cursor: 'pointer', lineHeight: 1, fontSize: 15,
+            background: book.is_favorite ? 'rgba(255,255,255,0.94)' : 'rgba(15,23,42,0.42)',
             color: book.is_favorite ? '#F59E0B' : '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            backdropFilter: 'blur(2px)',
+            boxShadow: '0 1px 3px rgba(15,23,42,0.2)',
           }}
-        >{book.is_favorite ? '★' : '☆'}</button>
+        >{book.is_favorite ? '★' : '☆'}</span>}
+      </button>
+
+      <button onClick={onOpen} style={{
+        background: 'none', border: 0, padding: 0, textAlign: 'left', cursor: 'pointer',
+        fontFamily: 'inherit',
+      }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, lineHeight: 1.25 }}>{book.title}</div>
+        <div style={{ fontSize: 12, color: C.dim, marginTop: 2 }}>
+          {book.author || '—'}{book.pages ? ` · ${book.pages} ${t('mrb.pagesShort')}` : ''}
+        </div>
+      </button>
+
+      {book.genre && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: gFg,
+        }}>
+          <span style={{ width: 8, height: 8, borderRadius: 2, background: gDot, flexShrink: 0 }} />
+          {book.genre}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.body }}>
+        {book.rating == null ? (
+          <span style={{ color: C.mute }}>{t('mrb.noRatingsTitle')}</span>
+        ) : (
+          <>
+            <span style={{
+              position: 'relative', display: 'inline-block', fontSize: 13, lineHeight: 1,
+              letterSpacing: '1px', color: C.line2,
+            }}>
+              ★★★★★
+              <span style={{
+                position: 'absolute', left: 0, top: 0, overflow: 'hidden', whiteSpace: 'nowrap',
+                color: C.brand, width: starW,
+              }}>★★★★★</span>
+            </span>
+            <strong style={{ color: C.ink }}>{Number(book.rating).toFixed(1)}</strong>
+            {book.ratings_count ? <span style={{ color: C.mute }}>· {book.ratings_count}</span> : null}
+          </>
+        )}
       </div>
 
-      <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.3, color: slate.text }}>{book.title}</div>
-      <div style={{ fontSize: 12, color: slate.dim, marginTop: -4 }}>
-        {book.author || '—'}{book.pages ? ` · ${book.pages} ${t('mrb.pagesShort')}` : ''}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: availFg,
+      }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: availDot, flexShrink: 0 }} />
+        {availLabel}
       </div>
-      {book.genre && <GenreChip genre={book.genre} dotOnly />}
-      <RatingLine rating={book.rating} count={book.ratings_count} />
-      <AvailabilityPill heldHere={book.held_here} availableCopies={book.available_copies} copies={book.copies} t={t} />
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>
-        <Button
-          kind={onShelf ? 'soft' : 'secondary'}
-          disabled={busy}
-          onClick={toggleShelf}
-          style={{ width: '100%', whiteSpace: 'normal' }}
-        >{onShelf ? t('mrb.cat.onShelf') : t('mrb.cat.addToShelf')}</Button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {guest ? (
+          <CardButton onClick={onOpen} bg={C.brand} fg="#fff" border={C.brand}>
+            {t('mrb.guest.signInToBorrow')}
+          </CardButton>
+        ) : (<>
+        <CardButton
+          onClick={toggleShelf} disabled={busy}
+          bg={onShelf ? C.sky100 : '#fff'} fg={onShelf ? C.deep : C.slate}
+          border={onShelf ? C.sky100 : C.line}
+        >{onShelf ? t('mrb.cat.onShelf') : t('mrb.cat.addToShelf')}</CardButton>
 
-        <MyStatusAction book={book} canBorrow={canBorrow} busy={busy}
-          onRequest={requestLoan} t={t} />
+        <MyStatusAction book={book} canBorrow={canBorrow} busy={busy} onRequest={requestLoan} t={t} />
+        </>)}
       </div>
-    </article>
+    </div>
+  );
+}
+
+function CardButton({ bg, fg, border, children, ...rest }) {
+  return (
+    <button {...rest} style={{
+      background: bg, color: fg, border: '1px solid ' + border, borderRadius: 8,
+      padding: '7px 10px', fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+      cursor: rest.disabled ? 'not-allowed' : 'pointer', opacity: rest.disabled ? 0.55 : 1,
+    }}>{children}</button>
   );
 }
 
 // The second slot: either an offer to borrow, or a statement of where the
 // reader already stands with this book. Never a button that cannot work.
 function MyStatusAction({ book, canBorrow, busy, onRequest, t }) {
+  const note = (bg, fg, text) => (
+    <div style={{
+      background: bg, color: fg, borderRadius: 8, padding: '7px 10px', fontSize: 12.5,
+      fontWeight: 600, textAlign: 'center', lineHeight: 1.4,
+    }}>{text}</div>
+  );
+
   if (book.my_status === 'ON_LOAN') {
-    return (
-      <StatusNote tone="ok">
-        {book.my_due_date
-          ? t('mrb.cat.youHaveItDue', { date: new Date(book.my_due_date).toLocaleDateString() })
-          : t('mrb.cat.youHaveIt')}
-      </StatusNote>
-    );
+    return note(C.okBg, C.okFg, book.my_due_date
+      ? t('mrb.cat.youHaveItDue', { date: fmtDate(book.my_due_date) })
+      : t('mrb.cat.youHaveIt'));
   }
   if (book.my_status === 'RESERVED_READY') {
-    return (
-      <StatusNote tone="ready">
-        {book.my_pickup_deadline
-          ? t('mrb.cat.readyBy', { date: new Date(book.my_pickup_deadline).toLocaleDateString() })
-          : t('mrb.cat.ready')}
-      </StatusNote>
-    );
+    return note(C.sky100, C.deep, book.my_pickup_deadline
+      ? t('mrb.cat.readyBy', { date: fmtDate(book.my_pickup_deadline) })
+      : t('mrb.cat.ready'));
   }
   if (book.my_status === 'RESERVED_PENDING') {
-    return <StatusNote tone="wait">{t('mrb.cat.requested')}</StatusNote>;
+    return note('#F1F5F9', C.body, t('mrb.cat.requested'));
   }
   if (canBorrow) {
     return (
-      <Button disabled={busy} onClick={onRequest} style={{ width: '100%', whiteSpace: 'normal' }}>
+      <CardButton onClick={onRequest} disabled={busy} bg={C.brand} fg="#fff" border={C.brand}>
         {t('mrb.cat.requestLoan')}
-      </Button>
+      </CardButton>
     );
   }
   // Not held here, or every copy is out. The reader can still shelve it.
   return null;
-}
-
-function StatusNote({ tone, children }) {
-  const tones = {
-    ok: ['#DCFCE7', '#166534'],
-    ready: [brand.tint100, brand.deep],
-    wait: [slate.surface, slate.body],
-  };
-  const [bg, fg] = tones[tone] || tones.wait;
-  return (
-    <div style={{
-      background: bg, color: fg, borderRadius: radius.button, padding: '9px 12px',
-      fontSize: 12.5, fontWeight: 700, textAlign: 'center', lineHeight: 1.4,
-    }}>{children}</div>
-  );
 }

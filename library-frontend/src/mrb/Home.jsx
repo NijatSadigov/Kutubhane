@@ -1,14 +1,15 @@
 // The site's main page.
 //
 // A logged-out visitor gets the 00 Landing screen from the design. A signed-in
-// member goes straight into the app, whose home is Discover — which is what
-// the design shows a member at the root.
+// visitor goes to whichever home their role belongs to — a reader into the
+// app, a librarian into the staff console.
 
 import { useContext } from 'react';
 import { Navigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import Landing from './pages/Landing';
 import { slate, font } from './theme';
+import { homePathFor } from '../home';
 
 export default function Home() {
   const { user, loading } = useContext(AuthContext);
@@ -24,6 +25,6 @@ export default function Home() {
     );
   }
 
-  if (user) return <Navigate to="/app" replace />;
+  if (user) return <Navigate to={homePathFor(user)} replace />;
   return <Landing />;
 }

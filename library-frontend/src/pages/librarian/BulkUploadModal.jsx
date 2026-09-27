@@ -2,6 +2,7 @@ import { useState } from 'react';
 import api from '../../api/axios';
 import Modal from '../../components/Modal';
 import { UploadCloud, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 // Minimal CSV parser: handles quoted fields (with embedded commas and "" escapes)
 // and both \n and \r\n line endings. Good enough for librarian-exported spreadsheets.
@@ -53,6 +54,7 @@ const TEMPLATE = 'title,author,publisher,genre,isbn,call_no,language,cefr_level,
     + 'Örnek Kitap,Örnek Yazar,Örnek Yayınevi,Roman,978-000,CN-1,Türkçe,B1,2020,240\n';
 
 const BulkUploadModal = ({ isOpen, onClose, categories, onComplete }) => {
+    const { t } = useTranslation();
     const [rawText, setRawText] = useState('');
     const [busy, setBusy] = useState(false);
     const [result, setResult] = useState(null); // { created, failures: [{row, error}] }
@@ -144,7 +146,7 @@ const BulkUploadModal = ({ isOpen, onClose, categories, onComplete }) => {
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={close} title="Toplu Kitap Yükleme (CSV)" maxWidth="max-w-2xl">
+        <Modal isOpen={isOpen} onClose={close} title={t('old.bulkTitle')} maxWidth="max-w-2xl">
             <div className="space-y-4">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                     Kitap adı, yazar, tür gibi sütunları içeren bir CSV yükleyin. Yazar/yayınevi/tür/konu
@@ -162,7 +164,7 @@ const BulkUploadModal = ({ isOpen, onClose, categories, onComplete }) => {
                 </div>
 
                 <div>
-                    <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">CSV İçeriği (dosya seçince otomatik dolar, düzenleyebilirsiniz)</label>
+                    <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('old.bulkBody')}</label>
                     <textarea
                         rows={8}
                         className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white font-mono text-xs"

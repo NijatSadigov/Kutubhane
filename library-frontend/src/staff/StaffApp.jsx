@@ -5,10 +5,11 @@
 // dashboards stay reachable at /librarian, /manager and /admin.
 
 import { Routes, Route, Navigate } from 'react-router-dom';
-import StaffShell, { Card, PageTitle } from './components/StaffShell';
+import StaffShell, { Card, PageIntro } from './components/StaffShell';
 import CirculationDesk from './pages/CirculationDesk';
 import HoldsOverdue from './pages/HoldsOverdue';
 import Inventory from './pages/Inventory';
+import Members from './pages/Members';
 import BookRequestsQueue from '../components/BookRequestsQueue';
 import SettingsPanel from '../pages/librarian/SettingsPanel';
 import { useTranslation } from '../i18n/LanguageContext';
@@ -21,6 +22,7 @@ export default function StaffApp() {
         <Route path="desk" element={<CirculationDesk />} />
         <Route path="holds" element={<HoldsOverdue />} />
         <Route path="inventory" element={<Inventory />} />
+        <Route path="members" element={<Members />} />
         <Route path="requests" element={<RequestsPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/staff" replace />} />
@@ -36,7 +38,7 @@ function RequestsPage() {
   const { t } = useTranslation();
   return (
     <>
-      <PageTitle sub={t('staff.requests.sub')}>{t('staff.nav.requests')}</PageTitle>
+      <PageIntro>{t('staff.requests.sub')}</PageIntro>
       <Card><BookRequestsQueue /></Card>
     </>
   );
@@ -46,7 +48,7 @@ function SettingsPage() {
   const { t } = useTranslation();
   return (
     <>
-      <PageTitle sub={t('staff.settings.sub')}>{t('staff.nav.settings')}</PageTitle>
+      <PageIntro>{t('staff.settings.sub')}</PageIntro>
       <Card><SettingsPanel /></Card>
     </>
   );

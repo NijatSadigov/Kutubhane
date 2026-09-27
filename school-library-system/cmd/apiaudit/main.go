@@ -146,7 +146,17 @@ func readChecks() []check {
 	}
 	add("student", "/api/catalog/browse?scope=library", ok, "")
 	add("librarian", "/api/catalog/browse?scope=library&cefr=B2&sort=newest", ok, "")
-	add("student", "/api/catalog/browse?scope=shelf", []int{501}, "shelf is not built yet and must say so")
+	add("student", "/api/catalog/browse?scope=shelf", ok, "the shelf scope browses the reader's own works")
+	add("student", "/api/catalog/browse?scope=library&sort=popular", ok, "")
+	add("student", "/api/catalog/browse?scope=library&sort=rating", ok, "")
+
+	// --- reader shelf extras added with the design pass ---
+	add("student", "/api/shelf/goal", ok, "")
+	add("student", "/api/public/challenge", ok, "the landing page's open-challenge card")
+	add("student", "/api/public/challenges", ok, "the landing page's reading-together card")
+	add("student", "/api/public/reviews", ok, "landing reviews, authors masked to initials")
+	add("student", "/api/public/catalog", ok, "the logged-out catalogue")
+	add("student", "/api/public/works/1/reviews", ok, "a book page for a guest")
 
 	// --- community ---
 	for _, r := range []string{"student", "librarian", "manager"} {
@@ -245,6 +255,15 @@ func writeChecks() []check {
 		{role: "student", method: "POST", path: "/api/challenges", want: denied, note: "students cannot author challenges"},
 		{role: "student", method: "POST", path: "/api/challenges/1/questions", want: denied, note: "students cannot write quiz questions"},
 		{role: "student", method: "DELETE", path: "/api/challenges/1", want: denied, note: "students cannot delete challenges"},
+		// The librarian screens added for the features the design does not
+		// cover: copies, loan editing and invite codes must stay staff-only.
+		{role: "student", method: "POST", path: "/api/books/copy", want: denied, note: "students cannot add copies"},
+		{role: "student", method: "PUT", path: "/api/copy/1", want: denied, note: "students cannot edit copies"},
+		{role: "student", method: "DELETE", path: "/api/copy/1", want: denied, note: "students cannot delete copies"},
+		{role: "student", method: "PUT", path: "/api/loans/1", want: denied, note: "students cannot change a due date"},
+		{role: "student", method: "POST", path: "/api/registration-tokens", want: denied, note: "students cannot issue invite codes"},
+		{role: "student", method: "POST", path: "/api/books/bulk", want: denied, note: "students cannot bulk import"},
+		{role: "student", method: "PUT", path: "/api/student/11/limit", want: denied, note: "students cannot set a borrow limit"},
 	}
 }
 

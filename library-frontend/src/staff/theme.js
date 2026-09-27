@@ -12,6 +12,7 @@ export const shell = {
   border: '#E2E8F0',
   control: '#CBD5E1',
   headerBg: '#F8FAFC',
+  rowLine: '#F1F5F9',   // the hairline between table rows
   rowSelected: '#F0F9FF',
 };
 
@@ -59,14 +60,26 @@ export function overdueColors(days) {
 
 // Status pills are colour *and* words, never colour alone.
 export const STATUS_PILL = {
-  out: ['#E0F2FE', '#075985'],       // checked out
-  in: ['#DCFCE7', '#166534'],        // returned
-  hold: ['#FEF3C7', '#92400E'],      // hold ready
-  overdue: ['#FFF1EE', '#B4232A'],
-  available: ['#DCFCE7', '#166534'],
-  damaged: ['#FFE4E6', '#9F1239'],
+  available: ['#DCFCE7', '#166534'],  // Available
+  out: ['#E0F2FE', '#075985'],        // On loan
+  in: ['#DCFCE7', '#166534'],         // Returned
+  hold: ['#FEF3C7', '#92400E'],       // On hold · Waiting
+  ready: ['#CCFBF1', '#115E59'],      // Ready for pickup
+  overdue: ['#FFF1EE', '#B4232A'],    // Overdue · Open report
+  damaged: ['#FFEDD5', '#9A3412'],    // Damaged
+  lost: ['#F1F5F9', '#475569'],       // Lost · Never shared
+  invited: ['#EDE9FE', '#5B21B6'],    // Invited · Spoiler
+  active: ['#DCFCE7', '#166534'],     // Active · Resolved
   pending: ['#E0F2FE', '#075985'],
   neutral: ['#F1F5F9', '#475569'],
+};
+
+// Alerts: radius 10, 10px 12px, weight 600. [bg, border, text]
+export const ALERT = {
+  problem: ['#FFF1EE', '#FFD6CF', '#B4232A'],
+  action: ['#FEF3C7', '#FDE68A', '#92400E'],
+  approval: ['#EDE9FE', '#EDE9FE', '#5B21B6'],
+  done: ['#DCFCE7', '#DCFCE7', '#166534'],
 };
 
 export const pill = (kind) => STATUS_PILL[kind] || STATUS_PILL.neutral;

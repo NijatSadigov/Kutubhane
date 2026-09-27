@@ -641,6 +641,10 @@ func ReturnBook(c *fiber.Ctx) error {
 	type ReturnReq struct {
 		BookID         uint   `json:"book_id"`
 		TrackingNumber string `json:"tracking_number"`
+		// ConditionID records what shape the copy came back in, which is the
+		// condition row the desk picked. Optional: a return must never fail
+		// because of it.
+		ConditionID uint `json:"condition_id"`
 	}
 	var req ReturnReq
 	_ = c.BodyParser(&req) // an empty body is fine; the path is then used
@@ -692,7 +696,17 @@ func ReturnBook(c *fiber.Ctx) error {
 	loan.StatusID = &returnedLoanStatus.ID
 	tx.Save(&loan)
 
-	tx.Model(&models.BookCopy{}).Where("id = ?", copy.ID).Update("status_id", availableCopyStatus.ID)
+	updates := map[string]any{"status_id": availableCopyStatus.ID}
+	if req.ConditionID != 0 {
+		// Only a condition belonging to this branch, so a crafted id cannot
+		// point a copy at another library's row.
+		var cond models.CopyCondition
+		if err := tx.Where("id = ? AND branch_id = ?", req.ConditionID, branchID).
+			First(&cond).Error; err == nil {
+			updates["condition_id"] = cond.ID
+		}
+	}
+	tx.Model(&models.BookCopy{}).Where("id = ?", copy.ID).Updates(updates)
 	tx.Commit()
 
 	return c.JSON(fiber.Map{"message": "Book returned successfully", "student_id": loan.StudentID})
@@ -753,7 +767,11 @@ func GetClassList(c *fiber.Ctx) error {
 		query = query.Where("class_group = ?", group)
 	}
 
-	query.Preload("Loans").Preload("Loans.Status").Find(&students)
+	// The staff Members panel lists what each reader has out by title, so the
+	// loan's copy and book come along rather than one query per row.
+	query.Preload("Loans").Preload("Loans.Status").
+		Preload("Loans.BookCopy").Preload("Loans.BookCopy.Book").
+		Find(&students)
 	return c.JSON(students)
 }
 

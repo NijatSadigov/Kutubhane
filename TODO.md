@@ -31,8 +31,11 @@ database**, never the real one — clone it, start a second server on 8001
 demo activity and takes `BASE` to choose which server.
 
 ```bash
-cd library-frontend && npm run build && npx eslint src/mrb
+cd library-frontend && npm run build && npx eslint src/mrb src/staff
 ```
+
+Last run: 23 Go tests pass, **148 API checks pass**, 33/33 loan-lifecycle
+checks pass, build and lint clean.
 
 **Where things live.** `library-frontend/src/mrb/` is the new myredbookshelf UI
 (`/` landing, `/app/*` reader app). The old role dashboards are still at
@@ -42,19 +45,57 @@ cd library-frontend && npm run build && npx eslint src/mrb
 
 ## Now
 
-- [ ] **Design fidelity pass on every remaining screen.** The first build was
-      "something like the design" rather than the design. Discover has now been
-      rebuilt from the prototype markup — exact sizes, colours, spacing and the
-      sections that were missing entirely. The same pass is still owed on:
-  - [ ] Catalogue — scope switch, filter panel and card metrics against the source
-  - [ ] Book detail — 52px specs table, action bar, review feed spacing
-  - [ ] My Shelf — banner, badge medallions, tab pills, loan cards
-  - [ ] Challenges — card layout, step pills, quiz modal, frontrunners
-  - [ ] Landing — hero proportions, section rhythm, footer
-  - [ ] Staff console — against `Staff Design System.dc.html`
-  **Method that worked:** read the markup out of `myredbookshelf.dc.html` for
-  that screen and transcribe the literal values, rather than working from the
-  README summary.
+- [ ] **Restructure the staff console navigation into two levels** (buyer,
+      2026-09-27). The left rail becomes *domains*, the top bar becomes the
+      screens inside the domain the rail has selected. Today the console is one
+      flat list of six items in the rail and nothing on top.
+
+      Left rail:
+
+      | Section | State |
+      |---|---|
+      | Kitabxana | built — needs its top bar |
+      | Dərslik sistemi | **coming soon** placeholder |
+      | Layihələr | **coming soon** placeholder |
+      | Üzvlər | built |
+      | Kitabxana ayarları | built (the current Settings) |
+      | Dərslik sistemi ayarları | **coming soon** placeholder |
+      | Texniki dəstək | **new feature** — see below |
+
+      Top bar for **Kitabxana**: `Kitabxana` · `Rezerv edilən kitablar` ·
+      `Verilən kitablar` · `Kitab sorğuları`. Every other section gets its own
+      top bar on the same principle.
+
+      Mapping onto what exists: the circulation desk is *Kitabxana*; Holds &
+      overdue splits into *Rezerv edilən kitablar* and *Verilən kitablar* (it
+      already has those as internal tabs, plus the overdue list); Requests is
+      *Kitab sorğuları*. Catalogue & inventory needs a home in the Kitabxana
+      top bar too. Nothing should be lost in the move.
+
+- [ ] **Texniki dəstək — a ticketing system.** A librarian raises a ticket with
+      the school admin: ask for a book to be added to the system, report a
+      problem, anything else needing the admin. Needs a `Ticket` model
+      (author, school/branch, subject, body, status, thread of replies), staff
+      endpoints, a librarian view and an admin queue. None of this exists yet —
+      design it before building.
+
+- [ ] **Wire the borrow-limit policy UI.** `GET/PUT /branch-settings` and
+      `GET/PUT /loan-limit` exist and are tested but nothing calls them — the
+      branch-wide default has no screen. The per-student override is already on
+      the Members panel. Until this lands, do not "clean up" those endpoints:
+      they are unwired, not dead
+
+- [ ] **Retire the old dashboards.** Librarians now land on `/staff`, with a
+      "Classic dashboard" link in the sidebar as a fallback. Watch whether
+      anyone reaches for it; when they stop, delete `pages/librarian/`
+      (keeping `SettingsPanel`, which the console uses) and the dead
+      `pages/Login.jsx`. Managers and admins still need `/manager` and
+      `/admin` until the console grows S7–S9
+
+- [ ] **A `teacher` role.** The design assumes one and three screens are blocked
+      on it: the class dashboard, the moderation queue, and the "teacher" line
+      under an overdue student. Today librarians author challenges and would
+      moderate. It is also where the dərslik work belongs
 
 - [ ] **Staff Console — teacher and admin sections** (the librarian side is done
       and live at `/staff`)
@@ -90,12 +131,13 @@ cd library-frontend && npm run build && npx eslint src/mrb
         `/staff/settings`
   - [x] Book-request queue for staff — carried into `/staff/requests`
   - [x] Pickup deadlines visible in the holds queue
-  - [ ] CSV bulk upload of books
-  - [ ] E-book upload and "open e-book"
-  - [ ] Branch student invite links
+  - [x] CSV bulk upload of books — on Catalogue & inventory
+  - [x] E-book upload and "open e-book" — on the title's edit dialog
+  - [x] Branch student invite links — on Members
   - [ ] Manager tier: librarian tracking + read-only branch workspace
-  - [ ] Loan editing
-  - [ ] Borrow-limit settings UI (missing in the old app too)
+  - [x] Loan editing — the "All loans" tab on Holds & overdue
+  - [x] Borrow-limit settings UI — per student, on the Members side panel.
+        The branch-wide default still has no UI
   - [ ] Platform admin above the school admin
 - [ ] **Public screens**: Join stepper with parent consent, Book clubs,
       Libraries & bookstores, Reader home
@@ -120,6 +162,12 @@ cd library-frontend && npm run build && npx eslint src/mrb
 
 ## Known issues
 
+- [ ] **Azerbaijani month and weekday names are hand-tabulated** in
+      `src/i18n/dates.js` because Chrome's `Intl` reports `az` as supported and
+      then formats it "M09 27, Sun". Revisit if that ever gets fixed upstream
+- [ ] **No title has a synopsis.** The book page renders one when present and
+      omits the paragraph otherwise; nothing writes `Work.Description`, so the
+      book form needs the field
 - [ ] There is no real **waitlist**. When every copy is out, the catalogue now
       offers only "add to my shelf" — a queue you can join is a separate feature
 
@@ -135,6 +183,31 @@ cd library-frontend && npm run build && npx eslint src/mrb
 - [ ] Nothing pushed to a remote; single machine, no backup
 
 ## Done
+
+- [x] **Design-fidelity pass finished on every screen that had one.** Catalogue,
+      Book detail, My Shelf, Challenges, Landing, the staff shell and the three
+      librarian screens are now transcribed from the prototype's markup, the way
+      Discover was — literal sizes, colours and spacing, then checked with
+      `getComputedStyle` against the source instead of by eye. The method:
+      open that screen's block in `myredbookshelf.dc.html` (or
+      `Staff Console.dc.html` / `Staff Design System.dc.html`) and copy the
+      values out; never work from the README's prose.
+
+      Backend the pass needed: `scope=shelf` implemented (it was still 501 from
+      before `ShelfItem` existed), a real `borrow_count` and a `rating` sort so
+      the four-item sort menu means something, `synopsis` and `my_loan_id` on
+      the browse card, reviews actually sorted by helpful votes, the challenge
+      review step un-stubbed, `/shelf/summary` extended with the banner's
+      second lines and the genre mix, a new `ReadingGoal` model with
+      `GET/PUT /shelf/goal`, `GET /public/challenge` for the landing page, a
+      same-weekday-last-week comparison on the desk summary, and a condition
+      recorded on check-in. API audit is 137 checks.
+
+      Three designed elements are **not** faked and say so on screen: the
+      landing page's public review strip (the privacy rule keeps student and
+      teen reviews for members — which is what the design's own caption says),
+      book clubs, and overdue reminders. The parity table in `ROADMAP.md` lists
+      every designed element still waiting on data.
 
 - [x] **Discover rebuilt to match the design.** Was missing entirely: the
       Bookworm card's favourite recent read with its tilted cover, the Top

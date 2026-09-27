@@ -673,3 +673,84 @@ func callerSchoolID(c *fiber.Ctx) (uint, error) {
 	}
 	return 0, fiber.NewError(fiber.StatusForbidden, "No school")
 }
+
+// GetPublicChallenge backs the "open challenge" card on the landing page: the
+// challenge running right now, or the next one due to start.
+//
+// It is deliberately thin. A guest sees what the challenge is and how many
+// people are in it — never who they are, never anyone's progress.
+func GetPublicChallenge(c *fiber.Ctx) error {
+	now := time.Now()
+
+	var ch models.Challenge
+	err := database.DB.
+		Preload("Books").Preload("Books.Edition").
+		Where("starts_at <= ? AND ends_at >= ?", now, now).
+		Order("ends_at").First(&ch).Error
+	if err != nil {
+		// Nothing running: offer the next one instead.
+		err = database.DB.
+			Preload("Books").Preload("Books.Edition").
+			Where("starts_at > ?", now).
+			Order("starts_at").First(&ch).Error
+	}
+	if err != nil {
+		return c.JSON(fiber.Map{"found": false})
+	}
+
+	var participants int64
+	database.DB.Model(&models.ChallengeParticipant{}).
+		Where("challenge_id = ?", ch.ID).Count(&participants)
+
+	covers := make([]string, 0, len(ch.Books))
+	for _, b := range ch.Books {
+		covers = append(covers, b.Edition.CoverURL)
+	}
+
+	return c.JSON(fiber.Map{
+		"found": true,
+		"title": ch.Title, "description": ch.Description,
+		"starts_at": ch.StartsAt, "ends_at": ch.EndsAt,
+		"days_left":    int(ch.EndsAt.Sub(now).Hours() / 24),
+		"participants": participants, "book_count": len(ch.Books), "covers": covers,
+	})
+}
+
+// GetPublicChallenges backs the landing page's "reading together" card: the
+// challenges running at partner schools. A guest sees what is being read and
+// how many people are in it, never who they are.
+func GetPublicChallenges(c *fiber.Ctx) error {
+	now := time.Now()
+
+	var list []models.Challenge
+	database.DB.
+		Preload("Books").Preload("Books.Edition").Preload("School").
+		Where("ends_at >= ?", now).
+		Order("starts_at").Limit(4).Find(&list)
+
+	out := make([]fiber.Map, 0, len(list))
+	for _, ch := range list {
+		var participants int64
+		database.DB.Model(&models.ChallengeParticipant{}).
+			Where("challenge_id = ?", ch.ID).Count(&participants)
+
+		title, cover := "", ""
+		if len(ch.Books) > 0 {
+			title = ch.Books[0].Edition.Title
+			for _, b := range ch.Books {
+				if b.Edition.CoverURL != "" {
+					cover = b.Edition.CoverURL
+					break
+				}
+			}
+		}
+		out = append(out, fiber.Map{
+			"id": ch.ID, "title": ch.Title, "school": ch.School.Name,
+			"participants": participants, "book_count": len(ch.Books),
+			"reading": title, "cover_url": cover,
+			"starts_at": ch.StartsAt, "ends_at": ch.EndsAt,
+			"upcoming": now.Before(ch.StartsAt),
+		})
+	}
+	return c.JSON(out)
+}

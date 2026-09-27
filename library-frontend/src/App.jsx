@@ -2,11 +2,14 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import { LanguageProvider } from './i18n/LanguageContext';
 import ProtectedRoute from './components/ProtectedRoute'; 
+import PublicShell from './mrb/PublicShell';
+import MrbCatalogue from './mrb/pages/Catalogue';
+import MrbBookDetail from './mrb/pages/BookDetail';
 import { Login, Register } from './mrb/pages/AuthPages';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ManagerDashboard from './pages/manager/ManagerDashboard';
 import LibrarianDashboard from './pages/librarian/LibrarianDashboard';
-import StudentDashboard from './pages/student/StudentDashBoard';
+import StudentDashboard from './pages/student/StudentDashboard';
 import MrbApp from './mrb/MrbApp';
 import Home from './mrb/Home';
 import StaffApp from './staff/StaffApp';
@@ -20,6 +23,11 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+
+          {/* The logged-out reader surface: browse the catalogue and read
+              reviews without an account. Every action asks you to sign in. */}
+          <Route path="/catalogue" element={<PublicShell><MrbCatalogue /></PublicShell>} />
+          <Route path="/book/:editionId" element={<PublicShell><MrbBookDetail /></PublicShell>} />
           {/* --- ADMIN ONLY --- */}
           <Route
             path="/admin"

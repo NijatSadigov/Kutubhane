@@ -13,6 +13,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { brand, slate, danger, radius, shadow, font, coverColors } from '../theme';
 import { LogoMark, Wordmark, Button } from '../components/primitives';
+import { homePathFor } from '../../home';
 
 const pub = axios.create({ baseURL: API_ORIGIN + '/api' });
 
@@ -151,11 +152,7 @@ export function Login() {
   // the submit handler is what fixed "having to click login several times".
   useEffect(() => {
     if (!user) return;
-    const home = user.role === 'admin' ? '/admin'
-      : user.role === 'manager' ? '/manager'
-      : user.role === 'librarian' ? '/librarian'
-      : '/app';
-    nav(home, { replace: true });
+    nav(homePathFor(user), { replace: true });
   }, [user, nav]);
 
   const submit = async () => {

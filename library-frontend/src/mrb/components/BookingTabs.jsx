@@ -6,6 +6,7 @@ import { useState } from 'react';
 import api, { assetUrl } from '../../api/axios';
 import { brand, slate, danger, warning, radius, font } from '../theme';
 import { BookCover, Button, Card } from './primitives';
+import { fmtDate } from '../../i18n/dates';
 
 // Reservation status → pill colours, branching on the fixed code and never on
 // the display name, which a librarian can rename in any language.
@@ -45,7 +46,7 @@ export function ReservationsTab({ items, t, say, reload }) {
                 <div style={{ fontSize: 14.5, fontWeight: 700 }}>{r.title}</div>
                 <div style={{ fontSize: 12, color: slate.dim }}>{r.author || '—'}</div>
                 <div style={{ fontSize: 11.5, color: slate.muted, marginTop: 4 }}>
-                  {t('mrb.book.requestedOn', { date: new Date(r.request_date).toLocaleDateString() })}
+                  {t('mrb.book.requestedOn', { date: fmtDate(r.request_date) })}
                   {r.tracking_number ? ` · ${r.tracking_number}` : ''}
                 </div>
               </div>
@@ -62,7 +63,7 @@ export function ReservationsTab({ items, t, say, reload }) {
                   }}>
                     {daysLeft < 0
                       ? t('mrb.book.pickupExpired')
-                      : t('mrb.book.pickupBy', { date: deadline.toLocaleDateString(), n: daysLeft })}
+                      : t('mrb.book.pickupBy', { date: fmtDate(deadline), n: daysLeft })}
                   </span>
                 )}
 
@@ -167,7 +168,7 @@ export function RequestsTab({ items, t, say, reload }) {
                 <div style={{ fontSize: 14, fontWeight: 700 }}>{r.title}</div>
                 <div style={{ fontSize: 12, color: slate.dim }}>
                   {r.author || '—'}
-                  {r.created_at ? ` · ${new Date(r.created_at).toLocaleDateString()}` : ''}
+                  {r.created_at ? ` · ${fmtDate(r.created_at)}` : ''}
                 </div>
                 {r.note && <div style={{ fontSize: 12.5, color: slate.body, marginTop: 4 }}>{r.note}</div>}
               </div>

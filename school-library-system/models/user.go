@@ -84,4 +84,9 @@ type Student struct {
 
 	// Optional per-student override of the branch borrow limit. Nil = use branch default.
 	LoanLimit *int `json:"loan_limit"`
+
+	// Bio is the line under the name on the reader's own profile — the design
+	// puts one there and it is the only free text a student writes about
+	// themselves. Visible to their school, like everything else on that page.
+	Bio string `json:"bio"`
 }

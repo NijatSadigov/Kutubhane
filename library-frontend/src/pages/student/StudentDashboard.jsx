@@ -599,8 +599,8 @@ const StudentDashboard = () => {
                                                                             className="absolute right-16 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md p-3 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-100"
                                                                             onClick={(e) => e.stopPropagation()}
                                                                         >
-                                                                            <button onClick={() => openBookDetails(book)} className="bg-[#FEF3C7] dark:bg-amber-900/40 border border-[#FDE68A] dark:border-amber-700 text-[#B45309] dark:text-amber-400 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#FDE68A] dark:hover:bg-amber-900/60 transition-colors">Detay</button>
-                                                                            <button onClick={() => handleReserve(book)} disabled={!isAvailable} className={`text-[11px] font-bold px-4 py-2 rounded-lg border w-28 text-center transition-colors ${isAvailable ? 'bg-[#E0F2FE] dark:bg-sky-900/40 border-[#7DD3FC] dark:border-sky-700 text-[#075985] dark:text-sky-300 hover:bg-[#BAE6FD] dark:hover:bg-sky-900/60' : 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed'}`}>Rezerve Et</button>
+                                                                            <button onClick={() => openBookDetails(book)} className="bg-[#FEF3C7] dark:bg-amber-900/40 border border-[#FDE68A] dark:border-amber-700 text-[#B45309] dark:text-amber-400 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#FDE68A] dark:hover:bg-amber-900/60 transition-colors">{t('old.detail')}</button>
+                                                                            <button onClick={() => handleReserve(book)} disabled={!isAvailable} className={`text-[11px] font-bold px-4 py-2 rounded-lg border w-28 text-center transition-colors ${isAvailable ? 'bg-[#E0F2FE] dark:bg-sky-900/40 border-[#7DD3FC] dark:border-sky-700 text-[#075985] dark:text-sky-300 hover:bg-[#BAE6FD] dark:hover:bg-sky-900/60' : 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed'}`}>{t('old.reserve')}</button>
                                                                         </div>
                                                                     )}
                                                                 </td>
@@ -679,8 +679,8 @@ const StudentDashboard = () => {
                                                 <div className="flex items-center gap-2 border-l border-gray-300 dark:border-gray-600 pl-4">
                                                     <Layers size={14} className="text-gray-500" />
                                                     <select className="bg-transparent text-sm text-gray-700 dark:text-gray-200 outline-none font-medium cursor-pointer" value={loanSort} onChange={(e) => setLoanSort(e.target.value)}>
-                                                        <option value="newest">En Yeniler</option>
-                                                        <option value="oldest">En Eskiler</option>
+                                                        <option value="newest">{t('old.newest')}</option>
+                                                        <option value="oldest">{t('old.oldest')}</option>
                                                         <option value="title_az">{t('stu.titleAZ')}</option>
                                                     </select>
                                                 </div>
@@ -751,7 +751,7 @@ const StudentDashboard = () => {
                                                                             className="absolute right-16 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md p-3 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-100"
                                                                             onClick={(e) => e.stopPropagation()}
                                                                         >
-                                                                            <button onClick={() => openBookDetails(loan, true)} className="bg-[#C2E0C6] dark:bg-green-900/40 border border-[#A3D3A8] dark:border-green-700 text-[#1E5631] dark:text-green-300 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#A3D3A8] dark:hover:bg-green-900/60 transition-colors">Detay</button>
+                                                                            <button onClick={() => openBookDetails(loan, true)} className="bg-[#C2E0C6] dark:bg-green-900/40 border border-[#A3D3A8] dark:border-green-700 text-[#1E5631] dark:text-green-300 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#A3D3A8] dark:hover:bg-green-900/60 transition-colors">{t('old.detail')}</button>
                                                                             <button onClick={() => openDiary(loan)} className="bg-[#E0F2FE] dark:bg-sky-900/40 border border-[#7DD3FC] dark:border-sky-700 text-[#075985] dark:text-sky-300 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#BAE6FD] dark:hover:bg-sky-900/60 transition-colors">{t('diary.open')}</button>
                                                                         </div>
                                                                     )}
@@ -797,7 +797,7 @@ const StudentDashboard = () => {
                                                                     className="absolute right-0 top-6 flex flex-col gap-2 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md p-3 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-100"
                                                                     onClick={(e) => e.stopPropagation()}
                                                                 >
-                                                                    <button onClick={() => openBookDetails(loan, true)} className="bg-[#C2E0C6] dark:bg-green-900/40 border border-[#A3D3A8] dark:border-green-700 text-[#1E5631] dark:text-green-300 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#A3D3A8] dark:hover:bg-green-900/60 transition-colors">Detay</button>
+                                                                    <button onClick={() => openBookDetails(loan, true)} className="bg-[#C2E0C6] dark:bg-green-900/40 border border-[#A3D3A8] dark:border-green-700 text-[#1E5631] dark:text-green-300 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#A3D3A8] dark:hover:bg-green-900/60 transition-colors">{t('old.detail')}</button>
                                                                     <button onClick={() => openDiary(loan)} className="bg-[#E0F2FE] dark:bg-sky-900/40 border border-[#7DD3FC] dark:border-sky-700 text-[#075985] dark:text-sky-300 text-[11px] font-bold px-4 py-2 rounded-lg w-28 text-center hover:bg-[#BAE6FD] dark:hover:bg-sky-900/60 transition-colors">{t('diary.open')}</button>
                                                                 </div>
                                                             )}

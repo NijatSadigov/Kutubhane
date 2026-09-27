@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -54,8 +55,13 @@ type ReplyView struct {
 
 /* ----------------------------------------------------------------- read */
 
-// GetWorkReviews lists the visible reviews for a work, newest first, with the
-// rating aggregate and histogram the book page needs.
+// GetWorkReviews lists the visible reviews for a work with the rating
+// aggregate and histogram the book page needs.
+//
+// The feed is ordered most-helpful-first, which is what the book page's
+// "Sorted by most helpful" caption claims. Helpful counts are assembled during
+// decoration rather than in SQL, so the sort happens afterwards; it is stable,
+// so reviews with equally many votes stay newest-first.
 func GetWorkReviews(c *fiber.Ctx) error {
 	uid, _ := currentUserID(c)
 	workID, err := strconv.Atoi(c.Params("id"))
@@ -71,6 +77,7 @@ func GetWorkReviews(c *fiber.Ctx) error {
 	}
 
 	views := decorateReviews(reviews, uid, true)
+	sort.SliceStable(views, func(i, j int) bool { return views[i].Helpful > views[j].Helpful })
 	agg, hist := ratingAggregate(uint(workID))
 
 	return c.JSON(fiber.Map{
@@ -129,6 +136,24 @@ func myReviewID(workID, uid uint) *uint {
 
 // decorateReviews resolves author names, vote counts and replies in bulk
 // rather than per row.
+// maskReviewAuthors rewrites a decorated feed for readers who are not signed
+// in. Nearly every reviewer here is a schoolchild, so the open web gets
+// initials and the school's name — never a full name, a grade or a branch,
+// which together would identify a minor.
+func maskReviewAuthors(views []ReviewView) []ReviewView {
+	for i := range views {
+		views[i].AuthorName = views[i].AuthorInitials
+		views[i].AuthorSub = ""
+		views[i].IsMine = false
+		views[i].IVoted = false
+		for j := range views[i].Replies {
+			views[i].Replies[j].AuthorName = views[i].Replies[j].AuthorInitials
+			views[i].Replies[j].IsMine = false
+		}
+	}
+	return views
+}
+
 func decorateReviews(reviews []models.Review, uid uint, withReplies bool) []ReviewView {
 	out := make([]ReviewView, 0, len(reviews))
 	if len(reviews) == 0 {

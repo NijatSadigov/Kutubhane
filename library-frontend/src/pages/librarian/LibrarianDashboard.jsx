@@ -647,7 +647,7 @@ const LibrarianDashboard = () => {
                                                             <input type="text" placeholder={t('f.isbn')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#1B9DD9]" value={isbnFilter} onChange={(e) => setIsbnFilter(e.target.value)} />
                                                         </div>
                                                         <div>
-                                                            <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">Call No</label>
+                                                            <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t('old.callNo')}</label>
                                                             <input type="text" placeholder={t('f.callNo')} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 outline-none rounded-lg focus:border-[#1B9DD9]" value={callNoFilter} onChange={(e) => setCallNoFilter(e.target.value)} />
                                                         </div>
                                                         <div>
@@ -793,8 +793,8 @@ const LibrarianDashboard = () => {
                                                                         <td colSpan="9" className="px-10 py-6">
                                                                             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
                                                                                 <div className="px-4 py-3 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                                                                                    <h4 className="font-bold text-gray-700 dark:text-gray-300 text-xs uppercase">Fiziksel Kopyalar</h4>
-                                                                                    <button onClick={() => openAddCopy(book.id)} className="text-xs bg-[#1E5631] text-white px-3 py-1 rounded hover:bg-green-800 transition-colors">+ Kopya Ekle</button>
+                                                                                    <h4 className="font-bold text-gray-700 dark:text-gray-300 text-xs uppercase">{t('old.physicalCopies')}</h4>
+                                                                                    <button onClick={() => openAddCopy(book.id)} className="text-xs bg-[#1E5631] text-white px-3 py-1 rounded hover:bg-green-800 transition-colors">{t('old.addCopy')}</button>
                                                                                 </div>
                                                                                 <table className="w-full text-left text-xs">
                                                                                     <thead className="bg-gray-50 dark:bg-gray-800/80 text-gray-500 dark:text-gray-400">
@@ -820,7 +820,7 @@ const LibrarianDashboard = () => {
                                                                                             </tr>
                                                                                         ))}
                                                                                         {(!book.copies || book.copies.length === 0) && (
-                                                                                            <tr><td colSpan="4" className="text-center py-6 text-gray-400">Bu kitaba ait fiziksel kopya bulunmuyor.</td></tr>
+                                                                                            <tr><td colSpan="4" className="text-center py-6 text-gray-400">{t('old.noCopies')}</td></tr>
                                                                                         )}
                                                                                     </tbody>
                                                                                 </table>
@@ -894,7 +894,7 @@ const LibrarianDashboard = () => {
                                                     <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.title')}</th>
                                                     <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.copyId')}</th>
                                                     <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.student')}</th>
-                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Talep Tarihi</th>
+                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('old.requestDate')}</th>
                                                     <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider text-center">{t('th.status')}</th>
                                                     <th className="px-6 py-4 text-center font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.action')}</th>
                                                 </tr>
@@ -926,8 +926,8 @@ const LibrarianDashboard = () => {
                                                                     <div className="absolute right-10 top-0 mt-6 flex flex-col gap-1.5 z-50 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-100 w-36" onClick={(e) => e.stopPropagation()}>
                                                                         {isPending ? (
                                                                             <>
-                                                                                <button onClick={() => handleReservationAction(res.id, 'Approved')} className="bg-[#C2E0C6] border border-[#A3D3A8] text-[#1E5631] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#A3D3A8] transition-colors w-full">Onayla</button>
-                                                                                <button onClick={() => handleReservationAction(res.id, 'Rejected')} className="bg-[#FCE7F3] border border-[#FBCFE8] text-[#9D174D] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#FBCFE8] transition-colors w-full">Reddet</button>
+                                                                                <button onClick={() => handleReservationAction(res.id, 'Approved')} className="bg-[#C2E0C6] border border-[#A3D3A8] text-[#1E5631] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#A3D3A8] transition-colors w-full">{t('old.approve')}</button>
+                                                                                <button onClick={() => handleReservationAction(res.id, 'Rejected')} className="bg-[#FCE7F3] border border-[#FBCFE8] text-[#9D174D] text-[11px] font-bold px-3 py-1.5 rounded text-center hover:bg-[#FBCFE8] transition-colors w-full">{t('old.reject')}</button>
                                                                             </>
                                                                         ) : (
                                                                             <>
@@ -1016,7 +1016,7 @@ const LibrarianDashboard = () => {
                                             <thead className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                                                 <tr>
                                                     <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.person')}</th>
-                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">Birim</th>
+                                                    <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('old.unit')}</th>
                                                     {/* Changed Header */}
                                                     <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.class')}</th>
                                                     <th className="px-6 py-4 font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider">{t('th.personType')}</th>
@@ -1117,8 +1117,8 @@ const LibrarianDashboard = () => {
                             </select>
                         </div>
                         <div>
-                            <label className={labelCls}>Call No</label>
-                            <input type="text" placeholder="Call No" className={inputCls} value={bookForm.call_no} onChange={e => setBookForm({ ...bookForm, call_no: e.target.value })} />
+                            <label className={labelCls}>{t('old.callNo')}</label>
+                            <input type="text" placeholder={t('old.callNo')} className={inputCls} value={bookForm.call_no} onChange={e => setBookForm({ ...bookForm, call_no: e.target.value })} />
                         </div>
                         <div>
                             <label className={labelCls}>ISBN</label>
@@ -1276,7 +1276,7 @@ const LibrarianDashboard = () => {
             <Modal isOpen={isModalOpen && modalType === 'edit_loan'} onClose={() => setIsModalOpen(false)} title={t('md.editLoan')}>
                 <form onSubmit={handleLoanEdit} className="space-y-4">
                     <div>
-                        <label className={labelCls}>Son Teslim Tarihi</label>
+                        <label className={labelCls}>{t('old.dueDate')}</label>
                         <input type="date" className={inputCls} value={loanEditForm.due_date} onChange={e => setLoanEditForm({ ...loanEditForm, due_date: e.target.value })} required />
                     </div>
                     <div>

@@ -107,9 +107,9 @@ func GetChallenge(c *fiber.Ctx) error {
 	summary := challengeSummary(ch, uid)
 	summary["books"] = books
 	summary["standings"] = standings(ch.ID, 10, uid)
-	// Reviews are not built yet; say so rather than letting the UI imply the
-	// step is simply not done.
-	summary["review_step_available"] = false
+	// Reviews exist now, and posting one ticks this step — see
+	// markChallengeReviewed in review.go.
+	summary["review_step_available"] = true
 	return c.JSON(summary)
 }
 
@@ -134,6 +134,41 @@ func challengeSummary(ch models.Challenge, uid uint) fiber.Map {
 		covers = append(covers, b.Edition.CoverURL)
 	}
 
+	// What is on offer, and how far this reader has got: the design's card
+	// carries a progress bar, and the detail panel says "your points N / max".
+	// A book with no quiz written yet cannot award quiz points, so the maximum
+	// is counted per book rather than assumed.
+	progress := progressMap(ch.ID, uid)
+	maxPoints, steps, stepsDone := 0, 0, 0
+	// "1 of 3 verified" on the design's card counts books whose quiz the reader
+	// has passed — or, where no quiz exists yet, books they have marked read.
+	verified := 0
+	for _, b := range ch.Books {
+		var questions int64
+		database.DB.Model(&models.QuizQuestion{}).
+			Where("challenge_id = ? AND edition_id = ?", ch.ID, b.EditionID).Count(&questions)
+
+		p := progress[b.EditionID]
+		maxPoints += models.PointsRead + models.PointsReview
+		steps += 2
+		if p.Read {
+			stepsDone++
+		}
+		if p.Reviewed {
+			stepsDone++
+		}
+		if questions > 0 {
+			maxPoints += models.PointsQuiz
+			steps++
+			if p.QuizBest >= quizPassMark {
+				stepsDone++
+				verified++
+			}
+		} else if p.Read {
+			verified++
+		}
+	}
+
 	return fiber.Map{
 		"id": ch.ID, "title": ch.Title, "description": ch.Description,
 		"scope": ch.Scope, "prizes": ch.Prizes,
@@ -141,8 +176,13 @@ func challengeSummary(ch models.Challenge, uid uint) fiber.Map {
 		"state": state, "days_left": int(ch.EndsAt.Sub(now).Hours() / 24),
 		"participants": participants, "joined": joined > 0,
 		"book_count": len(ch.Books), "covers": covers,
-		"points": pointsFor(ch.ID, uid),
-		"rules":  fiber.Map{"read": models.PointsRead, "quiz": models.PointsQuiz, "review": models.PointsReview},
+		"points": pointsFor(ch.ID, uid), "max_points": maxPoints,
+		"steps": steps, "steps_done": stepsDone, "verified": verified,
+		// The organiser, as the design names it: the school and how wide the
+		// challenge reaches.
+		"organiser":    organiserLabel(ch),
+		"branch_count": branchCount(ch.SchoolID),
+		"rules":        fiber.Map{"read": models.PointsRead, "quiz": models.PointsQuiz, "review": models.PointsReview},
 	}
 }
 
@@ -555,4 +595,24 @@ func DeleteChallenge(c *fiber.Ctx) error {
 	database.DB.Where("challenge_id = ?", id).Delete(&models.QuizAttempt{})
 	database.DB.Delete(&models.Challenge{}, id)
 	return c.JSON(fiber.Map{"deleted": true})
+}
+
+// organiserLabel is the school that set the challenge. The design prints it as
+// "Hədəf · all 5 branches"; the branch count travels separately so the UI can
+// phrase it in the reader's own language.
+func organiserLabel(ch models.Challenge) string {
+	if ch.School.Name != "" {
+		return ch.School.Name
+	}
+	var school models.School
+	if err := database.DB.Select("name").First(&school, ch.SchoolID).Error; err == nil {
+		return school.Name
+	}
+	return ""
+}
+
+func branchCount(schoolID uint) int {
+	var n int64
+	database.DB.Model(&models.Branch{}).Where("school_id = ?", schoolID).Count(&n)
+	return int(n)
 }

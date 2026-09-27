@@ -46,6 +46,7 @@ func main() {
 		&models.RegistrationToken{},
 		&models.ShelfItem{},
 		&models.Note{},
+		&models.ReadingGoal{},
 		&models.Badge{},
 		&models.UserBadge{},
 		&models.Challenge{},

@@ -94,17 +94,28 @@ func GetDeskSummary(c *fiber.Ctx) error {
 	database.DB.Model(&models.BookRequest{}).
 		Where("branch_id = ? AND status = ?", branchID, "PENDING").Count(&requestsPending)
 
+	// The design puts a comparison under "checked out today" — "+6 vs last
+	// Sat". The honest comparison is the same weekday a week ago, because a
+	// school library's Saturday looks nothing like its Tuesday.
+	prevStart := startOfDay.AddDate(0, 0, -7)
+	var issuedPrev int64
+	branchLoans(branchID).
+		Where("loans.issue_date >= ? AND loans.issue_date < ?", prevStart, prevStart.AddDate(0, 0, 1)).
+		Count(&issuedPrev)
+
 	return c.JSON(fiber.Map{
-		"issued_today":     len(issuedToday),
-		"returned_today":   len(returnedToday),
-		"active_loans":     activeLoans,
-		"overdue":          len(overdue),
-		"overdue_14_plus":  badlyLate,
-		"holds_pending":    holdsPending,
-		"requests_pending": requestsPending,
-		"members":          members,
-		"today":            today,
-		"overdue_rows":     overdue,
+		"issued_prev_weekday": issuedPrev,
+		"weekday":             now.Weekday().String(),
+		"issued_today":        len(issuedToday),
+		"returned_today":      len(returnedToday),
+		"active_loans":        activeLoans,
+		"overdue":             len(overdue),
+		"overdue_14_plus":     badlyLate,
+		"holds_pending":       holdsPending,
+		"requests_pending":    requestsPending,
+		"members":             members,
+		"today":               today,
+		"overdue_rows":        overdue,
 	})
 }
 

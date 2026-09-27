@@ -1,6 +1,7 @@
 import { useContext } from 'react';
 import { Navigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { homePathFor } from '../home';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
     // 1. Get User and Loading from Context
@@ -9,7 +10,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
     // 2. Wait for Auth check to finish
     // This prevents kicking the user out while the token is being verified
-    if (loading) return <div className="p-10 text-center text-gray-500">Checking Security...</div>;
+    if (loading) return <div className="p-10 text-center text-gray-500">{'…'}</div>;
 
     // 3. Not Logged In? -> Go to Login
     if (!user) {
@@ -21,9 +22,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     if (allowedRoles && !allowedRoles.includes(user.role)) {
         
         // Redirect them to their appropriate dashboard
-        if (user.role === 'admin') return <Navigate to="/admin" replace />;
-        if (user.role === 'manager') return <Navigate to="/manager" replace />;
-        if (user.role === 'librarian') return <Navigate to="/librarian" replace />;
+        if (user.role !== 'student') return <Navigate to={homePathFor(user)} replace />;
         // Students belong in the myredbookshelf app; /student is the legacy
         // dashboard, still reachable directly until the new screens cover it.
         if (user.role === 'student') return <Navigate to="/app" replace />;

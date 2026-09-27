@@ -103,7 +103,7 @@ function MenuItem({ children, onClick, danger: isDanger }) {
 
 // Edit profile: name, email and an optional new password. Posts to the
 // existing PUT /profile endpoint.
-function ProfileDialog({ onClose }) {
+export function ProfileDialog({ onClose }) {
   const { t } = useTranslation();
   const { user, refreshUser } = useContext(AuthContext);
 

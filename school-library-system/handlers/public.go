@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"sort"
+	"strconv"
+
 	"school-library-system/database"
 	"school-library-system/models"
 
@@ -80,4 +83,96 @@ func GetPublicStats(c *fiber.Ctx) error {
 		},
 		"schools": out,
 	})
+}
+
+/* --------------------------------------------------- the logged-out site */
+
+// The public surface. A visitor who is not signed in can look through the
+// catalogue and read what school readers thought of a book — the design's
+// guest persona — but never sees who wrote what. Authorship is reduced to
+// initials by maskReviewAuthors, and nothing here exposes a loan, a shelf or
+// a reservation.
+
+// GetPublicCatalogue browses the shared catalogue with no session. It is the
+// global scope only: "my library" and "my shelf" have no meaning for a guest.
+func GetPublicCatalogue(c *fiber.Ctx) error {
+	c.Request().URI().QueryArgs().Set("scope", "global")
+	return BrowseCatalogue(c)
+}
+
+// GetPublicWorkReviews lists a work's reviews for a guest, masked.
+func GetPublicWorkReviews(c *fiber.Ctx) error {
+	workID, err := strconv.Atoi(c.Params("id"))
+	if err != nil || workID <= 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid work id"})
+	}
+
+	var reviews []models.Review
+	if err := database.DB.
+		Where("work_id = ? AND hidden = false", workID).
+		Order("created_at desc").Find(&reviews).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Could not load reviews"})
+	}
+
+	views := maskReviewAuthors(decorateReviews(reviews, 0, true))
+	sort.SliceStable(views, func(i, j int) bool { return views[i].Helpful > views[j].Helpful })
+	agg, hist := ratingAggregate(uint(workID))
+
+	return c.JSON(fiber.Map{
+		"reviews": views, "rating": agg.avg, "count": agg.n,
+		"histogram": hist, "mine": nil, "masked": true,
+	})
+}
+
+// GetPublicReviews backs the landing page's "fresh from the community" strip:
+// the most recent reviews from every partner school, masked, each with the
+// book it is about.
+func GetPublicReviews(c *fiber.Ctx) error {
+	limit, _ := strconv.Atoi(c.Query("limit", "3"))
+	if limit <= 0 || limit > 12 {
+		limit = 3
+	}
+
+	var reviews []models.Review
+	database.DB.Where("hidden = false AND text <> ''").
+		Order("created_at desc").Limit(limit).Find(&reviews)
+	if len(reviews) == 0 {
+		return c.JSON([]fiber.Map{})
+	}
+
+	views := maskReviewAuthors(decorateReviews(reviews, 0, false))
+
+	workIDs := make([]uint, 0, len(views))
+	for _, v := range views {
+		workIDs = append(workIDs, v.WorkID)
+	}
+	var works []models.Work
+	database.DB.Where("id IN ?", workIDs).Find(&works)
+	title := map[uint]string{}
+	for _, w := range works {
+		title[w.ID] = w.Title
+	}
+	var eds []models.Edition
+	database.DB.Where("work_id IN ?", workIDs).Order("id").Find(&eds)
+	cover, edID := map[uint]string{}, map[uint]uint{}
+	for _, e := range eds {
+		if _, ok := edID[e.WorkID]; !ok {
+			edID[e.WorkID] = e.ID
+		}
+		if e.CoverURL != "" && cover[e.WorkID] == "" {
+			cover[e.WorkID] = e.CoverURL
+		}
+	}
+
+	// The reader's school, which is as specific as a public page gets.
+	out := make([]fiber.Map, 0, len(views))
+	for _, v := range views {
+		out = append(out, fiber.Map{
+			"id": v.ID, "rating": v.Rating, "text": v.Text, "spoiler": v.Spoiler,
+			"author_initials": v.AuthorInitials, "created_at": v.CreatedAt,
+			"work_id": v.WorkID, "edition_id": edID[v.WorkID],
+			"title": title[v.WorkID], "cover_url": cover[v.WorkID],
+		})
+	}
+	return c.JSON(out)
 }

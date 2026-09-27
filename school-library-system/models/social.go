@@ -77,6 +77,19 @@ const (
 )
 
 // Badge is a definition, seeded once per deployment. The colour and shape
+// ReadingGoal is how many books a reader means to finish in a calendar year —
+// the "2026 goal" card on their shelf. One row per reader per year; the reader
+// sets it themselves and nobody else can see or change it.
+type ReadingGoal struct {
+	ID     uint `json:"id" gorm:"primaryKey"`
+	UserID uint `json:"user_id" gorm:"index:idx_goal_user_year,unique"`
+	Year   int  `json:"year" gorm:"index:idx_goal_user_year,unique"`
+	Target int  `json:"target"`
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // fields come straight from the design's badge grid.
 type Badge struct {
 	ID          uint   `json:"id" gorm:"primaryKey"`
