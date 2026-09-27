@@ -146,6 +146,10 @@ func decorateAvailability(c *fiber.Ctx, books []PublicBook) {
 		}
 	}
 
+	// Availability has to mean the same thing here as on the catalogue, or
+	// Discover offers a book the catalogue knows is spoken for.
+	claimed := claimedCopyIDs()
+
 	for i := range books {
 		h, ok := byEdition[books[i].EditionID]
 		if !ok {
@@ -154,7 +158,7 @@ func decorateAvailability(c *fiber.Ctx, books []PublicBook) {
 		id := h.ID
 		books[i].BookID = &id
 		for _, cp := range h.Copies {
-			if cp.Status.Code == "AVAILABLE" {
+			if cp.Status.Code == "AVAILABLE" && !claimed[cp.ID] {
 				books[i].AvailableCopies++
 			}
 		}

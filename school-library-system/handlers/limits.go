@@ -129,6 +129,42 @@ func GetStudentHolds(c *fiber.Ctx) error {
 	})
 }
 
+// claimedCopyIDs is every copy tied up by somebody's open hold.
+//
+// It is the set form of copyHasActiveReservation, for the screens that have to
+// count availability across many titles at once. Both exist because a PENDING
+// hold does not move its copy to RESERVED — only approval does — so "AVAILABLE"
+// alone overstates what a reader can actually borrow, and a card that overstates
+// it offers a button the reservation endpoint then refuses.
+func claimedCopyIDs() map[uint]bool {
+	out := map[uint]bool{}
+	var claims []models.Reservation
+	database.DB.
+		Joins("JOIN reservation_statuses ON reservation_statuses.id = reservations.status_id").
+		Where("reservation_statuses.code IN ?", activeHoldCodes).
+		Find(&claims)
+	for _, r := range claims {
+		out[r.BookCopyID] = true
+	}
+	return out
+}
+
+// copyActiveReservation returns the open hold on a copy, if there is one, with
+// its student loaded. The desk needs to know *who* a copy is being kept for,
+// not merely that it is spoken for.
+func copyActiveReservation(copyID uint) (*models.Reservation, bool) {
+	var r models.Reservation
+	err := database.DB.
+		Joins("JOIN reservation_statuses ON reservation_statuses.id = reservations.status_id").
+		Where("reservations.book_copy_id = ? AND reservation_statuses.code IN ?", copyID, activeHoldCodes).
+		Preload("Student").
+		First(&r).Error
+	if err != nil {
+		return nil, false
+	}
+	return &r, true
+}
+
 // copyHasActiveReservation reports whether a copy already has a pending/approved
 // reservation — used to stop two students holding the same copy (over-approval).
 func copyHasActiveReservation(copyID uint) bool {

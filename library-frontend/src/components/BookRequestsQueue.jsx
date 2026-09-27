@@ -16,10 +16,19 @@ const BookRequestsQueue = ({ listUrl, updateBase, showBranch = false }) => {
     const { t } = useTranslation();
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
+    // "Could not load" and "nothing in the queue" are different facts. This
+    // swallowed the first and drew the second, which is how a caller that
+    // forgot listUrl looked like an empty queue for three sessions while the
+    // nav badge beside it counted four.
+    const [failed, setFailed] = useState(false);
 
     const load = () => {
         setLoading(true);
-        api.get(listUrl).then(r => setRows(r.data || [])).catch(() => {}).finally(() => setLoading(false));
+        setFailed(false);
+        api.get(listUrl)
+            .then(r => setRows(r.data || []))
+            .catch(() => setFailed(true))
+            .finally(() => setLoading(false));
     };
     useEffect(() => { load(); }, [listUrl]);
 
@@ -73,7 +82,12 @@ const BookRequestsQueue = ({ listUrl, updateBase, showBranch = false }) => {
                                 </td>
                             </tr>
                         ))}
-                        {!loading && rows.length === 0 && (
+                        {!loading && failed && (
+                            <tr><td colSpan={cols} className="px-6 py-10 text-center text-[#B4232A] font-semibold">
+                                {t('req.loadFailed')}
+                            </td></tr>
+                        )}
+                        {!loading && !failed && rows.length === 0 && (
                             <tr><td colSpan={cols} className="px-6 py-10 text-center text-gray-400">{t('req.none')}</td></tr>
                         )}
                     </tbody>

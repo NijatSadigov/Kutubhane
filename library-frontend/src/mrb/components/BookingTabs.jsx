@@ -8,6 +8,16 @@ import { brand, slate, danger, warning, radius, font } from '../theme';
 import { BookCover, Button, Card } from './primitives';
 import { fmtDate } from '../../i18n/dates';
 
+// The status word, from the fixed code rather than ReservationStatus.Name —
+// those rows are seeded in Turkish, so printing the name showed an Azerbaijani
+// reader Turkish. A branch that adds a status of its own has no key, and falls
+// back to whatever it named it.
+function resStatusLabel(r, t) {
+  const key = 'mrb.res.st.' + r.status_code;
+  const word = t(key);
+  return word === key ? (r.status || r.status_code) : word;
+}
+
 // Reservation status → pill colours, branching on the fixed code and never on
 // the display name, which a librarian can rename in any language.
 function statusStyle(code) {
@@ -53,7 +63,7 @@ export function ReservationsTab({ items, t, say, reload }) {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 7, alignItems: 'flex-end' }}>
                 <span style={{ ...statusStyle(r.status_code), borderRadius: 999, padding: '4px 11px', fontSize: 12, fontWeight: 700 }}>
-                  {r.status || r.status_code}
+                  {resStatusLabel(r, t)}
                 </span>
 
                 {r.status_code === 'APPROVED' && deadline && (

@@ -10,7 +10,7 @@
 // on /staff/holds still lands on the hold queue.
 
 import { Routes, Route, Navigate, useParams, useSearchParams } from 'react-router-dom';
-import StaffShell, { Card, PageIntro } from './components/StaffShell';
+import StaffShell, { PageIntro } from './components/StaffShell';
 import CirculationDesk from './pages/CirculationDesk';
 import Reservations from './pages/Reservations';
 import Loans from './pages/Loans';
@@ -104,15 +104,21 @@ function LegacyRedirect() {
   return <Navigate to={`/staff/${target}${q ? '?' + q : ''}`} replace />;
 }
 
-// The book-request queue already exists and works. It is carried across rather
-// than rebuilt, so the migration does not drop it — see the parity list in
-// ROADMAP.md.
+// The book-request queue is carried across from the old dashboard rather than
+// rebuilt — see the parity list in ROADMAP.md.
+//
+// It needs `listUrl` and `updateBase`: it is shared with the manager's
+// school-wide view, which reads different paths. The console rendered it with
+// neither until 2026-09-27, so it called api.get(undefined), swallowed the
+// failure and drew its own empty state — indistinguishable from a queue with
+// nothing in it, while the nav badge beside it counted four. The component also
+// brings its own padding and card, so it is not wrapped in another one.
 function RequestsPage() {
   const { t } = useTranslation();
   return (
     <>
       <PageIntro>{t('staff.requests.sub')}</PageIntro>
-      <Card><BookRequestsQueue /></Card>
+      <BookRequestsQueue listUrl="/book-requests" updateBase="/book-requests" />
     </>
   );
 }

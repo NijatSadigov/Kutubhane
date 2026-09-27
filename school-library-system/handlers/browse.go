@@ -298,6 +298,10 @@ func BrowseCatalogue(c *fiber.Ctx) error {
 		}
 	}
 
+	// Copies somebody is already queued for do not count as available — see
+	// claimedCopyIDs.
+	claimedCopies := claimedCopyIDs()
+
 	// --- build the cards ---
 	cards := make([]BrowseCard, 0, len(editions))
 	for _, e := range editions {
@@ -330,7 +334,9 @@ func BrowseCatalogue(c *fiber.Ctx) error {
 			}
 			card.Copies = len(h.Copies)
 			for _, cp := range h.Copies {
-				if cp.Status.Code == "AVAILABLE" {
+				// available_copies means "copies a reader could borrow now",
+				// so a copy somebody else is already queued for does not count.
+				if cp.Status.Code == "AVAILABLE" && !claimedCopies[cp.ID] {
 					card.AvailableCopies++
 				}
 			}

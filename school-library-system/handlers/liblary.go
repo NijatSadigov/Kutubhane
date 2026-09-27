@@ -14,6 +14,16 @@ import (
 
 // --- UTILS ---
 
+// holdKind tells the desk whether the other student's hold is merely queued or
+// already approved and waiting on the shelf, so it can word the refusal.
+func holdKind(r *models.Reservation) string {
+	var st models.ReservationStatus
+	if r.StatusID != nil && database.DB.First(&st, *r.StatusID).Error == nil {
+		return st.Code
+	}
+	return ""
+}
+
 func getUserBranchID(c *fiber.Ctx) (uint, error) {
 	claimsID := c.Locals("user_id")
 	if claimsID == nil {
@@ -527,6 +537,20 @@ func CreateLoan(c *fiber.Ctx) error {
 	// A student can't hold the same title on two active loans.
 	if studentHasActiveLoanForBook(req.StudentID, copy.BookID) {
 		return c.Status(400).JSON(fiber.Map{"error": "Student already has this book on loan", "code": "DUPLICATE"})
+	}
+
+	// This copy may be the one being kept for somebody. Handing it to a
+	// different student at the desk would quietly take their place in the queue
+	// — the copy status alone does not say so, because a PENDING hold leaves it
+	// AVAILABLE. Fulfilling the holder's own reservation is exactly what the
+	// desk is for, so only a hold belonging to someone else is refused.
+	if held, ok := copyActiveReservation(copy.ID); ok && held.StudentID != req.StudentID {
+		return c.Status(400).JSON(fiber.Map{
+			"error":     "This copy is being held for " + held.Student.Name,
+			"code":      "HELD_FOR_OTHER",
+			"held_for":  held.Student.Name,
+			"hold_kind": holdKind(held),
+		})
 	}
 	// This direct loan may be fulfilling the student's own reservation for the same
 	// book; that reservation already counts toward the limit, so don't double-count.

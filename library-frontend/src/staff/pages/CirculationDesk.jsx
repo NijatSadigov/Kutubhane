@@ -113,9 +113,23 @@ function CheckOut({ t, say, reload }) {
   const [days, setDays] = useState(14);
   const [busy, setBusy] = useState(false);
 
+  // Open holds too: a PENDING hold leaves its copy AVAILABLE, so copy status
+  // alone cannot tell the desk that a copy is already being kept for somebody.
+  // Without this the desk offers it, and the loan is refused on submit.
+  const [heldCopies, setHeldCopies] = useState({});
+
   useEffect(() => {
     api.get('/class-list').then((r) => setStudents(r.data || [])).catch(() => {});
     api.get('/books').then((r) => setBooks(r.data || [])).catch(() => {});
+    api.get('/reservations').then((r) => {
+      const m = {};
+      (r.data || []).forEach((res) => {
+        const code = res.status?.code;
+        if (code !== 'PENDING' && code !== 'APPROVED') return;
+        m[res.book_copy_id] = { name: res.student?.name || '', code };
+      });
+      setHeldCopies(m);
+    }).catch(() => {});
   }, []);
 
   // What the student already has out, and their limit — shown before issuing,
@@ -138,7 +152,9 @@ function CheckOut({ t, say, reload }) {
       || (s.grade || '').toLowerCase().includes(term)).slice(0, 8);
   }, [patronQ, students]);
 
-  // Free copies, flattened so a barcode scan finds one directly.
+  // Free copies, flattened so a barcode scan finds one directly. A copy kept
+  // for another student stays in the list, marked and unpickable — hiding it
+  // would leave the desk wondering where the copy went.
   const copyResults = useMemo(() => {
     const term = bookQ.trim().toLowerCase();
     const out = [];
@@ -148,11 +164,15 @@ function CheckOut({ t, say, reload }) {
         const bc = cp.tracking_number || '';
         if (term && !(b.title || '').toLowerCase().includes(term) && !bc.toLowerCase().includes(term)) return;
         if (cart.some((c) => c.tracking_number === bc)) return;
-        out.push({ book_id: b.id, title: b.title, cover_url: b.cover_url, tracking_number: bc });
+        const held = heldCopies[cp.id];
+        out.push({
+          book_id: b.id, title: b.title, cover_url: b.cover_url, tracking_number: bc,
+          heldFor: held && held.name, heldCode: held && held.code,
+        });
       });
     });
     return out.slice(0, 8);
-  }, [bookQ, books, cart]);
+  }, [bookQ, books, cart, heldCopies]);
 
   const activeLoans = (patron?.loans || []).filter((l) => !l.return_date);
   const hasOverdue = activeLoans.some((l) => l.due_date && new Date(l.due_date) < new Date());
@@ -295,23 +315,47 @@ function CheckOut({ t, say, reload }) {
                   {t('staff.desk.noFreeCopy')}
                 </div>
               )}
-              {copyResults.map((r) => (
-                <button key={r.tracking_number} onClick={() => setCart([...cart, r])} style={{
-                  display: 'flex', alignItems: 'center', gap: 10, background: '#fff',
-                  border: '1px solid ' + shell.border, borderRadius: radius.alert,
-                  padding: '8px 10px', cursor: 'pointer', textAlign: 'left', fontFamily: font.ui,
-                }}>
-                  <Spine src={r.cover_url ? assetUrl(r.cover_url) : ''} seed={r.title} />
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{
-                      display: 'block', fontSize: 13, fontWeight: 700,
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>{r.title}</span>
-                    <Mono style={{ display: 'block', fontSize: 11 }}>{r.tracking_number}</Mono>
-                  </span>
-                  <span style={{ color: '#1580B5', fontWeight: 800 }}>+</span>
-                </button>
-              ))}
+              {copyResults.map((r) => {
+                // Kept for somebody else: shown, named and unpickable. Handing
+                // it over would take that student's place in the queue, and the
+                // backend refuses it anyway.
+                const held = !!r.heldFor;
+                return (
+                  <button
+                    key={r.tracking_number}
+                    disabled={held}
+                    title={held ? t('staff.desk.heldFor', { name: r.heldFor }) : undefined}
+                    onClick={() => { if (!held) setCart([...cart, r]); }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      background: held ? shell.headerBg : '#fff',
+                      border: '1px solid ' + (held ? shell.control : shell.border),
+                      borderRadius: radius.alert, padding: '8px 10px',
+                      cursor: held ? 'not-allowed' : 'pointer', textAlign: 'left',
+                      fontFamily: font.ui, opacity: held ? 0.75 : 1,
+                    }}
+                  >
+                    <Spine src={r.cover_url ? assetUrl(r.cover_url) : ''} seed={r.title} />
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{
+                        display: 'block', fontSize: 13, fontWeight: 700,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>{r.title}</span>
+                      {held ? (
+                        <span style={{
+                          display: 'block', fontSize: 11, fontWeight: 700, color: '#92400E',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>{t('staff.desk.heldFor', { name: r.heldFor })}</span>
+                      ) : (
+                        <Mono style={{ display: 'block', fontSize: 11 }}>{r.tracking_number}</Mono>
+                      )}
+                    </span>
+                    <span style={{ color: held ? ink.muted : '#1580B5', fontWeight: 800 }}>
+                      {held ? '🔒' : '+'}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
