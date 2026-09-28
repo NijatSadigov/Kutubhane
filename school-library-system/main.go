@@ -104,6 +104,10 @@ func main() {
 		database.SeedDefaultStatusesForBranch(branch.ID)
 		database.EnsureExpiredReservationStatus(branch.ID) // backfill for older branches
 	}
+	// Rename any status labels still seeded in Turkish. Idempotent, and it
+	// leaves alone anything a librarian has renamed themselves.
+	database.LocaliseStatusNames()
+
 	// Seed the badge definitions the design specifies. Idempotent.
 	database.SeedBadges()
 

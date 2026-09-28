@@ -10,21 +10,18 @@ func SeedDefaultStatusesForBranch(branchID uint) {
 		return // Already seeded!
 	}
 
-	// 1. Core Copy Statuses
-	DB.Create(&models.CopyStatus{BranchID: branchID, Name: "Müsait", Code: "AVAILABLE"})
-	DB.Create(&models.CopyStatus{BranchID: branchID, Name: "Ödünç Verildi", Code: "LOANED"})
-	DB.Create(&models.CopyStatus{BranchID: branchID, Name: "Rezerve", Code: "RESERVED"})
-
-	// 2. Core Loan Statuses
-	DB.Create(&models.LoanStatus{BranchID: branchID, Name: "Aktif", Code: "ACTIVE"})
-	DB.Create(&models.LoanStatus{BranchID: branchID, Name: "İade Edildi", Code: "RETURNED"})
-
-	// 3. Core Reservation Statuses
-	DB.Create(&models.ReservationStatus{BranchID: branchID, Name: "Bekliyor", Code: "PENDING"})
-	DB.Create(&models.ReservationStatus{BranchID: branchID, Name: "Onaylandı", Code: "APPROVED"})
-	DB.Create(&models.ReservationStatus{BranchID: branchID, Name: "Reddedildi", Code: "REJECTED"})
-	DB.Create(&models.ReservationStatus{BranchID: branchID, Name: "Tamamlandı", Code: "COMPLETED"})
-	DB.Create(&models.ReservationStatus{BranchID: branchID, Name: "Süresi Doldu", Code: "EXPIRED"})
+	// The labels come from one table shared with the rename migration, so a new
+	// branch is seeded in Azerbaijani and an old one is corrected to the same
+	// words. Code is the key throughout; Name is only what people read.
+	for _, n := range copyStatusNames {
+		DB.Create(&models.CopyStatus{BranchID: branchID, Name: n.azerbaijani, Code: n.code})
+	}
+	for _, n := range loanStatusNames {
+		DB.Create(&models.LoanStatus{BranchID: branchID, Name: n.azerbaijani, Code: n.code})
+	}
+	for _, n := range reservationStatusNames {
+		DB.Create(&models.ReservationStatus{BranchID: branchID, Name: n.azerbaijani, Code: n.code})
+	}
 }
 
 // EnsureExpiredReservationStatus backfills the EXPIRED reservation status for a
@@ -33,6 +30,10 @@ func EnsureExpiredReservationStatus(branchID uint) {
 	var c int64
 	DB.Model(&models.ReservationStatus{}).Where("branch_id = ? AND code = 'EXPIRED'", branchID).Count(&c)
 	if c == 0 {
-		DB.Create(&models.ReservationStatus{BranchID: branchID, Name: "Süresi Doldu", Code: "EXPIRED"})
+		DB.Create(&models.ReservationStatus{
+			BranchID: branchID,
+			Name:     azerbaijaniFor(reservationStatusNames, "EXPIRED"),
+			Code:     "EXPIRED",
+		})
 	}
 }
