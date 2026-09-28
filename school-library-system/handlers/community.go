@@ -607,7 +607,7 @@ func favouriteRead(uid uint) *FavouriteRead {
 
 	var loan models.Loan
 	if err := database.DB.
-		Preload("BookCopy").Preload("BookCopy.Book").Preload("BookCopy.Book.Author").
+		Preload("BookCopy").Preload("BookCopy.Book").Preload("BookCopy.Book.CatalogEdition").Preload("BookCopy.Book.Author").
 		Where("student_id = ? AND return_date IS NOT NULL", uid).
 		Order("return_date desc").First(&loan).Error; err == nil {
 		b := loan.BookCopy.Book

@@ -138,7 +138,7 @@ func ManagerGetBranchBooks(c *fiber.Ctx) error {
 	var books []models.Book
 	database.DB.
 		Preload("Author").Preload("Publisher").Preload("Topic").
-		Preload("Genre").Preload("Frequency").
+		Preload("Genre").Preload("Frequency").Preload("CatalogEdition").
 		Preload("Copies").Preload("Copies.Condition").Preload("Copies.Status").
 		Where("branch_id = ?", branchID).
 		Find(&books)
@@ -157,7 +157,7 @@ func ManagerGetBranchLoans(c *fiber.Ctx) error {
 		Joins("JOIN books ON books.id = book_copies.book_id").
 		Where("books.branch_id = ? AND loans.return_date IS NULL", branchID).
 		Preload("Student").Preload("Status").
-		Preload("BookCopy").Preload("BookCopy.Book").
+		Preload("BookCopy").Preload("BookCopy.Book").Preload("BookCopy.Book.CatalogEdition").
 		Preload("BookCopy.Book.Author").Preload("BookCopy.Book.Genre").Preload("BookCopy.Book.CatalogEdition.Work.Genre").
 		Find(&loans)
 	return c.JSON(loans)
@@ -175,7 +175,7 @@ func ManagerGetBranchReservations(c *fiber.Ctx) error {
 		Joins("JOIN books ON books.id = book_copies.book_id").
 		Where("books.branch_id = ?", branchID).
 		Preload("Student").Preload("Status").
-		Preload("BookCopy").Preload("BookCopy.Book").
+		Preload("BookCopy").Preload("BookCopy.Book").Preload("BookCopy.Book.CatalogEdition").
 		Preload("BookCopy.Book.Author").Preload("BookCopy.Book.Genre").Preload("BookCopy.Book.CatalogEdition.Work.Genre").
 		Find(&reservations)
 	return c.JSON(reservations)

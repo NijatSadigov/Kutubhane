@@ -346,6 +346,9 @@ func GetBooks(c *fiber.Ctx) error {
 		Preload("Topic").
 		Preload("Genre").
 		Preload("Frequency").
+		// The edition is what AfterFind needs to make the shared catalogue
+		// authoritative for this holding's title, ISBN and the rest.
+		Preload("CatalogEdition").
 		Preload("Copies").
 		Preload("Copies.Condition").
 		Preload("Copies.Status").
@@ -559,7 +562,7 @@ func GetActiveLoans(c *fiber.Ctx) error {
 		Preload("Student").
 		Preload("Status").
 		Preload("BookCopy").
-		Preload("BookCopy.Book").
+		Preload("BookCopy.Book").Preload("BookCopy.Book.CatalogEdition").
 		Preload("BookCopy.Book.Author").
 		Preload("BookCopy.Book.Genre").Preload("BookCopy.Book.CatalogEdition.Work.Genre").
 		Find(&loans).Error; err != nil {
@@ -593,7 +596,7 @@ func CreateLoan(c *fiber.Ctx) error {
 
 	var copy models.BookCopy
 	if err := database.DB.
-		Preload("Book").
+		Preload("Book").Preload("Book.CatalogEdition").
 		Preload("Status").
 		Where("book_id = ? AND tracking_number = ?", req.BookID, req.TrackingNumber).
 		First(&copy).Error; err != nil {
@@ -762,7 +765,7 @@ func ReturnBook(c *fiber.Ctx) error {
 	var copy models.BookCopy
 
 	if req.BookID != 0 && req.TrackingNumber != "" {
-		if err := database.DB.Preload("Book").
+		if err := database.DB.Preload("Book").Preload("Book.CatalogEdition").
 			Where("book_id = ? AND tracking_number = ?", req.BookID, req.TrackingNumber).
 			First(&copy).Error; err != nil {
 			return c.Status(404).JSON(fiber.Map{"error": "Copy not found by BookID and Tracking Number"})
@@ -778,7 +781,7 @@ func ReturnBook(c *fiber.Ctx) error {
 		if err := database.DB.Where("id = ? AND return_date IS NULL", loanID).First(&byID).Error; err != nil {
 			return c.Status(404).JSON(fiber.Map{"error": "No active loan with that id"})
 		}
-		if err := database.DB.Preload("Book").First(&copy, byID.BookCopyID).Error; err != nil {
+		if err := database.DB.Preload("Book").Preload("Book.CatalogEdition").First(&copy, byID.BookCopyID).Error; err != nil {
 			return c.Status(404).JSON(fiber.Map{"error": "Copy not found"})
 		}
 	}
@@ -898,7 +901,7 @@ func GetMyLibrary(c *fiber.Ctx) error {
 	var loans []models.Loan
 	if err := database.DB.
 		Preload("BookCopy").
-		Preload("BookCopy.Book").
+		Preload("BookCopy.Book").Preload("BookCopy.Book.CatalogEdition").
 		Preload("BookCopy.Book.Author").
 		Preload("BookCopy.Book.Genre").Preload("BookCopy.Book.CatalogEdition.Work.Genre").
 		Preload("Status").
@@ -1010,7 +1013,7 @@ func GetAllReservations(c *fiber.Ctx) error {
 		Preload("Student").
 		Preload("Status").
 		Preload("BookCopy").
-		Preload("BookCopy.Book").
+		Preload("BookCopy.Book").Preload("BookCopy.Book.CatalogEdition").
 		Preload("BookCopy.Book.Author").
 		Preload("BookCopy.Book.Genre").Preload("BookCopy.Book.CatalogEdition.Work.Genre").
 		Find(&reservations).Error; err != nil {

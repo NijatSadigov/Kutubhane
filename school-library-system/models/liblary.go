@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 // ==========================================
 // 1. DYNAMIC CATEGORY MODELS (NEW)
@@ -118,6 +122,58 @@ type Book struct {
 	// One-to-Many
 	Copies []BookCopy `json:"copies,omitempty" gorm:"foreignKey:BookID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
+
+// AfterFind makes the shared catalogue authoritative for a holding's
+// bibliographic facts.
+//
+// Book duplicates Title, ISBN, Language, CEFRLevel, PublicationYear, Edition,
+// PageCount and CoverURL from its Edition — columns that predate the
+// Work/Edition split and were filled once, at write time, by
+// applyEditionToBook. That made them a copy that could never be corrected: fix
+// a title in the shared catalogue and every branch already holding the book
+// kept the old spelling for ever.
+//
+// So whenever the edition has been loaded alongside the holding, its values win
+// — for the Go code that reads Book.Title and for the JSON that carries
+// book.title to 49 places in the reader and staff apps alike. Where the edition
+// was not preloaded the stored column still answers, which is exactly the old
+// behaviour rather than a blank.
+//
+// The columns themselves are the next step; see TODO.md. Nothing should write
+// them by hand in the meantime.
+func (b *Book) AfterFind(*gorm.DB) error {
+	e := b.CatalogEdition
+	if e == nil {
+		return nil
+	}
+	if e.Title != "" {
+		b.Title = e.Title
+	}
+	if e.ISBN13 != "" {
+		b.ISBN = e.ISBN13
+	}
+	if e.Language != "" {
+		b.Language = e.Language
+	}
+	if e.CEFRLevel != "" {
+		b.CEFRLevel = e.CEFRLevel
+	}
+	if e.EditionLabel != "" {
+		b.Edition = e.EditionLabel
+	}
+	if e.PublicationYear > 0 {
+		b.PublicationYear = e.PublicationYear
+	}
+	if e.PageCount > 0 {
+		b.PageCount = e.PageCount
+	}
+	// A branch may have uploaded its own cover; only fill a missing one.
+	if b.CoverURL == "" && e.CoverURL != "" {
+		b.CoverURL = e.CoverURL
+	}
+	return nil
+}
+
 type BookCopy struct {
 	ID             uint   `json:"id" gorm:"primaryKey"` // Auto-increment DB ID
 	BookID         uint   `json:"book_id"`

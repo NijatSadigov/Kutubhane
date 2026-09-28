@@ -107,7 +107,7 @@ func AddReadingLog(c *fiber.Ctx) error {
 	}
 
 	var loan models.Loan
-	if err := database.DB.Preload("BookCopy.Book").First(&loan, req.LoanID).Error; err != nil {
+	if err := database.DB.Preload("BookCopy.Book").Preload("BookCopy.Book.CatalogEdition").First(&loan, req.LoanID).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Loan not found"})
 	}
 	// A diary entry can only be written by the student who holds the loan.

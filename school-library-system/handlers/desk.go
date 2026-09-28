@@ -150,5 +150,5 @@ func branchLoans(branchID uint) *gorm.DB {
 		Where("books.branch_id = ?", branchID).
 		Preload("Student").
 		Preload("BookCopy").
-		Preload("BookCopy.Book")
+		Preload("BookCopy.Book").Preload("BookCopy.Book.CatalogEdition")
 }

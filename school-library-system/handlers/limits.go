@@ -84,13 +84,13 @@ func GetStudentHolds(c *fiber.Ctx) error {
 
 	var loans []models.Loan
 	database.DB.
-		Preload("BookCopy.Book").
+		Preload("BookCopy.Book").Preload("BookCopy.Book.CatalogEdition").
 		Where("student_id = ? AND return_date IS NULL", studentID).
 		Find(&loans)
 
 	var reservations []models.Reservation
 	database.DB.
-		Preload("BookCopy.Book").
+		Preload("BookCopy.Book").Preload("BookCopy.Book.CatalogEdition").
 		Preload("Status").
 		Joins("JOIN reservation_statuses ON reservation_statuses.id = reservations.status_id").
 		Where("reservations.student_id = ? AND reservation_statuses.code IN ?", studentID, activeHoldCodes).

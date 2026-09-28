@@ -43,7 +43,7 @@ func GetMyReservations(c *fiber.Ctx) error {
 	if err := database.DB.
 		Preload("Status").
 		Preload("BookCopy").
-		Preload("BookCopy.Book").
+		Preload("BookCopy.Book").Preload("BookCopy.Book.CatalogEdition").
 		Preload("BookCopy.Book.Author").
 		Preload("BookCopy.Book.Branch").
 		Where("student_id = ?", uid).
@@ -98,7 +98,7 @@ func CancelMyReservation(c *fiber.Ctx) error {
 	} else {
 		// Fall back to the copy's own branch via a join when the preload was thin.
 		var copyRow models.BookCopy
-		if database.DB.Preload("Book").First(&copyRow, res.BookCopyID).Error == nil {
+		if database.DB.Preload("Book").Preload("Book.CatalogEdition").First(&copyRow, res.BookCopyID).Error == nil {
 			var st models.CopyStatus
 			if database.DB.Where("branch_id = ? AND code = ?", copyRow.Book.BranchID, "AVAILABLE").
 				First(&st).Error == nil {
