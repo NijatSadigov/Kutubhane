@@ -34,8 +34,8 @@ demo activity and takes `BASE` to choose which server.
 cd library-frontend && npm run build && npx eslint src/mrb src/staff
 ```
 
-Last run: 23 Go tests pass, **162 API checks pass**, 33/33 loan-lifecycle
-checks pass, build and lint clean.
+Last run: 23 Go tests pass, **207 API checks across 5 roles**, 33/33
+loan-lifecycle checks pass, build and lint clean.
 
 **Where things live.** `library-frontend/src/mrb/` is the new myredbookshelf UI
 (`/` landing, `/app/*` reader app). The old role dashboards are still at
