@@ -34,6 +34,9 @@ var logins = map[string]creds{
 	"manager":   {"mgr@hadaf.com", "Test1234"},
 	"librarian": {"fatma@lib.com", "Test1234"},
 	"student":   {"nicat@stu.com", "Test1234"},
+	// Sevda takes both classes, so her scope is the interesting one: the
+	// dərslik endpoints answer a teacher only for classes they actually teach.
+	"teacher": {"sevda@teach.com", "Test1234"},
 }
 
 // check is one expectation: calling `path` as `role` should return `want`.
@@ -134,12 +137,12 @@ func readChecks() []check {
 	add("", "/api/registration-tokens/validate/definitely-not-a-token", []int{400, 404}, "unknown token must not 200")
 
 	// --- session ---
-	for _, r := range []string{"admin", "manager", "librarian", "student"} {
+	for _, r := range []string{"admin", "manager", "librarian", "teacher", "student"} {
 		add(r, "/api/user", ok, "")
 	}
 
 	// --- shared catalogue: every signed-in role ---
-	for _, r := range []string{"admin", "manager", "librarian", "student"} {
+	for _, r := range []string{"admin", "manager", "librarian", "teacher", "student"} {
 		add(r, "/api/catalog/search?q=orwell", ok, "")
 		add(r, "/api/catalog/browse?scope=global", ok, "")
 		add(r, "/api/catalog/editions/1", ok, "")
@@ -220,6 +223,17 @@ func readChecks() []check {
 		add("student", p, denied, "students must not reach the dərslik system")
 		add("", p, []int{401}, "dərslik needs a session")
 	}
+	// A teacher's own half of the dərslik system.
+	add("teacher", "/api/classrooms", ok, "their own classes")
+	add("teacher", "/api/textbooks", ok, "the dərslik catalogue")
+	add("teacher", "/api/textbook-requests", ok, "their own requests")
+	add("teacher", "/api/loan-policy", ok, "the branch's lending rules")
+	// The library's tools are not theirs, and neither is the school's setup.
+	add("teacher", "/api/desk/summary", denied, "a teacher does not run the desk")
+	add("teacher", "/api/loans", denied, "a teacher does not read the loan book")
+	add("teacher", "/api/textbook-movements", denied, "the ledger is the library's")
+	add("teacher", "/api/manager/tickets", denied, "not the support queue")
+
 	add("librarian", "/api/textbook-movements", ok, "the movement ledger")
 	add("student", "/api/textbook-movements", denied, "students must not read the ledger")
 	add("manager", "/api/classrooms", ok, "the school's classes")
@@ -309,6 +323,11 @@ func writeChecks() []check {
 		{role: "student", method: "POST", path: "/api/teachers", want: denied, note: "students cannot create teachers"},
 		{role: "librarian", method: "POST", path: "/api/classrooms", want: denied, note: "a librarian does not decide who is in 4-A"},
 		{role: "librarian", method: "POST", path: "/api/teachers", want: denied, note: "a librarian does not appoint teachers"},
+		{role: "teacher", method: "POST", path: "/api/classrooms", want: denied, note: "a teacher does not create classes"},
+		{role: "teacher", method: "POST", path: "/api/teachers", want: denied, note: "a teacher does not appoint teachers"},
+		{role: "teacher", method: "POST", path: "/api/textbooks", want: denied, note: "a teacher does not edit the catalogue"},
+		{role: "teacher", method: "POST", path: "/api/loan", want: denied, note: "a teacher does not issue library loans"},
+		{role: "teacher", method: "PUT", path: "/api/textbook-requests/1", want: denied, note: "a teacher does not drive the library's side"},
 	}
 }
 
