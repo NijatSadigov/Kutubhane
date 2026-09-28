@@ -24,6 +24,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { shell, ink, radius, font, roleOf, SIDEBAR_WIDTH } from '../theme';
 import { useSchoolLabel } from '../../mrb/useSchoolLabel';
+import ProfileModal from '../../pages/ProfileModal';
 import {
   visibleDomains, visibleScreens, domainPath, screenPath, domainBadge, locate,
 } from '../nav';
@@ -36,6 +37,7 @@ export default function StaffShell({ children }) {
   const loc = useLocation();
   const [badges, setBadges] = useState({});
   const [q, setQ] = useState('');
+  const [profileOpen, setProfileOpen] = useState(false);
   const school = useSchoolLabel();
 
   const role = user?.role || 'librarian';
@@ -166,13 +168,19 @@ export default function StaffShell({ children }) {
               way out of it, so the two links sit under the block rather than
               displacing anything. */}
           <div style={{ display: 'flex', gap: 12, paddingLeft: 42, flexWrap: 'wrap' }}>
+            {/* Changing your own name, email or password. This lived only on
+                the old dashboard, so retiring that would have left a librarian
+                with no way to change their own password. */}
+            <SideLink onClick={() => setProfileOpen(true)}>{t('nav.profile')}</SideLink>
             <SideLink onClick={() => nav('/app')}>{t('staff.backToReader')}</SideLink>
-            {/* The old dashboard is still there while this console beds in.
-                Remove the link — and the dashboard — once nobody reaches for
-                it. See TODO.md. */}
-            <SideLink onClick={() => nav('/' + (role === 'librarian' ? 'librarian' : role))}>
-              {t('staff.classicDashboard')}
-            </SideLink>
+            {/* A manager and a platform admin still have consoles of their own
+                — the design's S7–S9 are not built here yet — so they keep the
+                way back. A librarian's old dashboard is gone. */}
+            {(role === 'manager' || role === 'admin') && (
+              <SideLink onClick={() => nav('/' + role)}>
+                {t('staff.classicDashboard')}
+              </SideLink>
+            )}
             <SideLink onClick={async () => { await logout(); nav('/', { replace: true }); }}>
               {t('mrb.acct.logout')}
             </SideLink>
@@ -264,6 +272,8 @@ export default function StaffShell({ children }) {
             </nav>
           )}
         </header>
+
+        <ProfileModal isOpen={profileOpen} onClose={() => setProfileOpen(false)} />
 
         <main className="staff-main" style={{
           padding: '24px 28px 110px', display: 'flex', flexDirection: 'column',

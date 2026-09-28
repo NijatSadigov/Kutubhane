@@ -8,7 +8,6 @@ import MrbBookDetail from './mrb/pages/BookDetail';
 import { Login, Register } from './mrb/pages/AuthPages';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ManagerDashboard from './pages/manager/ManagerDashboard';
-import LibrarianDashboard from './pages/librarian/LibrarianDashboard';
 import StudentDashboard from './pages/student/StudentDashboard';
 import MrbApp from './mrb/MrbApp';
 import Home from './mrb/Home';
@@ -48,15 +47,13 @@ function App() {
             }
           />
 
-          {/* --- LIBRARIAN ONLY --- */}
-          <Route
-            path="/librarian"
-            element={
-              <ProtectedRoute allowedRoles={['librarian']}>
-                <LibrarianDashboard />
-              </ProtectedRoute>
-            }
-          />
+          {/* --- LIBRARIAN ONLY ---
+              The old dashboard is gone: the console at /staff now covers
+              everything it did — the desk, holds, all loans, the catalogue with
+              its copies and a typed-in new title, members with invite codes,
+              requests and settings. The path stays as a redirect so a bookmark
+              or a link in somebody's notes still lands somewhere useful. */}
+          <Route path="/librarian" element={<Navigate to="/staff" replace />} />
 
           {/* --- STUDENT ONLY --- */}
           <Route

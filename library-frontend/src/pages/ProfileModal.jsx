@@ -5,9 +5,15 @@ import { AuthContext } from '../context/AuthContext';
 import { useTranslation } from '../i18n/LanguageContext';
 import { User as UserIcon } from 'lucide-react';
 
-// Name lives on the role profile (librarian/student); admins have none.
+// Name lives on the role profile. A platform admin has none, so they fall back
+// to whatever the user row carries. Teacher and manager were missing here and
+// showed blank.
 export const displayName = (user) =>
-    user?.librarian?.name || user?.student?.name || user?.name || '';
+    user?.librarian?.name
+    || user?.teacher?.name
+    || user?.manager?.name
+    || user?.student?.name
+    || user?.name || '';
 
 const ProfileModal = ({ isOpen, onClose }) => {
     const { user, refreshUser } = useContext(AuthContext);

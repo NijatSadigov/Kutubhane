@@ -64,12 +64,12 @@ checks pass, build and lint clean.
       administration), but a "raise this with the school" button on a request
       row would join them
 
-- [ ] **Retire the old dashboards.** Librarians now land on `/staff`, with a
-      "Classic dashboard" link in the sidebar as a fallback. Watch whether
-      anyone reaches for it; when they stop, delete `pages/librarian/`
-      (keeping `SettingsPanel`, which the console uses) and the dead
-      `pages/Login.jsx`. Managers and admins still need `/manager` and
-      `/admin` until the console grows S7–S9
+- [ ] **Retire the manager and admin dashboards** once the console grows
+      S7–S9. The librarian's is gone: `/librarian` redirects to `/staff`, and
+      `LibrarianDashboard`, `BulkUploadModal` and `RegistrationTokensModal` are
+      deleted — 1,728 lines. `SettingsPanel` stays, because the console's
+      Kitabxana ayarları is built on it. A manager and an admin keep the
+      "Köhnə panel" link; a librarian no longer has one
 
 - [ ] **A `teacher` role.** The design assumes one and three screens are blocked
       on it: the class dashboard, the moderation queue, and the "teacher" line
