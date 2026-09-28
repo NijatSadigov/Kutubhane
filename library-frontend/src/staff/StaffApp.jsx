@@ -10,7 +10,7 @@
 // on /staff/holds still lands on the hold queue.
 
 import { useContext } from 'react';
-import { Routes, Route, Navigate, useParams, useSearchParams } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import StaffShell, { PageIntro } from './components/StaffShell';
 import CirculationDesk from './pages/CirculationDesk';
@@ -30,14 +30,15 @@ import {
   SettingsClassrooms, SettingsTeachers, SettingsSubjects, SettingsYears,
 } from './pages/DerslikSettings';
 import BookRequestsQueue from '../components/BookRequestsQueue';
-import { LEGACY_REDIRECTS } from './nav';
+import { LEGACY_REDIRECTS, visibleDomains, domainPath, locate } from './nav';
 import { useTranslation } from '../i18n/LanguageContext';
 
 export default function StaffApp() {
   return (
     <StaffShell>
+      <OnlyIfVisible>
       <Routes>
-        <Route index element={<Navigate to="/staff/library/desk" replace />} />
+        <Route index element={<StaffLanding />} />
 
         {/* Kitabxana — the daily circulation work, plus the catalogue. */}
         <Route path="library">
@@ -99,8 +100,39 @@ export default function StaffApp() {
         <Route path=":legacy" element={<LegacyRedirect />} />
         <Route path="*" element={<Navigate to="/staff" replace />} />
       </Routes>
+      </OnlyIfVisible>
     </StaffShell>
   );
+}
+
+// Where /staff itself lands depends on the role, and the nav table is the only
+// thing that knows: a librarian starts at the desk, a teacher at their classes,
+// a manager at the dərslik settings, because that is the first domain each can
+// actually reach. Hardcoding the desk sent a manager to a screen whose every
+// number was an em-dash.
+function StaffLanding() {
+  const { user } = useContext(AuthContext);
+  const role = user?.role || 'librarian';
+  const first = visibleDomains(role)[0];
+  return <Navigate to={first ? domainPath(first, role) : '/app'} replace />;
+}
+
+// A screen the nav does not offer this role is not one to render either — the
+// rail hiding it while the route still drew it is how a manager ended up on a
+// broken desk.
+function OnlyIfVisible({ children }) {
+  const { user } = useContext(AuthContext);
+  const loc = useLocation();
+  const role = user?.role || 'librarian';
+
+  const rest = loc.pathname.replace(/^\/staff\/?/, '').replace(/\/+$/, '');
+  // The console root and the old flat paths have no domain of their own — the
+  // index and the redirect below handle them, so they pass straight through.
+  if (rest === '' || LEGACY_REDIRECTS[rest]) return children;
+
+  const { domain, screen } = locate(loc.pathname, role);
+  if (!domain || (!domain.soon && !screen)) return <StaffLanding />;
+  return children;
 }
 
 // Where /staff/textbooks lands depends on who is asking: a teacher starts with

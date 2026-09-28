@@ -17,6 +17,13 @@ export const STAFF_ROOT = '/staff';
 
 const ALL_STAFF = ['librarian', 'manager', 'admin'];
 const WITH_TEACHERS = ['librarian', 'manager', 'admin', 'teacher'];
+// The circulation desk, the members list and the library's own settings are
+// branch-scoped and guarded by IsLibrarian, which admits a librarian and a
+// platform admin but deliberately not a manager — a school administrator does
+// not run a branch's desk. Offering them those screens only produced a rail
+// full of 403s and em-dashes, so the rail no longer does. A read-only branch
+// workspace for managers is a feature in its own right; see TODO.md.
+const BRANCH_DESK = ['librarian', 'admin'];
 // The librarian side of Texniki dəstək needs a branch to raise a ticket from,
 // which only a librarian profile has. A manager or admin reads the queue.
 const BRANCH_ONLY = ['librarian'];
@@ -30,13 +37,13 @@ export const DOMAINS = [
   {
     key: 'library',
     labelKey: 'staff.dom.library',
-    roles: ALL_STAFF,
+    roles: BRANCH_DESK,
     screens: [
-      { path: 'desk', labelKey: 'staff.nav.desk', roles: ALL_STAFF },
-      { path: 'catalogue', labelKey: 'staff.nav.inventory', roles: ALL_STAFF },
-      { path: 'reservations', labelKey: 'staff.nav.reservations', badge: 'holds_pending', roles: ALL_STAFF },
-      { path: 'loans', labelKey: 'staff.nav.loans', roles: ALL_STAFF },
-      { path: 'requests', labelKey: 'staff.nav.requests', badge: 'requests_pending', roles: ALL_STAFF },
+      { path: 'desk', labelKey: 'staff.nav.desk', roles: BRANCH_DESK },
+      { path: 'catalogue', labelKey: 'staff.nav.inventory', roles: BRANCH_DESK },
+      { path: 'reservations', labelKey: 'staff.nav.reservations', badge: 'holds_pending', roles: BRANCH_DESK },
+      { path: 'loans', labelKey: 'staff.nav.loans', roles: BRANCH_DESK },
+      { path: 'requests', labelKey: 'staff.nav.requests', badge: 'requests_pending', roles: BRANCH_DESK },
     ],
   },
   {
@@ -61,20 +68,20 @@ export const DOMAINS = [
   {
     key: 'members',
     labelKey: 'staff.dom.members',
-    roles: ALL_STAFF,
+    roles: BRANCH_DESK,
     screens: [
-      { path: '', labelKey: 'staff.nav.members', roles: ALL_STAFF },
-      { path: 'invites', labelKey: 'staff.nav.invites', roles: ALL_STAFF },
+      { path: '', labelKey: 'staff.nav.members', roles: BRANCH_DESK },
+      { path: 'invites', labelKey: 'staff.nav.invites', roles: BRANCH_DESK },
     ],
   },
   {
     key: 'settings',
     labelKey: 'staff.dom.settings',
-    roles: ALL_STAFF,
+    roles: BRANCH_DESK,
     screens: [
-      { path: 'lists', labelKey: 'staff.nav.lists', roles: ALL_STAFF },
-      { path: 'statuses', labelKey: 'staff.nav.statuses', roles: ALL_STAFF },
-      { path: 'limits', labelKey: 'staff.nav.limits', roles: ALL_STAFF },
+      { path: 'lists', labelKey: 'staff.nav.lists', roles: BRANCH_DESK },
+      { path: 'statuses', labelKey: 'staff.nav.statuses', roles: BRANCH_DESK },
+      { path: 'limits', labelKey: 'staff.nav.limits', roles: BRANCH_DESK },
     ],
   },
   {

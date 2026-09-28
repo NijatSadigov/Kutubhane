@@ -54,6 +54,24 @@ func getUserBranchID(c *fiber.Ctx) (uint, error) {
 		return stu.BranchID, nil
 	}
 
+	// A manager administers a school, not a branch, so they have no branch of
+	// their own — but the dərslik endpoints admit them, and without a branch
+	// every one of them answered 403 while the nav cheerfully offered the
+	// screens. They look at one branch at a time: whichever ?branch_id= names,
+	// as long as it is in their school, or the first one otherwise.
+	var mgr models.Manager
+	if err := database.DB.Where("user_id = ?", userID).First(&mgr).Error; err == nil {
+		if want := uint(c.QueryInt("branch_id")); want > 0 && branchInSchool(want, mgr.SchoolID) {
+			return want, nil
+		}
+		var b models.Branch
+		if err := database.DB.Where("school_id = ?", mgr.SchoolID).
+			Order("id").First(&b).Error; err == nil {
+			return b.ID, nil
+		}
+		return 0, fiber.NewError(fiber.StatusForbidden, "This school has no branches yet")
+	}
+
 	return 0, fiber.NewError(fiber.StatusForbidden, "User profile not found")
 }
 
