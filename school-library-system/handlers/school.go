@@ -130,6 +130,26 @@ func parseDay(s string) time.Time {
 	return time.Time{}
 }
 
+// GetSchoolBranches lists the caller's school's branches.
+//
+// /manager/school already carries them, but it resolves a manager profile and
+// so refuses a platform admin. Everything in this file scopes through
+// callerSchoolID instead, which answers for every role — and a branch list is
+// what any screen creating something branch-scoped needs.
+func GetSchoolBranches(c *fiber.Ctx) error {
+	schoolID, err := callerSchoolID(c)
+	if err != nil {
+		return err
+	}
+	var branches []models.Branch
+	database.DB.
+		Select(`branches.*, (SELECT count(*) FROM students
+		          WHERE students.branch_id = branches.id
+		            AND students.status = 'ACTIVE') as student_count`).
+		Where("school_id = ?", schoolID).Order("name").Find(&branches)
+	return c.JSON(branches)
+}
+
 /* ----------------------------------------------------------------- subjects */
 
 func GetSubjects(c *fiber.Ctx) error {
@@ -372,6 +392,44 @@ func GetClassroomStudents(c *fiber.Ctx) error {
 	var students []models.Student
 	database.DB.Where("classroom_id = ?", room.ID).Order("name").Find(&students)
 	return c.JSON(students)
+}
+
+// StudentPick is the minimum needed to put a child in a class: who they are and
+// where they are now. Deliberately not /class-list, which carries loans and
+// reading statistics and is a librarian's view of their own branch — assigning
+// a class needs a name, not a reading history.
+type StudentPick struct {
+	UserID      uint   `json:"user_id"`
+	Name        string `json:"name"`
+	Grade       int    `json:"grade"`
+	ClassGroup  string `json:"class_group"`
+	BranchID    uint   `json:"branch_id"`
+	ClassroomID *uint  `json:"classroom_id"`
+	Status      string `json:"status"`
+}
+
+// GetSchoolStudents lists the school's students for class assignment.
+func GetSchoolStudents(c *fiber.Ctx) error {
+	schoolID, err := callerSchoolID(c)
+	if err != nil {
+		return err
+	}
+	var out []StudentPick
+	q := database.DB.Model(&models.Student{}).
+		Select(`students.user_id, students.name, students.grade, students.class_group,
+		        students.branch_id, students.classroom_id, students.status`).
+		Joins("JOIN branches ON branches.id = students.branch_id").
+		Where("branches.school_id = ?", schoolID)
+	if b := c.QueryInt("branch_id"); b > 0 {
+		q = q.Where("students.branch_id = ?", b)
+	}
+	// A graduate or a leaver has no class to be put in.
+	if c.Query("all") != "true" {
+		q = q.Where("students.status = ? OR students.status IS NULL OR students.status = ''",
+			models.StudentActive)
+	}
+	q.Order("students.grade, students.name").Scan(&out)
+	return c.JSON(out)
 }
 
 // SetStudentStatus moves a reader between ACTIVE, ALUMNI and LEFT.

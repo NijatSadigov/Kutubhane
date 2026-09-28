@@ -293,6 +293,7 @@ func Setup(app *fiber.App) {
 	api.Post("/academic-years", middleware.IsManager, handlers.CreateAcademicYear)
 	api.Put("/academic-years/:id/current", middleware.IsManager, handlers.SetCurrentAcademicYear)
 
+	api.Get("/branches", middleware.IsTeacher, handlers.GetSchoolBranches)
 	api.Get("/subjects", middleware.IsTeacher, handlers.GetSubjects)
 	api.Post("/subjects", middleware.IsManager, handlers.CreateSubject)
 	api.Delete("/subjects/:id", middleware.IsManager, handlers.DeleteSubject)
@@ -302,6 +303,7 @@ func Setup(app *fiber.App) {
 	api.Put("/classrooms/:id/teachers", middleware.IsManager, handlers.SetClassroomTeachers)
 	api.Put("/classrooms/:id/students", middleware.IsManager, handlers.SetClassroomStudents)
 	api.Get("/classrooms/:id/students", middleware.IsTeacher, handlers.GetClassroomStudents)
+	api.Get("/school-students", middleware.IsManager, handlers.GetSchoolStudents)
 	api.Put("/students/:id/status", middleware.IsManager, handlers.SetStudentStatus)
 
 	api.Get("/teachers", middleware.IsTeacher, handlers.GetTeachers)

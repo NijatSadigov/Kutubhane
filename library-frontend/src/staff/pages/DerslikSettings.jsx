@@ -30,7 +30,11 @@ function Denied({ t }) {
 
 /* --------------------------------------------------------------- classes */
 
-const CLS_COLS = 'minmax(0,1fr) minmax(0,2fr) 110px 120px 150px';
+// The branch column only earns its place once there is more than one branch —
+// but then it is essential, because 4-A in Nəsimi and 4-A in Gəncə are
+// different classes with the same name.
+const CLS_COLS_1 = 'minmax(0,1fr) minmax(0,2fr) 110px 120px 150px';
+const CLS_COLS_N = 'minmax(0,1fr) minmax(0,1fr) minmax(0,1.6fr) 100px 110px 140px';
 
 export function SettingsClassrooms() {
   const { t } = useTranslation();
@@ -38,6 +42,7 @@ export function SettingsClassrooms() {
   const [teachers, setTeachers] = useState([]);
   const [years, setYears] = useState([]);
   const [students, setStudents] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [editing, setEditing] = useState(null);
   const [denied, setDenied] = useState(false);
   const [toast, say] = useToast();
@@ -50,9 +55,17 @@ export function SettingsClassrooms() {
       .catch((e) => { if (alive && e.response?.status === 403) setDenied(true); });
     api.get('/teachers').then((r) => { if (alive) setTeachers(r.data || []); }).catch(() => {});
     api.get('/academic-years').then((r) => { if (alive) setYears(r.data || []); }).catch(() => {});
-    api.get('/class-list').then((r) => { if (alive) setStudents(r.data || []); }).catch(() => {});
+    // The school's students, not the branch's class list: assigning a class is
+    // an administration job and /class-list is a librarian's view of their own
+    // branch, so a manager saw an empty picker on the screen built for them.
+    api.get('/school-students').then((r) => { if (alive) setStudents(r.data || []); }).catch(() => {});
+    api.get('/branches').then((r) => { if (alive) setBranches(r.data || []); }).catch(() => {});
     return () => { alive = false; };
   }, [key]);
+
+  const multi = branches.length > 1;
+  const cols = multi ? CLS_COLS_N : CLS_COLS_1;
+  const branchName = (id) => branches.find((b) => b.id === id)?.name || '—';
 
   if (denied) return <Denied t={t} />;
 
@@ -67,14 +80,21 @@ export function SettingsClassrooms() {
       </div>
 
       <ScrollTable
-        min={760} columns={CLS_COLS}
-        head={[t('staff.ds.class'), t('staff.ds.teachers'), t('staff.ds.students'),
+        min={multi ? 860 : 760} columns={cols}
+        head={[t('staff.ds.class'),
+          ...(multi ? [t('manager.branch')] : []),
+          t('staff.ds.teachers'), t('staff.ds.students'),
           t('staff.ds.year'), t('staff.col.actions')]}
         empty={rooms.length === 0 ? t('staff.ds.noClassrooms') : null}
       >
         {rooms.map((r) => (
-          <div key={r.id} style={scrollRowStyle(CLS_COLS)}>
+          <div key={r.id} style={scrollRowStyle(cols)}>
             <strong>{r.label}</strong>
+            {multi && (
+              <span style={{ color: ink.body, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {branchName(r.branch_id)}
+              </span>
+            )}
             <span style={{ color: ink.body, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {r.teacher_names?.length ? r.teacher_names.join(', ') : '—'}
             </span>
@@ -90,7 +110,7 @@ export function SettingsClassrooms() {
       {editing && (
         <ClassroomDialog
           room={editing} teachers={teachers} years={years} students={students}
-          t={t} say={say}
+          branches={branches} t={t} say={say}
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); reload(); }}
         />
@@ -100,16 +120,27 @@ export function SettingsClassrooms() {
   );
 }
 
-function ClassroomDialog({ room, teachers, years, students, t, say, onClose, onSaved }) {
+function ClassroomDialog({ room, teachers, years, students, branches, t, say, onClose, onSaved }) {
   const isNew = !room.id;
   const [grade, setGrade] = useState(room.grade || '');
   const [letter, setLetter] = useState(room.letter || '');
   const [yearId, setYearId] = useState(room.academic_year_id || '');
+  // The branch is chosen, not guessed. It used to be taken from whichever
+  // teacher happened to be first in the list — right only while the school has
+  // one branch, and silently wrong the moment it has two.
+  const [branchId, setBranchId] = useState(
+    room.branch_id || (branches.length === 1 ? branches[0].id : ''),
+  );
   const [picked, setPicked] = useState(
     () => new Set((room.teachers || []).map((x) => x.user_id)),
   );
   const [roster, setRoster] = useState(new Set());
   const [busy, setBusy] = useState(false);
+
+  // Only people who belong to that branch can be in its class.
+  const inBranch = (x) => !branchId || String(x.branch_id) === String(branchId);
+  const branchTeachers = teachers.filter(inBranch);
+  const branchStudents = students.filter(inBranch);
 
   useEffect(() => {
     if (!room.id) return;
@@ -129,9 +160,8 @@ function ClassroomDialog({ room, teachers, years, students, t, say, onClose, onS
     try {
       let id = room.id;
       if (isNew) {
-        const branchId = teachers[0]?.branch_id;
         const { data } = await api.post('/classrooms', {
-          branch_id: branchId, grade: Number(grade),
+          branch_id: Number(branchId), grade: Number(grade),
           letter, academic_year_id: yearId ? Number(yearId) : null,
         });
         id = data.id;
@@ -151,6 +181,29 @@ function ClassroomDialog({ room, teachers, years, students, t, say, onClose, onS
   return (
     <Dialog title={isNew ? t('staff.ds.addClass') : t('staff.ds.editClass')} onClose={onClose} wide t={t}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12 }}>
+        {branches.length > 1 && (
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <Label>{t('manager.branch')}</Label>
+            <select
+              value={branchId}
+              disabled={!isNew}
+              onChange={(e) => {
+                setBranchId(e.target.value);
+                // The people were picked from the old branch and do not
+                // belong to the new one.
+                setPicked(new Set());
+                setRoster(new Set());
+              }}
+              style={selectStyle}
+            >
+              <option value="">{t('staff.ds.pickBranch')}</option>
+              {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+            {!isNew && (
+              <span style={{ fontSize: 11, color: ink.dim }}>{t('staff.ds.branchFixed')}</span>
+            )}
+          </label>
+        )}
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <Label>{t('staff.tb.grade')}</Label>
           <Input type="number" min={1} value={grade} onChange={(e) => setGrade(e.target.value)} />
@@ -168,17 +221,23 @@ function ClassroomDialog({ room, teachers, years, students, t, say, onClose, onS
         </label>
       </div>
 
-      <Picker label={t('staff.ds.teachers')} items={teachers}
-        idOf={(x) => x.user_id} nameOf={(x) => x.name}
-        picked={picked} onToggle={toggle(picked, setPicked)} />
+      {branches.length > 1 && !branchId ? (
+        <Alert tone="action">{t('staff.ds.pickBranchFirst')}</Alert>
+      ) : (
+        <>
+          <Picker label={t('staff.ds.teachers')} items={branchTeachers}
+            idOf={(x) => x.user_id} nameOf={(x) => x.name}
+            picked={picked} onToggle={toggle(picked, setPicked)} />
 
-      <Picker label={t('staff.ds.students')} items={students}
-        idOf={(x) => x.user_id} nameOf={(x) => x.name + (x.grade ? ` · ${x.grade}` : '')}
-        picked={roster} onToggle={toggle(roster, setRoster)} tall />
+          <Picker label={t('staff.ds.students')} items={branchStudents}
+            idOf={(x) => x.user_id} nameOf={(x) => x.name + (x.grade ? ` · ${x.grade}` : '')}
+            picked={roster} onToggle={toggle(roster, setRoster)} tall />
+        </>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
         <Btn kind="secondary" onClick={onClose}>{t('common.cancel')}</Btn>
-        <Btn onClick={save} disabled={busy || !grade}>{t('common.save')}</Btn>
+        <Btn onClick={save} disabled={busy || !grade || !branchId}>{t('common.save')}</Btn>
       </div>
     </Dialog>
   );
@@ -310,15 +369,18 @@ function TeacherDialog({ t, say, onClose, onSaved }) {
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
+  // Ask for the school's branches rather than inferring them from the teachers
+  // already in them — which could not work at all for the first teacher of a
+  // new branch, the one case that matters.
   useEffect(() => {
-    api.get('/teachers').then((r) => {
-      const bs = [];
-      (r.data || []).forEach((x) => {
-        if (x.branch && !bs.some((b) => b.id === x.branch.id)) bs.push(x.branch);
-      });
+    let alive = true;
+    api.get('/branches').then((r) => {
+      if (!alive) return;
+      const bs = r.data || [];
       setBranches(bs);
-      if (bs[0]) setBranchId(bs[0].id);
+      if (bs.length === 1) setBranchId(bs[0].id);
     }).catch(() => {});
+    return () => { alive = false; };
   }, []);
 
   const ready = form.name.trim() && form.email.trim() && form.password.length >= 6 && branchId;
@@ -358,6 +420,7 @@ function TeacherDialog({ t, say, onClose, onSaved }) {
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <Label>{t('manager.branch')}</Label>
             <select value={branchId} onChange={(e) => setBranchId(e.target.value)} style={selectStyle}>
+              <option value="">{t('staff.ds.pickBranch')}</option>
               {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </label>

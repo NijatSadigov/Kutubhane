@@ -228,6 +228,15 @@ func readChecks() []check {
 	add("teacher", "/api/textbooks", ok, "the dərslik catalogue")
 	add("teacher", "/api/textbook-requests", ok, "their own requests")
 	add("teacher", "/api/loan-policy", ok, "the branch's lending rules")
+	add("teacher", "/api/branches", ok, "the school's branches")
+
+	// Class assignment is an administration job, and the lean student list it
+	// needs carries no loans or reading history — unlike /class-list.
+	add("manager", "/api/school-students", ok, "the school's students, for class assignment")
+	add("manager", "/api/branches", ok, "the school's branches")
+	add("manager", "/api/textbooks", ok, "a manager looks at one branch at a time")
+	add("student", "/api/school-students", denied, "students must not list the school")
+	add("librarian", "/api/school-students", denied, "not a librarian's list to read")
 	// The library's tools are not theirs, and neither is the school's setup.
 	add("teacher", "/api/desk/summary", denied, "a teacher does not run the desk")
 	add("teacher", "/api/loans", denied, "a teacher does not read the loan book")

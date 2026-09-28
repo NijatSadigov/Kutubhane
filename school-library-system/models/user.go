@@ -46,6 +46,9 @@ type Branch struct {
 	DefaultLoanDays int `json:"default_loan_days" gorm:"default:14"`
 	MaxLoanDays     int `json:"max_loan_days" gorm:"default:30"`
 
+	// Computed by the handlers, read-only, no real column.
+	StudentCount int `json:"student_count" gorm:"->;-:migration"`
+
 	Librarians []Librarian `json:"librarians,omitempty" gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	Students   []Student   `json:"students,omitempty" gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
