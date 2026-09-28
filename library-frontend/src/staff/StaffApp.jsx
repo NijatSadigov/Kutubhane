@@ -9,7 +9,9 @@
 // LEGACY_REDIRECTS keeps every path the flat console used working — a bookmark
 // on /staff/holds still lands on the hold queue.
 
+import { useContext } from 'react';
 import { Routes, Route, Navigate, useParams, useSearchParams } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 import StaffShell, { PageIntro } from './components/StaffShell';
 import CirculationDesk from './pages/CirculationDesk';
 import Reservations from './pages/Reservations';
@@ -20,6 +22,13 @@ import MemberInvites from './pages/MemberInvites';
 import ComingSoon from './pages/ComingSoon';
 import { SettingsLists, SettingsStatuses, SettingsLimits } from './pages/SettingsScreens';
 import { MyTickets, NewTicket, TicketInbox } from './pages/Support';
+import Textbooks from './pages/Textbooks';
+import TextbookRequests from './pages/TextbookRequests';
+import NewTextbookRequest from './pages/NewTextbookRequest';
+import Classrooms from './pages/Classrooms';
+import {
+  SettingsClassrooms, SettingsTeachers, SettingsSubjects, SettingsYears,
+} from './pages/DerslikSettings';
 import BookRequestsQueue from '../components/BookRequestsQueue';
 import { LEGACY_REDIRECTS } from './nav';
 import { useTranslation } from '../i18n/LanguageContext';
@@ -61,28 +70,30 @@ export default function StaffApp() {
           <Route path="inbox" element={<TicketInbox />} />
         </Route>
 
-        {/* The three domains the buyer asked to see in the rail before they
-            exist. Each says what will live there. */}
-        <Route path="textbooks" element={
-          <ComingSoon
-            titleKey="staff.soon.textbooks.title"
-            bodyKey="staff.soon.textbooks.body"
-            blockedKey="staff.soon.textbooks.blocked"
-          />
-        } />
+        {/* Dərslik sistemi — the teacher's side and the library's, on one
+            set of routes. The nav decides which screens a role is shown. */}
+        <Route path="textbooks">
+          <Route index element={<TextbookLanding />} />
+          <Route path="classes" element={<Classrooms />} />
+          <Route path="new" element={<NewTextbookRequest />} />
+          <Route path="requests" element={<TextbookRequests />} />
+          <Route path="catalogue" element={<Textbooks />} />
+          <Route path="classrooms" element={<Classrooms />} />
+        </Route>
         <Route path="projects" element={
           <ComingSoon
             titleKey="staff.soon.projects.title"
             bodyKey="staff.soon.projects.body"
           />
         } />
-        <Route path="textbook-settings" element={
-          <ComingSoon
-            titleKey="staff.soon.textbookSettings.title"
-            bodyKey="staff.soon.textbookSettings.body"
-            blockedKey="staff.soon.textbookSettings.blocked"
-          />
-        } />
+        {/* Dərslik sistemi ayarları — the school's own structure. */}
+        <Route path="textbook-settings">
+          <Route index element={<Navigate to="/staff/textbook-settings/classrooms" replace />} />
+          <Route path="classrooms" element={<SettingsClassrooms />} />
+          <Route path="teachers" element={<SettingsTeachers />} />
+          <Route path="subjects" element={<SettingsSubjects />} />
+          <Route path="years" element={<SettingsYears />} />
+        </Route>
 
         {/* Whatever the flat console used to answer. */}
         <Route path=":legacy" element={<LegacyRedirect />} />
@@ -90,6 +101,16 @@ export default function StaffApp() {
       </Routes>
     </StaffShell>
   );
+}
+
+// Where /staff/textbooks lands depends on who is asking: a teacher starts with
+// their own classes, the library with the queue waiting on it.
+function TextbookLanding() {
+  const { user } = useContext(AuthContext);
+  const to = user?.role === 'teacher'
+    ? '/staff/textbooks/classes'
+    : '/staff/textbooks/requests';
+  return <Navigate to={to} replace />;
 }
 
 // A path from the flat console — /staff/holds, /staff/inventory — forwards to

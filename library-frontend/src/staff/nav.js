@@ -16,10 +16,15 @@
 export const STAFF_ROOT = '/staff';
 
 const ALL_STAFF = ['librarian', 'manager', 'admin'];
+const WITH_TEACHERS = ['librarian', 'manager', 'admin', 'teacher'];
 // The librarian side of Texniki dəstək needs a branch to raise a ticket from,
 // which only a librarian profile has. A manager or admin reads the queue.
 const BRANCH_ONLY = ['librarian'];
 const ADMIN_SIDE = ['manager', 'admin'];
+// Who does which half of the dərslik system: a teacher asks, the library
+// supplies, and the school administration sets up the classes behind both.
+const TEACHER_SIDE = ['teacher'];
+const LIBRARY_SIDE = ['librarian', 'manager', 'admin'];
 
 export const DOMAINS = [
   {
@@ -37,8 +42,15 @@ export const DOMAINS = [
   {
     key: 'textbooks',
     labelKey: 'staff.dom.textbooks',
-    roles: ALL_STAFF,
-    soon: true,
+    roles: WITH_TEACHERS,
+    screens: [
+      // A teacher's own classes come first; for the library the queue does.
+      { path: 'classes', labelKey: 'staff.nav.myClasses', roles: TEACHER_SIDE },
+      { path: 'new', labelKey: 'staff.nav.newRequest', roles: TEACHER_SIDE },
+      { path: 'requests', labelKey: 'staff.nav.textbookRequests', badge: 'textbook_requests', roles: WITH_TEACHERS },
+      { path: 'catalogue', labelKey: 'staff.nav.textbookCatalogue', roles: LIBRARY_SIDE },
+      { path: 'classrooms', labelKey: 'staff.nav.classHoldings', roles: LIBRARY_SIDE },
+    ],
   },
   {
     key: 'projects',
@@ -69,7 +81,12 @@ export const DOMAINS = [
     key: 'textbook-settings',
     labelKey: 'staff.dom.textbookSettings',
     roles: ALL_STAFF,
-    soon: true,
+    screens: [
+      { path: 'classrooms', labelKey: 'staff.nav.classrooms', roles: ALL_STAFF },
+      { path: 'teachers', labelKey: 'staff.nav.teachers', roles: ALL_STAFF },
+      { path: 'subjects', labelKey: 'staff.nav.subjects', roles: ALL_STAFF },
+      { path: 'years', labelKey: 'staff.nav.years', roles: ALL_STAFF },
+    ],
   },
   {
     key: 'support',

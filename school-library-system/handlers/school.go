@@ -419,7 +419,10 @@ func GetTeachers(c *fiber.Ctx) error {
 		return err
 	}
 	var teachers []models.Teacher
-	database.DB.Preload("Branch").Where("school_id = ?", schoolID).Order("name").Find(&teachers)
+	// The account too: the settings screen lists each teacher's email, and
+	// User hides its password hash from JSON, so this is safe to send.
+	database.DB.Preload("Branch").Preload("User").
+		Where("school_id = ?", schoolID).Order("name").Find(&teachers)
 	return c.JSON(teachers)
 }
 

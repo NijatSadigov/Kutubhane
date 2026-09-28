@@ -184,10 +184,38 @@ type TextbookRequestView struct {
 
 func requestViews(reqs []models.TextbookRequest) []TextbookRequestView {
 	ids := map[uint]bool{}
+	branches := map[uint]bool{}
 	for _, r := range reqs {
 		ids[r.TeacherID] = true
+		branches[r.BranchID] = true
 	}
 	people := ticketPeople(ids)
+
+	// Fill in each line's live availability. The field is computed rather than
+	// stored, so a textbook that arrives through a preload reads zero free —
+	// which told the desk there was no stock at all, exactly when it is
+	// deciding what it can afford to give.
+	stock := map[uint]textbookStock{}
+	for b := range branches {
+		for id, s := range stockByTextbook(b) {
+			stock[id] = s
+		}
+	}
+	for i := range reqs {
+		for j := range reqs[i].Lines {
+			tb := &reqs[i].Lines[j].Textbook
+			if tb.ID == 0 {
+				continue
+			}
+			s := stock[tb.ID]
+			tb.IssuedCopies = s.Out
+			tb.WrittenOffCopies = s.WrittenOff
+			tb.AvailableCopies = tb.TotalCopies - s.Out - s.WrittenOff
+			if tb.AvailableCopies < 0 {
+				tb.AvailableCopies = 0
+			}
+		}
+	}
 
 	out := make([]TextbookRequestView, 0, len(reqs))
 	for _, r := range reqs {

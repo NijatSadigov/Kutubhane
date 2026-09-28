@@ -78,11 +78,11 @@ function App() {
             }
           />
 
-          {/* --- Staff console (librarian / manager / admin) --- */}
+          {/* --- Staff console (librarian / teacher / manager / admin) --- */}
           <Route
             path="/staff/*"
             element={
-              <ProtectedRoute allowedRoles={['librarian', 'manager', 'admin']}>
+              <ProtectedRoute allowedRoles={['librarian', 'manager', 'admin', 'teacher']}>
                 <StaffApp />
               </ProtectedRoute>
             }

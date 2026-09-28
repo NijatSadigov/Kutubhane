@@ -16,6 +16,9 @@
 export function homePathFor(user) {
   switch (user?.role) {
     case 'librarian': return '/staff';
+    // A teacher's whole job in this system is the dərslik system, so that is
+    // where they land rather than the circulation desk.
+    case 'teacher': return '/staff/textbooks';
     case 'manager': return '/manager';
     case 'admin': return '/admin';
     default: return '/app';
