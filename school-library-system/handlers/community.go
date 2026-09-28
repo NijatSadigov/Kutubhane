@@ -673,6 +673,10 @@ func callerSchoolID(c *fiber.Ctx) (uint, error) {
 	if err := database.DB.Where("user_id = ?", uid).First(&lib).Error; err == nil {
 		return lib.SchoolID, nil
 	}
+	var teacher models.Teacher
+	if err := database.DB.Where("user_id = ?", uid).First(&teacher).Error; err == nil {
+		return teacher.SchoolID, nil
+	}
 	var mgr models.Manager
 	if err := database.DB.Where("user_id = ?", uid).First(&mgr).Error; err == nil {
 		return mgr.SchoolID, nil

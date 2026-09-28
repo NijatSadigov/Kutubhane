@@ -209,6 +209,21 @@ func readChecks() []check {
 		add("student", p, denied, "student must not reach manager data")
 	}
 
+	// --- dərslik system ---
+	// The school's structure is staff-only; a student has no business reading
+	// the class lists, and the textbook catalogue is not the reader catalogue.
+	for _, p := range []string{
+		"/api/classrooms", "/api/subjects", "/api/academic-years",
+		"/api/teachers", "/api/textbooks", "/api/textbook-requests",
+	} {
+		add("librarian", p, ok, "")
+		add("student", p, denied, "students must not reach the dərslik system")
+		add("", p, []int{401}, "dərslik needs a session")
+	}
+	add("librarian", "/api/textbook-movements", ok, "the movement ledger")
+	add("student", "/api/textbook-movements", denied, "students must not read the ledger")
+	add("manager", "/api/classrooms", ok, "the school's classes")
+
 	// --- texniki dəstək (tickets) ---
 	// The librarian raises and reads their own branch; the queue belongs to the
 	// administration, where a manager is scoped to their school and an admin is
@@ -285,6 +300,15 @@ func writeChecks() []check {
 		{role: "librarian", method: "PUT", path: "/api/manager/tickets/1", want: denied, note: "librarian cannot set a queue status"},
 		{role: "librarian", method: "POST", path: "/api/manager/tickets/1/replies", want: denied, note: "librarian cannot answer as the administration"},
 		{role: "student", method: "PUT", path: "/api/manager/tickets/1", want: denied, note: "students cannot touch the queue"},
+		// Dərslik: a class set is the school's business, not a reader's, and
+		// only the library moves stock.
+		{role: "student", method: "POST", path: "/api/textbook-requests", want: denied, note: "students cannot request textbooks"},
+		{role: "student", method: "POST", path: "/api/textbooks", want: denied, note: "students cannot add textbooks"},
+		{role: "student", method: "POST", path: "/api/textbook-movements", want: denied, note: "students cannot move textbooks"},
+		{role: "student", method: "POST", path: "/api/classrooms", want: denied, note: "students cannot create classrooms"},
+		{role: "student", method: "POST", path: "/api/teachers", want: denied, note: "students cannot create teachers"},
+		{role: "librarian", method: "POST", path: "/api/classrooms", want: denied, note: "a librarian does not decide who is in 4-A"},
+		{role: "librarian", method: "POST", path: "/api/teachers", want: denied, note: "a librarian does not appoint teachers"},
 	}
 }
 

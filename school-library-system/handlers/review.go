@@ -267,6 +267,12 @@ func resolvePeople(ids map[uint]bool) map[uint]person {
 		out[l.UserID] = person{l.Name, l.Branch.Name, "librarian"}
 	}
 
+	var teachers []models.Teacher
+	database.DB.Preload("Branch").Where("user_id IN ?", list).Find(&teachers)
+	for _, t := range teachers {
+		out[t.UserID] = person{t.Name, t.Branch.Name, "teacher"}
+	}
+
 	var mgrs []models.Manager
 	database.DB.Where("user_id IN ?", list).Find(&mgrs)
 	for _, m := range mgrs {

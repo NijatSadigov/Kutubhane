@@ -114,6 +114,7 @@ func GetDeskSummary(c *fiber.Ctx) error {
 		"holds_pending":       holdsPending,
 		"requests_pending":    requestsPending,
 		"tickets_unread":      unreadTicketsForLibrarian(c),
+		"textbook_requests":   openTextbookRequestCount(branchID),
 		"members":             members,
 		"today":               today,
 		"overdue_rows":        overdue,

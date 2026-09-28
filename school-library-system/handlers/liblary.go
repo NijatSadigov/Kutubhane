@@ -42,6 +42,13 @@ func getUserBranchID(c *fiber.Ctx) (uint, error) {
 		return lib.BranchID, nil
 	}
 
+	// A teacher belongs to a branch too, and the dərslik screens are built on
+	// that: without this every textbook endpoint answered them 403.
+	var teacher models.Teacher
+	if err := database.DB.Where("user_id = ?", userID).First(&teacher).Error; err == nil {
+		return teacher.BranchID, nil
+	}
+
 	var stu models.Student
 	if err := database.DB.Where("user_id = ?", userID).First(&stu).Error; err == nil {
 		return stu.BranchID, nil

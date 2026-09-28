@@ -104,6 +104,34 @@ func IsManager(c *fiber.Ctx) error {
 	return c.Next()
 }
 
+// IsTeacher gates the dərslik screens a teacher drives. A librarian is admitted
+// too: in a small school the same person often does both, and every handler
+// still scopes to the classrooms the caller actually teaches.
+func IsTeacher(c *fiber.Ctx) error {
+	tokenString := c.Cookies("jwt")
+	if tokenString == "" {
+		authHeader := c.Get("Authorization")
+		if len(authHeader) > 7 {
+			tokenString = authHeader[7:]
+		}
+	}
+
+	token, _ := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return []byte(SecretKey), nil
+	})
+
+	if token == nil {
+		return c.SendStatus(fiber.StatusUnauthorized)
+	}
+	claims, _ := token.Claims.(jwt.MapClaims)
+
+	switch claims["role"] {
+	case "teacher", "librarian", "manager", "admin":
+		return c.Next()
+	}
+	return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "Teachers Only"})
+}
+
 func IsLibrarian(c *fiber.Ctx) error {
 	tokenString := c.Cookies("jwt")
 	if tokenString == "" {

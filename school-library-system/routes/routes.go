@@ -284,6 +284,49 @@ func Setup(app *fiber.App) {
 	api.Get("/manager/book-requests", middleware.IsManager, handlers.GetSchoolBookRequests)
 	api.Put("/manager/book-requests/:id", middleware.IsManager, handlers.ManagerUpdateBookRequestStatus)
 
+	/* ------------------------------------------------- dərslik system */
+
+	// The school's structure. Reading is open to any member of staff (and a
+	// teacher sees only their own classes); changing it belongs to the school
+	// administration, which IsManager admits along with a platform admin.
+	api.Get("/academic-years", middleware.IsTeacher, handlers.GetAcademicYears)
+	api.Post("/academic-years", middleware.IsManager, handlers.CreateAcademicYear)
+	api.Put("/academic-years/:id/current", middleware.IsManager, handlers.SetCurrentAcademicYear)
+
+	api.Get("/subjects", middleware.IsTeacher, handlers.GetSubjects)
+	api.Post("/subjects", middleware.IsManager, handlers.CreateSubject)
+	api.Delete("/subjects/:id", middleware.IsManager, handlers.DeleteSubject)
+
+	api.Get("/classrooms", middleware.IsTeacher, handlers.GetClassrooms)
+	api.Post("/classrooms", middleware.IsManager, handlers.CreateClassroom)
+	api.Put("/classrooms/:id/teachers", middleware.IsManager, handlers.SetClassroomTeachers)
+	api.Put("/classrooms/:id/students", middleware.IsManager, handlers.SetClassroomStudents)
+	api.Get("/classrooms/:id/students", middleware.IsTeacher, handlers.GetClassroomStudents)
+	api.Put("/students/:id/status", middleware.IsManager, handlers.SetStudentStatus)
+
+	api.Get("/teachers", middleware.IsTeacher, handlers.GetTeachers)
+	api.Post("/teachers", middleware.IsManager, handlers.AddTeacher)
+
+	// The dərslik catalogue is the branch's own; only the library edits it.
+	api.Get("/textbooks", middleware.IsTeacher, handlers.GetTextbooks)
+	api.Post("/textbooks", middleware.IsLibrarian, handlers.CreateTextbook)
+	api.Put("/textbooks/:id", middleware.IsLibrarian, handlers.UpdateTextbook)
+	api.Delete("/textbooks/:id", middleware.IsLibrarian, handlers.DeleteTextbook)
+
+	// Requests: a teacher raises and withdraws, the library prepares and hands
+	// over. Both read the same list, scoped to what each may see.
+	api.Get("/textbook-requests", middleware.IsTeacher, handlers.GetTextbookRequests)
+	api.Post("/textbook-requests", middleware.IsTeacher, handlers.CreateTextbookRequest)
+	api.Get("/textbook-requests/:id", middleware.IsTeacher, handlers.GetTextbookRequest)
+	api.Put("/textbook-requests/:id/cancel", middleware.IsTeacher, handlers.CancelTextbookRequest)
+	api.Put("/textbook-requests/:id", middleware.IsLibrarian, handlers.HandleTextbookRequest)
+	api.Post("/textbook-requests/:id/issue", middleware.IsLibrarian, handlers.IssueTextbookRequest)
+
+	// What a class holds, and the ledger behind it.
+	api.Get("/classroom-holdings", middleware.IsTeacher, handlers.GetClassroomHoldings)
+	api.Post("/textbook-movements", middleware.IsTeacher, handlers.RecordTextbookMovement)
+	api.Get("/textbook-movements", middleware.IsLibrarian, handlers.GetTextbookMovements)
+
 	// The support queue. IsManager admits a manager and an admin; the handlers
 	// then scope a manager to their own school and let an admin see every one.
 	api.Get("/manager/tickets", middleware.IsManager, handlers.GetQueueTickets)

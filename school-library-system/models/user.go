@@ -11,6 +11,7 @@ type User struct {
 	Student   *Student   `json:"student,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	Librarian *Librarian `json:"librarian,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	Manager   *Manager   `json:"manager,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Teacher   *Teacher   `json:"teacher,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
 
 // 2. School
@@ -84,10 +85,17 @@ type Student struct {
 	// If Branch is deleted, delete this Student profile
 	Branch Branch `json:"branch" gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 
-	Grade      int       `json:"grade"`
-	ClassGroup string    `json:"class_group"`
-	BirthDate  time.Time `json:"birth_date"`
-	Loans      []Loan    `json:"loans" gorm:"foreignKey:StudentID;references:UserID"`
+	Grade      int    `json:"grade"`
+	ClassGroup string `json:"class_group"`
+
+	// Which class group they sit in, and where they stand with the school.
+	// Grade and ClassGroup above are the free-text pair this replaces; they are
+	// left in place because the reader screens still print them, and a
+	// classroom is only assigned once the school sets one up.
+	ClassroomID *uint     `json:"classroom_id" gorm:"index"`
+	Status      string    `json:"status" gorm:"index;default:ACTIVE"` // ACTIVE · ALUMNI · LEFT
+	BirthDate   time.Time `json:"birth_date"`
+	Loans       []Loan    `json:"loans" gorm:"foreignKey:StudentID;references:UserID"`
 
 	// Optional per-student override of the branch borrow limit. Nil = use branch default.
 	LoanLimit *int `json:"loan_limit"`

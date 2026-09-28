@@ -63,6 +63,14 @@ func main() {
 		&models.ReviewReport{},
 		&models.Ticket{},
 		&models.TicketReply{},
+		&models.Teacher{},
+		&models.AcademicYear{},
+		&models.Subject{},
+		&models.Classroom{},
+		&models.Textbook{},
+		&models.TextbookRequest{},
+		&models.TextbookRequestLine{},
+		&models.TextbookMovement{},
 	)
 	// 2b. Catalog integrity constraints that AutoMigrate cannot express.
 	//

@@ -115,6 +115,8 @@ func Login(c *fiber.Ctx) error {
 		database.DB.Preload("Manager.School").First(&user, user.ID)
 	case "student":
 		database.DB.Preload("Student.Branch").First(&user, user.ID)
+	case "teacher":
+		database.DB.Preload("Teacher.School").Preload("Teacher.Branch").First(&user, user.ID)
 	}
 
 	if err := bcrypt.CompareHashAndPassword(user.Password, []byte(data["password"])); err != nil {
