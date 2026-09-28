@@ -214,7 +214,7 @@ function TextbookDialog({ book, subjects, t, say, onClose, onSaved }) {
         <Field label={t('th.publisher')}>
           <Input value={form.publisher} onChange={set('publisher')} />
         </Field>
-        <Field label={t('fld.year')}>
+        <Field label={t('fld.pubYear')}>
           <Input type="number" value={form.year} onChange={set('year')} />
         </Field>
         <Field label="ISBN">

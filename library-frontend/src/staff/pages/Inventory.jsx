@@ -273,6 +273,16 @@ function AddTitle({ t, say, onClose, onAdded }) {
   const [callNo, setCallNo] = useState('');
   const [picked, setPicked] = useState(null);
   const [busy, setBusy] = useState(false);
+  // Typing a book the shared catalogue has never seen. This was the documented
+  // fallback that was never built, which left the old /librarian dashboard as
+  // the only way to catalogue a new title — and the console cannot replace it
+  // until this exists.
+  const [typing, setTyping] = useState(false);
+  const [form, setForm] = useState({
+    title: '', author: '', publisher: '', isbn: '',
+    language: '', publication_year: '', page_count: '', cefr_level: '',
+  });
+  const setF = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   useEffect(() => {
     const term = q.trim();
@@ -295,9 +305,34 @@ function AddTitle({ t, say, onClose, onAdded }) {
       await api.post('/books', { edition_id: picked.edition_id, call_no: callNo.trim() });
       say(t('staff.inv.added'));
       onAdded();
-    } catch { say(t('msg.opFailed')); }
+    } catch (e) { say(e.response?.data?.error || t('msg.opFailed')); }
     finally { setBusy(false); }
   };
+
+  // No edition_id, so the server matches on what is typed and creates the
+  // shared Work and Edition if nothing fits. It refuses an untitled one.
+  const addTyped = async () => {
+    setBusy(true);
+    try {
+      const { data } = await api.post('/books', {
+        ...form,
+        publication_year: Number(form.publication_year) || 0,
+        page_count: Number(form.page_count) || 0,
+        call_no: callNo.trim(),
+      });
+      // catalog_match is a plain string: how the shared catalogue was reached,
+      // or "created" when nothing matched.
+      const how = data?.catalog_match;
+      say(how && how !== 'created'
+        ? t('staff.inv.addedMatched')
+        : t('staff.inv.addedNew'));
+      onAdded();
+    } catch (e) {
+      say(e.response?.data?.error || t('msg.opFailed'));
+    } finally { setBusy(false); }
+  };
+
+  const typedReady = form.title.trim().length > 0;
 
   return (
     <div onClick={onClose} style={{
@@ -324,7 +359,20 @@ function AddTitle({ t, say, onClose, onAdded }) {
         <div style={{ maxHeight: 280, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {searching && <div style={{ fontSize: 12.5, color: ink.dim, padding: 8 }}>{t('common.loading')}</div>}
           {!searching && q.trim().length >= 2 && hits.length === 0 && (
-            <div style={{ fontSize: 12.5, color: ink.dim, padding: 8 }}>{t('staff.inv.noMatches')}</div>
+            <div style={{ fontSize: 12.5, color: ink.dim, padding: 8 }}>
+              {t('staff.inv.noMatches')}
+              {!typing && (
+                <>
+                  {' '}
+                  <button onClick={() => { setTyping(true); setForm((f) => ({ ...f, title: q.trim() })); }}
+                    style={{
+                      background: 'none', border: 0, padding: 0, color: '#1580B5',
+                      fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+                      fontFamily: font.ui, textDecoration: 'underline',
+                    }}>{t('staff.inv.addItYourself')}</button>
+                </>
+              )}
+            </div>
           )}
           {hits.map((h) => (
             <button key={h.edition_id} onClick={() => setPicked(h)} style={{
@@ -357,11 +405,89 @@ function AddTitle({ t, say, onClose, onAdded }) {
           </label>
         )}
 
+        {/* The fallback: offered once a search has come back with nothing,
+            which is exactly when a librarian needs it, and reachable at any
+            time from the link. */}
+        {!typing && (
+          <button onClick={() => setTyping(true)} style={{
+            background: 'none', border: 0, padding: 0, alignSelf: 'flex-start',
+            color: '#1580B5', fontSize: 12.5, fontWeight: 700,
+            cursor: 'pointer', fontFamily: font.ui, textDecoration: 'underline',
+          }}>{t('staff.inv.typeItInstead')}</button>
+        )}
+
+        {typing && (
+          <div style={{
+            display: 'flex', flexDirection: 'column', gap: 10,
+            borderTop: '1px solid ' + shell.border, paddingTop: 14,
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>{t('staff.inv.newTitle')}</div>
+            <div style={{ fontSize: 12, color: ink.dim, marginTop: -6, lineHeight: 1.5 }}>
+              {t('staff.inv.newTitleHint')}
+            </div>
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10,
+            }}>
+              <Field label={t('staff.col.book')} required>
+                <Input value={form.title} onChange={setF('title')} autoFocus />
+              </Field>
+              <Field label={t('th.author')}>
+                <Input value={form.author} onChange={setF('author')} />
+              </Field>
+              <Field label={t('th.publisher')}>
+                <Input value={form.publisher} onChange={setF('publisher')} />
+              </Field>
+              <Field label="ISBN">
+                <Input value={form.isbn} onChange={setF('isbn')} />
+              </Field>
+              <Field label={t('fld.language')}>
+                <Input value={form.language} onChange={setF('language')} />
+              </Field>
+              <Field label={t('fld.pubYear')}>
+                <Input type="number" value={form.publication_year} onChange={setF('publication_year')} />
+              </Field>
+              <Field label={t('staff.inv.pages')}>
+                <Input type="number" value={form.page_count} onChange={setF('page_count')} />
+              </Field>
+              <Field label="CEFR">
+                <Input value={form.cefr_level} onChange={setF('cefr_level')} />
+              </Field>
+            </div>
+            <label style={{
+              display: 'flex', flexDirection: 'column', gap: 4,
+              fontSize: 12, fontWeight: 600, color: ink.strong,
+            }}>
+              {t('staff.inv.callNo')}
+              <Input value={callNo} onChange={(e) => setCallNo(e.target.value)} />
+            </label>
+          </div>
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <Btn kind="secondary" onClick={onClose}>{t('common.cancel')}</Btn>
-          <Btn onClick={add} disabled={!picked || busy}>{t('common.add')}</Btn>
+          {typing ? (
+            <Btn onClick={addTyped} disabled={!typedReady || busy}>
+              {t('staff.inv.addNewTitle')}
+            </Btn>
+          ) : (
+            <Btn onClick={add} disabled={!picked || busy}>{t('common.add')}</Btn>
+          )}
         </div>
       </div>
     </div>
+  );
+}
+
+function Field({ label, required, children }) {
+  return (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <span style={{
+        fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
+        textTransform: 'uppercase', color: ink.dim,
+      }}>
+        {label}{required ? ' *' : ''}
+      </span>
+      {children}
+    </label>
   );
 }

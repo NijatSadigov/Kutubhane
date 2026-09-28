@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -299,9 +300,26 @@ func TestResolveHandlesMissingAndEmptyFields(t *testing.T) {
 		t.Errorf("an empty author name created %d author rows", authors)
 	}
 
-	// An entirely empty input is degenerate but must still be handled.
-	if _, _, err := Resolve(db, EditionInput{}); err != nil {
-		t.Errorf("empty input returned an error: %v", err)
+	// An entirely empty input must be refused, not absorbed.
+	//
+	// This used to assert the opposite — that Resolve returned no error — and
+	// what "handled" meant in practice was an untitled Work with the match key
+	// "|" in the catalogue every school shares. Because matching is by key,
+	// every later untitled input collapsed onto that same row, so one junk
+	// record became the magnet for all of them. Refusing is the handling.
+	if _, _, err := Resolve(db, EditionInput{}); !errors.Is(err, ErrNoTitle) {
+		t.Errorf("empty input should be refused with ErrNoTitle, got %v", err)
+	}
+	// And nothing should have been created by the attempt.
+	var works int64
+	db.Model(&models.Work{}).Where("title = ''").Count(&works)
+	if works != 0 {
+		t.Errorf("a refused input still created %d untitled works", works)
+	}
+
+	// A title of nothing but spaces is the same case.
+	if _, _, err := Resolve(db, EditionInput{Title: "   "}); !errors.Is(err, ErrNoTitle) {
+		t.Errorf("a whitespace title should be refused, got %v", err)
 	}
 }
 

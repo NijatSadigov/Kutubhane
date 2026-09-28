@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"errors"
 	"fmt"
 
 	"school-library-system/models"
@@ -62,8 +63,22 @@ type MatchInfo struct {
 //     publisher. Accepted only when exactly one candidate fits — several
 //     candidates means the data cannot distinguish them, so it refuses and says
 //     so rather than fusing two genuinely different editions.
+//
+// ErrNoTitle is returned when an input carries nothing to identify a book by.
+//
+// Resolve creates rows in the catalogue every school shares, so this is the
+// gate that matters: an untitled input used to produce an untitled Work with
+// the match key "|", and because matching is by key, every later untitled
+// input from any school collapsed onto that same row. One junk record became a
+// magnet for all the others.
+var ErrNoTitle = errors.New("a title is required to identify a book")
+
 func Resolve(tx *gorm.DB, in EditionInput) (*models.Edition, MatchInfo, error) {
 	var info MatchInfo
+
+	if NormalizeKey(in.Title) == "" {
+		return nil, info, ErrNoTitle
+	}
 
 	authorID, err := findOrCreateAuthor(tx, in.AuthorName)
 	if err != nil {

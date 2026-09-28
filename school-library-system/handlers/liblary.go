@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"errors"
 	"school-library-system/catalog"
 	"strconv"
+	"strings"
 
 	"gorm.io/gorm"
 	"school-library-system/database"
@@ -105,6 +107,11 @@ func AddBook(c *fiber.Ctx) error {
 		EBookURL            string `json:"ebook_url"`
 		AuthorID            *uint  `json:"author_id"`
 		PublisherID         *uint  `json:"publisher_id"`
+		// Typed names, for cataloguing a book the shared catalogue has never
+		// seen. The form only ever sent ids picked from the branch's own lists,
+		// so a typed author was accepted and silently dropped.
+		Author    string `json:"author"`
+		Publisher string `json:"publisher"`
 		// Genre and topic are catalog ids now, not this branch's list, and are
 		// stored on the Work rather than the holding.
 		TopicID     *uint `json:"topic_id"`
@@ -115,6 +122,24 @@ func AddBook(c *fiber.Ctx) error {
 	var req BookReq
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).SendString("Invalid Data")
+	}
+
+	// A holding that links an existing edition takes its bibliographic facts
+	// from the catalogue, so only the typed path is checked here.
+	if req.EditionID == nil || *req.EditionID == 0 {
+		if fe := validateBookInput(req.Title, req.ISBN, req.PublicationYear, req.PageCount); fe != nil {
+			return c.Status(fe.Code).JSON(fiber.Map{"error": fe.Message, "code": "INVALID"})
+		}
+	}
+
+	// A typed name becomes a row on the branch's own list, which is what the
+	// catalogue screens read, and reaches the resolver below as well so the
+	// shared Work gets its author too.
+	if req.AuthorID == nil && strings.TrimSpace(req.Author) != "" {
+		req.AuthorID = findOrCreateBranchAuthor(branchID, req.Author)
+	}
+	if req.PublisherID == nil && strings.TrimSpace(req.Publisher) != "" {
+		req.PublisherID = findOrCreateBranchPublisher(branchID, req.Publisher)
 	}
 
 	book := models.Book{
@@ -194,6 +219,9 @@ func AddBook(c *fiber.Ctx) error {
 		if fe, ok := err.(*fiber.Error); ok {
 			return c.Status(fe.Code).JSON(fiber.Map{"error": fe.Message})
 		}
+		if errors.Is(err, catalog.ErrNoTitle) {
+			return c.Status(400).JSON(fiber.Map{"error": "A title is required", "code": "INVALID"})
+		}
 		return c.Status(500).JSON(fiber.Map{"error": "Could not add book"})
 	}
 
@@ -207,10 +235,90 @@ func AddBook(c *fiber.Ctx) error {
 	}{Book: book, CatalogMatch: matchedBy})
 }
 
-// applyEditionToBook copies the catalog's bibliographic facts onto a holding.
-// The duplicated columns on Book are a migration artifact — Edition is the
-// source of truth — but they are still what the current UI reads, so they are
-// kept in step until those read paths move over.
+// applyEditionToBook copies the catalog's bibliographic facts onto a holding at
+// write time. Since the AfterFind hook on Book, the edition also wins on every
+// read, so this is no longer what keeps the two in step — it only means a row
+// written today is already consistent before anything reads it. The duplicated
+// columns are a migration artifact still awaiting removal; see TODO.md.
+// findOrCreateBranchAuthor and findOrCreateBranchPublisher keep the branch's own
+// classification lists in step with a typed name, matching on the same
+// normalized key the shared catalogue uses so a name typed twice does not
+// become two rows.
+func findOrCreateBranchAuthor(branchID uint, name string) *uint {
+	key := catalog.NormalizeKey(name)
+	if key == "" {
+		return nil
+	}
+	var all []models.Author
+	database.DB.Where("branch_id = ?", branchID).Find(&all)
+	for _, a := range all {
+		if catalog.NormalizeKey(a.Name) == key {
+			id := a.ID
+			return &id
+		}
+	}
+	a := models.Author{BranchID: branchID, Name: strings.TrimSpace(name)}
+	if database.DB.Create(&a).Error != nil {
+		return nil
+	}
+	return &a.ID
+}
+
+func findOrCreateBranchPublisher(branchID uint, name string) *uint {
+	key := catalog.NormalizeKey(name)
+	if key == "" {
+		return nil
+	}
+	var all []models.Publisher
+	database.DB.Where("branch_id = ?", branchID).Find(&all)
+	for _, p := range all {
+		if catalog.NormalizeKey(p.Name) == key {
+			id := p.ID
+			return &id
+		}
+	}
+	p := models.Publisher{BranchID: branchID, Name: strings.TrimSpace(name)}
+	if database.DB.Create(&p).Error != nil {
+		return nil
+	}
+	return &p.ID
+}
+
+// validateBookInput checks what a holding cannot sensibly be without.
+//
+// AddBook validated nothing at all: an empty body was a 200 and a junk Work in
+// the catalogue every school shares. A title is the one thing a book cannot
+// lack; the rest are only checked for being obviously impossible, because a
+// librarian typing a real book should never be argued with over a detail.
+func validateBookInput(title, isbn string, year, pages int) *fiber.Error {
+	if strings.TrimSpace(title) == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "A title is required")
+	}
+	// ISBNs in this data are routinely 12 digits — truncated on entry long ago
+	// — so the check is deliberately loose: it rejects text that cannot be an
+	// identifier at all, not everything that fails a checksum.
+	if d := digitsIn(isbn); isbn != "" && (d < 8 || d > 13) {
+		return fiber.NewError(fiber.StatusBadRequest, "That ISBN does not look like one")
+	}
+	if year != 0 && (year < 1400 || year > time.Now().Year()+1) {
+		return fiber.NewError(fiber.StatusBadRequest, "That publication year is out of range")
+	}
+	if pages < 0 || pages > 20000 {
+		return fiber.NewError(fiber.StatusBadRequest, "That page count is out of range")
+	}
+	return nil
+}
+
+func digitsIn(s string) int {
+	n := 0
+	for _, r := range s {
+		if r >= '0' && r <= '9' {
+			n++
+		}
+	}
+	return n
+}
+
 // setWorkSubjects writes genre and topic onto the edition's Work, which is
 // where they belong: they describe the book, not the branch's copy of it. Both
 // are optional, and a nil leaves whatever the work already had.
@@ -409,6 +517,10 @@ func BulkUploadBooks(c *fiber.Ctx) error {
 	// catalog drifts out of sync. Matching also means a spreadsheet of books
 	// another branch already stocks collapses onto the existing editions.
 	matched := 0
+	// Rows with nothing to identify a book by are reported back by line number
+	// rather than silently dropped or allowed to poison the shared catalogue.
+	skipped := []int{}
+	usable := make([]models.Book, 0, len(books))
 	err = database.DB.Transaction(func(tx *gorm.DB) error {
 		for i := range books {
 			books[i].BranchID = branchID
@@ -438,17 +550,24 @@ func BulkUploadBooks(c *fiber.Ctx) error {
 
 			ed, info, err := catalog.Resolve(tx, in)
 			if err != nil {
+				// One unusable row must not lose the whole upload, and must not
+				// become a junk record either. Name it and carry on.
+				if errors.Is(err, catalog.ErrNoTitle) {
+					skipped = append(skipped, i+1)
+					continue
+				}
 				return err
 			}
 			books[i].EditionID = &ed.ID
 			if !info.EditionCreated {
 				matched++
 			}
+			usable = append(usable, books[i])
 		}
-		if len(books) == 0 {
+		if len(usable) == 0 {
 			return nil
 		}
-		return tx.Create(&books).Error
+		return tx.Create(&usable).Error
 	})
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Database Error"})
@@ -456,7 +575,10 @@ func BulkUploadBooks(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{
 		"message": "Bulk Upload Successful",
-		"count":   len(books),
+		"count":   len(usable),
+		// Which rows had no title, so the librarian can fix those lines rather
+		// than wonder why the count is short.
+		"skipped_rows": skipped,
 		// How many rows matched a book already in the shared catalog rather
 		// than creating a new record.
 		"matched_existing": matched,
