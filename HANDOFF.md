@@ -1,4 +1,4 @@
-# Session handoff — 2026-09-27
+# Session handoff — 2026-09-28
 
 Read this first, then `TODO.md` for the checklist. `ROADMAP.md` has the
 reasoning and a dated log; `PROJECT_BRIEF.md` describes the system for someone
@@ -6,12 +6,27 @@ who has never seen it.
 
 ---
 
-## Committed, but still no remote
+## ⚠️ Committed but unpushed — do this first
 
-Everything is committed on `backend-dynamic-categories`. There is still **no
-remote and no backup** beyond this machine — `git push` has nowhere to go, so
-the whole history is one disk failure from gone. Setting up a remote is the
-cheapest insurance left undone.
+The working tree is clean and there **is** a remote, contrary to what this file
+used to say: `origin` is `github.com/NijatSadigov/Kutubhane.git`, reachable,
+and `backend-dynamic-categories` already tracks it. It is simply **16 commits
+behind**:
+
+```bash
+git push origin backend-dynamic-categories
+```
+
+Two things found while checking it was safe to push:
+
+- **The repository is public** (`"visibility": "public"`). Worth a conscious
+  decision for a product being sold.
+- **The Postgres password `2334` is already in the public history** —
+  `config/config.go`, `.env.example`, `catalog/resolve_test.go` and this file.
+  Pushing adds no new exposure, which is why it was judged safe. It is a
+  localhost dev password so the practical risk is low, but rotate it if it is
+  used anywhere else, and note that deleting it from the current files does not
+  remove it from history.
 
 New files still need `git add -A`; `git commit -a` does not catch them.
 
@@ -32,8 +47,22 @@ cd library-frontend && npm run dev
 Postgres must be up: db `school_library`, user `postgres`, password `2334`.
 Backend :8000 (override with `PORT`), frontend :5180.
 
-**Logins**, all password `Test1234`: `admin@school.com`, `mgr@hadaf.com`,
-`fatma@lib.com` (librarian, Nesimi), `nicat@stu.com` + 9 more students.
+**Logins**, all password `Test1234`:
+
+| Who | Email |
+|---|---|
+| Platform admin | `admin@school.com` |
+| School admin (manager) | `mgr@hadaf.com` |
+| Librarian, Nəsimi | `fatma@lib.com` |
+| Teacher, **takes 4-A and 5-A** | `sevda@teach.com` |
+| Teacher, takes 4-A | `rauf@teach.com` |
+| Teacher, takes 5-A | `gunel@teach.com` |
+| Reader | `nicat@stu.com` + 9 more |
+| 4-A pupils | `s41@stu.com` … `s410@stu.com` |
+| 5-A pupils | `s51@stu.com` … `s510@stu.com` |
+
+Two branches exist: **Nəsimi** (id 1, everything is here) and **Gəncə** (id 2,
+empty — the useful fixture for multi-branch bugs).
 
 ## How to check nothing is broken
 
@@ -45,9 +74,15 @@ cd school-library-system && go test ./... && go run ./cmd/apiaudit -writes
 cd library-frontend && npm run build && npx eslint src/mrb src/staff src/i18n
 ```
 
-Last run: 23 Go tests, **162 API checks**, build clean, `src/mrb` + `src/staff`
-+ `src/i18n` lint clean. (`npx eslint src` still reports ~20 errors, all
-pre-existing in the old dashboards and shared components.)
+Last run: 23 Go tests, **207 API checks across 5 roles**, build clean,
+`src/mrb` + `src/staff` + `src/i18n` lint clean. (`npx eslint src` reports 12
+errors, all pre-existing in the manager/admin/student dashboards and shared
+components — down from ~20 since the librarian's dashboard was deleted.)
+
+Three further suites live in the session scratchpad rather than the repo, and
+are worth recreating if you touch what they cover: the dərslik cycle end to end
+(37 checks), whether the shared catalogue is authoritative for a holding's title
+(7), and the reader-chosen pickup/loan windows (14).
 
 The deeper suites need a **scratch database** — never run them against
 `school_library`:
@@ -72,12 +107,79 @@ was exercised without touching real data.
 |---|---|
 | `library-frontend/src/mrb/` | myredbookshelf reader app — `/` landing, `/catalogue` + `/book/:id` for guests, `/app/*` for members |
 | `library-frontend/src/staff/` | staff console — `/staff/<domain>/<screen>`, **where librarians now land**. `staff/nav.js` is the one table the rail, top bar, routes and titles are built from |
-| `library-frontend/src/pages/` | the **old** dashboards, still live at `/librarian`, `/manager`, `/admin`, `/student` |
+| `library-frontend/src/pages/` | the **old** dashboards, still live at `/manager`, `/admin`, `/student`. The librarian's is **deleted**; `/librarian` redirects to `/staff`. `pages/librarian/SettingsPanel.jsx` stays — the console is built on it |
+| `library-frontend/src/staff/nav.js` | the one table the rail, the top bar, the routes and the page titles are all built from. Change navigation here, nowhere else |
+| `school-library-system/models/derslik.go` | teachers, classrooms, subjects, academic years, textbooks and the movement ledger |
+| `school-library-system/handlers/school.go` | the school's structure: years, subjects, classrooms, teachers, the lean student list |
+| `school-library-system/handlers/derslik.go` | the textbook catalogue, the request cycle, what a class holds |
+| `tools/seed_derslik.py` | re-runnable demo data for the dərslik system |
 | `library-frontend/src/home.js` | one place deciding where each role lands after login |
 | `library-frontend/src/i18n/dates.js` | language-aware dates — see the Intl warning below |
 | `Hedef Kutuphane clickable prototype (1)/` | **the design**, untracked |
 
 ---
+
+## What the 2026-09-28 session did
+
+Sixteen commits, `da2b8f1` … `5d5ac1a`. The two features asked for, then a
+list of fixes that came out of testing them.
+
+**The staff console is two levels.** Left rail = domains, top bar = the screens
+inside the selected one, at `/staff/<domain>/<screen>`. `staff/nav.js` is the
+single table all four of rail, top bar, routes and page title are built from,
+and `/staff` asks it which domain a role can reach first. A screen the rail
+hides is not rendered either. Every old flat path redirects, query string
+included.
+
+**Texniki dəstək** — the librarian → school-administration ticket channel, with
+a thread, one `SeenAt` per side driving the nav badge, and a manager seeing
+their own school while a platform admin sees every one.
+
+**The dərslik system** — the teacher role the design always assumed, plus
+classrooms, subjects, academic years, textbooks and a movement ledger.
+Accountability is per classroom by quantity, with the teacher naming a student
+in the note; recording a loss refuses to save without one. What a class holds
+is derived from the ledger, never stored, so a number cannot drift from its own
+history.
+
+**Genre and topic moved to the Work**, global like the author, because
+branch-scoped lists meant Nəsimi's "Roman" and Gəncə's were rows no query could
+join.
+
+**Reader-chosen windows** — a reader says when they will collect and how long
+they need it, both capped by branch policy; the desk can override on approval,
+and handing over opens a loan-details step prefilled with what the reader asked.
+
+### Bugs this turned up, all found by using the thing rather than reading it
+
+Worth knowing because the same shapes will recur:
+
+- The **book-request queue was empty while its badge counted four** — the
+  shared component needs `listUrl`/`updateBase` props the console never passed,
+  and the failure was swallowed into the same empty state as "nothing here".
+- An **approved hold with no pickup deadline could never expire**, so two
+  copies were pinned since July. The sweep filtered on `deadline IS NOT NULL`.
+- **`available_copies` counted copies somebody was already queued for**, so a
+  card offered "reserve" and the endpoint answered `NO_COPY`.
+- **The desk would hand away a copy held for another student** — `CreateLoan`
+  checked everything except whose hold it was.
+- **A lost textbook came back to the shelf**, because the write-off was counted
+  as a return.
+- **`getUserBranchID` knew librarians and students but not teachers**, so every
+  dərslik endpoint answered a teacher 403 — and not managers either, so the nav
+  offered them screens that 403'd.
+- **`AddBook` validated nothing.** An empty body was a 200 and created an
+  untitled `Work` with match key `"|"` in the catalogue every school shares —
+  and because matching is by key, every later untitled submission collapsed onto
+  that one row. A unit test asserted this was fine, commented "degenerate but
+  must still be handled"; it was codifying the hole.
+- **Silently dropped form fields**: the new title form collected an author and
+  publisher `AddBook` had no field for. Twice more, a label read `FLD.YEAR`
+  because `t('fld.year')` does not exist.
+
+The pattern: nothing above was visible from reading the code, and several looked
+identical to correct behaviour on screen. An empty list looks like an empty
+list.
 
 ## The two lessons that cost the most time
 

@@ -45,15 +45,40 @@ checks pass, build and lint clean.
 
 ## Now
 
-- [ ] **The manager tier inside the console.** Now that a manager reaches
-      `/staff` for the ticket inbox, the gap shows: the rail still lists
-      Kitabxana, Üzvlər and Kitabxana ayarları for them, and every screen in
-      those is branch-scoped, so `/desk/summary` answers a manager
-      403 *Librarians Only* and the desk draws em-dashes instead of numbers.
-      It degrades rather than crashes, and it predates the two-level nav — the
-      old flat rail listed the same six items for a manager. Decide whether a
-      manager gets a read-only branch workspace (the parity item below) or
-      whether those domains are scoped to `librarian` in `staff/nav.js`.
+Nothing here is blocking; pick by what the buyer will feel. A suggested order,
+with the reasoning:
+
+- [ ] **Push.** 16 commits sit only on this disk. See `HANDOFF.md`
+
+- [ ] **Notifications.** Three features are each incomplete for this one
+      missing reason: a textbook request going *Hazırdır*, a ticket reply, and
+      an overdue reminder all rely on somebody refreshing. The overdue screen
+      already says so on screen rather than pretending. Doing this finishes
+      three things at once and is the largest single win left
+
+- [ ] **End-of-year "return the whole set".** Collecting a class set is one
+      dialog per title today — eight presses for 4-A. An hour's work that a
+      teacher feels immediately
+
+- [ ] **Drop `Book`'s duplicated columns.** `title`, `isbn`, `language`,
+      `cefr_level`, `publication_year`, `edition`, `page_count`, `cover_url`
+      are now unread wherever an edition is preloaded — the `AfterFind` hook on
+      `Book` makes the Edition win. Deliberately left in place as the fallback
+      so a forgotten preload degrades to stale rather than blank. Dropping them
+      is mechanical now but one-way, so confirm every path preloads first
+
+- [ ] **`teachers.subject` is decorative.** Free text that looks like a
+      permission and constrains nothing. Either link it to `Subject` or drop the
+      column
+
+- [ ] **A read-only branch workspace for a manager.** Half done: the rail no
+      longer offers them the branch desk, members or library settings, because
+      those are `IsLibrarian`-guarded and a school administrator does not run a
+      branch's desk. What is left is the deliberate feature — letting a manager
+      *look* at a branch's circulation without acting on it. The foundation is
+      in: `getUserBranchID` resolves a manager to one branch at a time, from
+      `?branch_id=` within their school. What is missing is read access on the
+      `IsLibrarian` routes, which is a permissions decision rather than a bug.
       A manager still lands on `/manager`; `homePathFor()` in `src/home.js` is
       the one place that decides
 
@@ -71,10 +96,11 @@ checks pass, build and lint clean.
       Kitabxana ayarları is built on it. A manager and an admin keep the
       "Köhnə panel" link; a librarian no longer has one
 
-- [ ] **A `teacher` role.** The design assumes one and three screens are blocked
-      on it: the class dashboard, the moderation queue, and the "teacher" line
-      under an overdue student. Today librarians author challenges and would
-      moderate. It is also where the dərslik work belongs
+- [ ] **The three screens the teacher role unblocked.** The role itself now
+      exists (branch-scoped like a librarian, lands on `/staff/textbooks`), so
+      what is left is the design's own teacher screens: the class dashboard,
+      the moderation queue, and the "teacher" line under an overdue student.
+      Challenges are still authored by librarians
 
 - [ ] **Staff Console — teacher and admin sections** (the librarian side is done
       and live at `/staff`)
@@ -88,8 +114,6 @@ checks pass, build and lint clean.
         genre mix, most borrowed
   - [ ] Admin — Branches & users: role tabs, search, suspend, invite, CSV import
   - [ ] Admin — Alliances & data sharing (blocked on Phase 3 tenancy)
-  - [ ] A `teacher` role — the design assumes one; today librarians author
-        challenges and would moderate
 
 ## Next
 
@@ -162,6 +186,16 @@ checks pass, build and lint clean.
 - [ ] Nothing pushed to a remote; single machine, no backup
 
 ## Done
+
+- [x] **A `teacher` role**, with the dərslik system it exists for. Scoped like a
+      librarian — one branch, one school — admitted to `/staff` by an
+      `IsTeacher` guard that also lets the library and the administration
+      through, and landing on `/staff/textbooks` rather than the reader app.
+      Classrooms and teachers are many-to-many in both directions; a student
+      sits in exactly one class and carries ACTIVE / ALUMNI / LEFT, where
+      leaving takes the classroom but never the account or the reading history.
+      Demo data via `tools/seed_derslik.py`: Sevda takes both classes, Rauf
+      takes 4-A, Günel takes 5-A, ten pupils each
 
 - [x] **The staff console is two levels** (buyer, 2026-09-27). The left rail is
       *domains*, the top bar is the screens inside the selected one.
