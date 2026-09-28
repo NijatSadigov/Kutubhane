@@ -80,9 +80,11 @@ func AddBook(c *fiber.Ctx) error {
 		EBookURL            string `json:"ebook_url"`
 		AuthorID            *uint  `json:"author_id"`
 		PublisherID         *uint  `json:"publisher_id"`
-		TopicID             *uint  `json:"topic_id"`
-		GenreID             *uint  `json:"genre_id"`
-		FrequencyID         *uint  `json:"frequency_id"`
+		// Genre and topic are catalog ids now, not this branch's list, and are
+		// stored on the Work rather than the holding.
+		TopicID     *uint `json:"topic_id"`
+		GenreID     *uint `json:"genre_id"`
+		FrequencyID *uint `json:"frequency_id"`
 	}
 
 	var req BookReq
@@ -107,8 +109,6 @@ func AddBook(c *fiber.Ctx) error {
 		EBookURL:            req.EBookURL,
 		AuthorID:            req.AuthorID,
 		PublisherID:         req.PublisherID,
-		TopicID:             req.TopicID,
-		GenreID:             req.GenreID,
 		FrequencyID:         req.FrequencyID,
 	}
 
@@ -160,6 +160,9 @@ func AddBook(c *fiber.Ctx) error {
 			matchedBy = info.MatchedBy
 		}
 
+		if err := setWorkSubjects(tx, book.EditionID, req.GenreID, req.TopicID); err != nil {
+			return err
+		}
 		return tx.Create(&book).Error
 	})
 	if err != nil {
@@ -183,6 +186,46 @@ func AddBook(c *fiber.Ctx) error {
 // The duplicated columns on Book are a migration artifact — Edition is the
 // source of truth — but they are still what the current UI reads, so they are
 // kept in step until those read paths move over.
+// setWorkSubjects writes genre and topic onto the edition's Work, which is
+// where they belong: they describe the book, not the branch's copy of it. Both
+// are optional, and a nil leaves whatever the work already had.
+func setWorkSubjects(tx *gorm.DB, editionID *uint, genreID, topicID *uint) error {
+	if editionID == nil || (genreID == nil && topicID == nil) {
+		return nil
+	}
+	var ed models.Edition
+	if err := tx.First(&ed, *editionID).Error; err != nil {
+		return nil
+	}
+	updates := map[string]interface{}{}
+	if genreID != nil {
+		updates["genre_id"] = *genreID
+	}
+	if topicID != nil {
+		updates["topic_id"] = *topicID
+	}
+	if len(updates) == 0 {
+		return nil
+	}
+	return tx.Model(&models.Work{}).Where("id = ?", ed.WorkID).Updates(updates).Error
+}
+
+// bookGenreName is the genre of the book a loan was for.
+//
+// Genre lives on the Work — it is a fact about the book, not about the branch
+// that shelved it. The holding's own genre_id is the pre-migration value and is
+// only consulted when a holding has no edition yet, which the catalog backfill
+// is meant to have eliminated.
+func bookGenreName(b models.Book) string {
+	if b.CatalogEdition != nil && b.CatalogEdition.Work.Genre.Name != "" {
+		return b.CatalogEdition.Work.Genre.Name
+	}
+	if b.GenreID != nil {
+		return b.Genre.Name
+	}
+	return ""
+}
+
 func applyEditionToBook(book *models.Book, ed *models.Edition) {
 	book.EditionID = &ed.ID
 	book.Title = ed.Title
@@ -255,8 +298,10 @@ func UpdateBook(c *fiber.Ctx) error {
 	book.EBookURL = req.EBookURL
 	book.AuthorID = req.AuthorID
 	book.PublisherID = req.PublisherID
-	book.TopicID = req.TopicID
-	book.GenreID = req.GenreID
+	// Genre and topic go to the Work, not the holding.
+	if err := setWorkSubjects(database.DB, book.EditionID, req.GenreID, req.TopicID); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Could not save subjects"})
+	}
 	book.FrequencyID = req.FrequencyID
 
 	database.DB.Save(&book)
@@ -491,7 +536,7 @@ func GetActiveLoans(c *fiber.Ctx) error {
 		Preload("BookCopy").
 		Preload("BookCopy.Book").
 		Preload("BookCopy.Book.Author").
-		Preload("BookCopy.Book.Genre").
+		Preload("BookCopy.Book.Genre").Preload("BookCopy.Book.CatalogEdition.Work.Genre").
 		Find(&loans).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Could not fetch loans"})
 	}
@@ -748,7 +793,7 @@ func GetStudentStats(c *fiber.Ctx) error {
 	}
 
 	var loans []models.Loan
-	database.DB.Preload("BookCopy.Book.Genre").Where("student_id = ?", studentID).Find(&loans)
+	database.DB.Preload("BookCopy.Book.Genre").Preload("BookCopy.Book.CatalogEdition.Work.Genre").Where("student_id = ?", studentID).Find(&loans)
 
 	totalRead := len(loans)
 	genreCounts := make(map[string]int)
@@ -756,8 +801,7 @@ func GetStudentStats(c *fiber.Ctx) error {
 	maxCount := 0
 
 	for _, loan := range loans {
-		if loan.BookCopy.Book.GenreID != nil {
-			g := loan.BookCopy.Book.Genre.Name
+		if g := bookGenreName(loan.BookCopy.Book); g != "" {
 			genreCounts[g]++
 			if genreCounts[g] > maxCount {
 				maxCount = genreCounts[g]
@@ -815,7 +859,7 @@ func GetMyLibrary(c *fiber.Ctx) error {
 		Preload("BookCopy").
 		Preload("BookCopy.Book").
 		Preload("BookCopy.Book.Author").
-		Preload("BookCopy.Book.Genre").
+		Preload("BookCopy.Book.Genre").Preload("BookCopy.Book.CatalogEdition.Work.Genre").
 		Preload("Status").
 		Where("student_id = ?", studentID).
 		Find(&loans).Error; err != nil {
@@ -872,9 +916,7 @@ func GetMyLibrary(c *fiber.Ctx) error {
 			if l.BookCopy.Book.AuthorID != nil {
 				author = l.BookCopy.Book.Author.Name
 			}
-			if l.BookCopy.Book.GenreID != nil {
-				genre = l.BookCopy.Book.Genre.Name
-			}
+			genre = bookGenreName(l.BookCopy.Book)
 		}
 
 		statusName := "Unknown"
@@ -929,7 +971,7 @@ func GetAllReservations(c *fiber.Ctx) error {
 		Preload("BookCopy").
 		Preload("BookCopy.Book").
 		Preload("BookCopy.Book.Author").
-		Preload("BookCopy.Book.Genre").
+		Preload("BookCopy.Book.Genre").Preload("BookCopy.Book.CatalogEdition.Work.Genre").
 		Find(&reservations).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Could not fetch reservations"})
 	}

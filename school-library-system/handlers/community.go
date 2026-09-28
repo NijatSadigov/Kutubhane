@@ -228,14 +228,21 @@ func popularBooks(limit int, since time.Time) ([]PublicBook, error) {
 	// branch has classified it.
 	genreBy := map[uint]string{}
 	coverBy := map[uint]string{}
+	// Genre comes from the Work now, so every branch reports the same one and
+	// the mix does not depend on who happens to hold a copy.
+	var eds []models.Edition
+	database.DB.Preload("Work.Genre").Where("id IN ?", ids).Find(&eds)
+	for _, e := range eds {
+		if g := e.Work.Genre.Name; g != "" {
+			genreBy[e.ID] = g
+		}
+	}
+
 	var holdings []models.Book
-	database.DB.Preload("Genre").Where("edition_id IN ?", ids).Find(&holdings)
+	database.DB.Where("edition_id IN ?", ids).Find(&holdings)
 	for _, h := range holdings {
 		if h.EditionID == nil {
 			continue
-		}
-		if _, ok := genreBy[*h.EditionID]; !ok && h.Genre.Name != "" {
-			genreBy[*h.EditionID] = h.Genre.Name
 		}
 		if _, ok := coverBy[*h.EditionID]; !ok && h.CoverURL != "" {
 			coverBy[*h.EditionID] = h.CoverURL

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"school-library-system/catalog"
 	"school-library-system/database"
 	"school-library-system/models"
 
@@ -101,38 +102,72 @@ func DeletePublisher(c *fiber.Ctx) error {
 // TOPICS
 // ==========================================
 
+// Genre and topic are global catalog facts, not branch lists.
+//
+// They were branch-scoped until 2026-09-28, which meant one branch's "Roman"
+// and another's were different rows that no query could join — cross-branch
+// filtering and the genre mix on Discover both broke the moment a second branch
+// catalogued anything. The shelf a genre lives on is the part that is genuinely
+// branch-local, and that stays on the old rows.
+//
+// book_count therefore counts across every branch, through the works that carry
+// the genre, rather than the holdings of the caller's own branch.
+
 func GetTopics(c *fiber.Ctx) error {
-	branchID, _ := getUserBranchID(c)
-	var topics []models.Topic
-	database.DB.Select("topics.*, (SELECT count(*) FROM books WHERE books.topic_id = topics.id) as book_count").
-		Where("branch_id = ?", branchID).Find(&topics)
+	var topics []models.CatalogTopic
+	database.DB.
+		Select(`catalog_topics.*, (SELECT count(*) FROM books
+		          JOIN editions ON editions.id = books.edition_id
+		          JOIN works ON works.id = editions.work_id
+		         WHERE works.topic_id = catalog_topics.id) as book_count`).
+		Order("name").Find(&topics)
 	return c.JSON(topics)
 }
 
 func CreateTopic(c *fiber.Ctx) error {
-	branchID, _ := getUserBranchID(c)
-	var topic models.Topic
-	c.BodyParser(&topic)
-	topic.BranchID = branchID
-	database.DB.Create(&topic)
-	return c.JSON(topic)
+	var req models.CatalogTopic
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid Input"})
+	}
+	id, err := catalog.FindOrCreateTopic(database.DB, req.Name)
+	if err != nil || id == nil {
+		return c.Status(400).JSON(fiber.Map{"error": "A name is required"})
+	}
+	var t models.CatalogTopic
+	database.DB.First(&t, *id)
+	return c.JSON(t)
 }
 
 func UpdateTopic(c *fiber.Ctx) error {
-	id := c.Params("id")
-	var req models.Topic
-	c.BodyParser(&req)
-
-	var topic models.Topic
-	database.DB.First(&topic, id)
-	topic.Name = req.Name
-	topic.Location = req.Location
-	database.DB.Save(&topic)
-	return c.JSON(topic)
+	var req models.CatalogTopic
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid Input"})
+	}
+	var t models.CatalogTopic
+	if err := database.DB.First(&t, c.Params("id")).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Topic not found"})
+	}
+	key := catalog.NormalizeKey(req.Name)
+	if key == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "A name is required"})
+	}
+	// Renaming onto an existing name would create the duplicate this whole
+	// change exists to remove.
+	var clash models.CatalogTopic
+	if database.DB.Where("name_key = ? AND id <> ?", key, t.ID).First(&clash).Error == nil {
+		return c.Status(409).JSON(fiber.Map{"error": "Another topic already uses that name", "code": "DUPLICATE"})
+	}
+	t.Name, t.NameKey = req.Name, key
+	database.DB.Save(&t)
+	return c.JSON(t)
 }
 
 func DeleteTopic(c *fiber.Ctx) error {
-	database.DB.Delete(&models.Topic{}, c.Params("id"))
+	if n := worksUsingTopic(c.Params("id")); n > 0 {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "This topic is still used by books", "code": "IN_USE", "count": n})
+	}
+	database.DB.Delete(&models.CatalogTopic{}, c.Params("id"))
 	return c.SendStatus(200)
 }
 
@@ -141,38 +176,73 @@ func DeleteTopic(c *fiber.Ctx) error {
 // ==========================================
 
 func GetGenres(c *fiber.Ctx) error {
-	branchID, _ := getUserBranchID(c)
-	var genres []models.Genre
-	database.DB.Select("genres.*, (SELECT count(*) FROM books WHERE books.genre_id = genres.id) as book_count").
-		Where("branch_id = ?", branchID).Find(&genres)
+	var genres []models.CatalogGenre
+	database.DB.
+		Select(`catalog_genres.*, (SELECT count(*) FROM books
+		          JOIN editions ON editions.id = books.edition_id
+		          JOIN works ON works.id = editions.work_id
+		         WHERE works.genre_id = catalog_genres.id) as book_count`).
+		Order("name").Find(&genres)
 	return c.JSON(genres)
 }
 
 func CreateGenre(c *fiber.Ctx) error {
-	branchID, _ := getUserBranchID(c)
-	var genre models.Genre
-	c.BodyParser(&genre)
-	genre.BranchID = branchID
-	database.DB.Create(&genre)
-	return c.JSON(genre)
+	var req models.CatalogGenre
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid Input"})
+	}
+	id, err := catalog.FindOrCreateGenre(database.DB, req.Name)
+	if err != nil || id == nil {
+		return c.Status(400).JSON(fiber.Map{"error": "A name is required"})
+	}
+	var g models.CatalogGenre
+	database.DB.First(&g, *id)
+	return c.JSON(g)
 }
 
 func UpdateGenre(c *fiber.Ctx) error {
-	id := c.Params("id")
-	var req models.Genre
-	c.BodyParser(&req)
-
-	var genre models.Genre
-	database.DB.First(&genre, id)
-	genre.Name = req.Name
-	genre.Location = req.Location
-	database.DB.Save(&genre)
-	return c.JSON(genre)
+	var req models.CatalogGenre
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid Input"})
+	}
+	var g models.CatalogGenre
+	if err := database.DB.First(&g, c.Params("id")).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Genre not found"})
+	}
+	key := catalog.NormalizeKey(req.Name)
+	if key == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "A name is required"})
+	}
+	var clash models.CatalogGenre
+	if database.DB.Where("name_key = ? AND id <> ?", key, g.ID).First(&clash).Error == nil {
+		return c.Status(409).JSON(fiber.Map{"error": "Another genre already uses that name", "code": "DUPLICATE"})
+	}
+	g.Name, g.NameKey = req.Name, key
+	database.DB.Save(&g)
+	return c.JSON(g)
 }
 
 func DeleteGenre(c *fiber.Ctx) error {
-	database.DB.Delete(&models.Genre{}, c.Params("id"))
+	if n := worksUsingGenre(c.Params("id")); n > 0 {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "This genre is still used by books", "code": "IN_USE", "count": n})
+	}
+	database.DB.Delete(&models.CatalogGenre{}, c.Params("id"))
 	return c.SendStatus(200)
+}
+
+// A global list is shared, so deleting a row a librarian in another branch is
+// relying on has to be refused rather than silently blanking their books.
+func worksUsingGenre(id string) int64 {
+	var n int64
+	database.DB.Model(&models.Work{}).Where("genre_id = ?", id).Count(&n)
+	return n
+}
+
+func worksUsingTopic(id string) int64 {
+	var n int64
+	database.DB.Model(&models.Work{}).Where("topic_id = ?", id).Count(&n)
+	return n
 }
 
 // ==========================================

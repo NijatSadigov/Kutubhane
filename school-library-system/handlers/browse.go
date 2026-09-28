@@ -33,6 +33,7 @@ type BrowseCard struct {
 	LangCode  string `json:"lang_code"`
 	CEFR      string `json:"cefr"`
 	Genre     string `json:"genre"`
+	Topic     string `json:"topic"`
 	CoverURL  string `json:"cover_url"`
 
 	// Synopsis is the blurb the book page sets in Source Serif under the
@@ -110,7 +111,7 @@ func BrowseCatalogue(c *fiber.Ctx) error {
 				Select("editions.*").
 				Where("editions.id IN ?", ids)
 			q = applyBrowseFilters(c, q)
-			if err := q.Preload("Work").Preload("Work.Author").Preload("Publisher").
+			if err := q.Preload("Work").Preload("Work.Author").Preload("Work.Genre").Preload("Work.Topic").Preload("Publisher").
 				Find(&editions).Error; err != nil {
 				return c.Status(500).JSON(fiber.Map{"error": "Catalogue query failed"})
 			}
@@ -134,7 +135,7 @@ func BrowseCatalogue(c *fiber.Ctx) error {
 			Select("editions.*").
 			Where("editions.merged_into_id IS NULL")
 		q = applyBrowseFilters(c, q)
-		if err := q.Preload("Work").Preload("Work.Author").Preload("Publisher").
+		if err := q.Preload("Work").Preload("Work.Author").Preload("Work.Genre").Preload("Work.Topic").Preload("Publisher").
 			Find(&editions).Error; err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "Catalogue query failed"})
 		}
@@ -162,7 +163,7 @@ func BrowseCatalogue(c *fiber.Ctx) error {
 				Select("editions.*").
 				Where("editions.id IN ?", ids)
 			q = applyBrowseFilters(c, q)
-			if err := q.Preload("Work").Preload("Work.Author").Preload("Publisher").
+			if err := q.Preload("Work").Preload("Work.Author").Preload("Work.Genre").Preload("Work.Topic").Preload("Publisher").
 				Find(&editions).Error; err != nil {
 				return c.Status(500).JSON(fiber.Map{"error": "Catalogue query failed"})
 			}
@@ -323,12 +324,15 @@ func BrowseCatalogue(c *fiber.Ctx) error {
 		if card.Title == "" {
 			card.Title = e.Work.Title
 		}
+		// Genre and topic are the Work's, so a card carries them whether or not
+		// this branch stocks the book.
+		card.Genre = e.Work.Genre.Name
+		card.Topic = e.Work.Topic.Name
 
 		if h, ok := holdingByEdition[e.ID]; ok {
 			card.HeldHere = true
 			id := h.ID
 			card.BookID = &id
-			card.Genre = h.Genre.Name
 			if card.CoverURL == "" {
 				card.CoverURL = h.CoverURL
 			}

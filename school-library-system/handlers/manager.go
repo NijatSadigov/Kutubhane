@@ -158,7 +158,7 @@ func ManagerGetBranchLoans(c *fiber.Ctx) error {
 		Where("books.branch_id = ? AND loans.return_date IS NULL", branchID).
 		Preload("Student").Preload("Status").
 		Preload("BookCopy").Preload("BookCopy.Book").
-		Preload("BookCopy.Book.Author").Preload("BookCopy.Book.Genre").
+		Preload("BookCopy.Book.Author").Preload("BookCopy.Book.Genre").Preload("BookCopy.Book.CatalogEdition.Work.Genre").
 		Find(&loans)
 	return c.JSON(loans)
 }
@@ -176,7 +176,7 @@ func ManagerGetBranchReservations(c *fiber.Ctx) error {
 		Where("books.branch_id = ?", branchID).
 		Preload("Student").Preload("Status").
 		Preload("BookCopy").Preload("BookCopy.Book").
-		Preload("BookCopy.Book.Author").Preload("BookCopy.Book.Genre").
+		Preload("BookCopy.Book.Author").Preload("BookCopy.Book.Genre").Preload("BookCopy.Book.CatalogEdition.Work.Genre").
 		Find(&reservations)
 	return c.JSON(reservations)
 }

@@ -10,8 +10,11 @@ import { useTranslation } from '../../i18n/LanguageContext';
 const SECTIONS = [
     { key: 'authors', labelKey: 'set.authors', endpoint: '/authors', countable: true, fields: [{ name: 'name', labelKey: 'set.name' }] },
     { key: 'publishers', labelKey: 'set.publishers', endpoint: '/publishers', countable: true, fields: [{ name: 'name', labelKey: 'set.name' }, { name: 'location', labelKey: 'set.location' }] },
-    { key: 'topics', labelKey: 'set.topics', endpoint: '/topics', countable: true, fields: [{ name: 'name', labelKey: 'set.name' }, { name: 'location', labelKey: 'set.location' }] },
-    { key: 'genres', labelKey: 'set.genres', endpoint: '/genres', countable: true, fields: [{ name: 'name', labelKey: 'set.name' }, { name: 'location', labelKey: 'set.location' }] },
+    // Genre and topic are global catalog facts now, shared by every branch, so
+    // they have a name and nothing else. The shelf a genre sits on is the
+    // branch-local part and stayed behind on the old rows.
+    { key: 'topics', labelKey: 'set.topics', endpoint: '/topics', countable: true, fields: [{ name: 'name', labelKey: 'set.name' }] },
+    { key: 'genres', labelKey: 'set.genres', endpoint: '/genres', countable: true, fields: [{ name: 'name', labelKey: 'set.name' }] },
     { key: 'frequencies', labelKey: 'set.frequencies', endpoint: '/frequencies', fields: [{ name: 'type', labelKey: 'set.period' }] },
     { key: 'copy-conditions', labelKey: 'set.conditions', endpoint: '/copy-conditions', fields: [{ name: 'name', labelKey: 'set.name' }] },
     { key: 'copy-statuses', labelKey: 'set.copyStatuses', endpoint: '/copy-statuses', system: true, fields: [{ name: 'name', labelKey: 'set.name' }] },

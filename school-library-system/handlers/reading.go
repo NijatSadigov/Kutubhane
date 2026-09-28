@@ -170,7 +170,7 @@ func GetStudentReading(c *fiber.Ctx) error {
 
 	var loans []models.Loan
 	database.DB.
-		Preload("BookCopy.Book.Genre").
+		Preload("BookCopy.Book.Genre").Preload("BookCopy.Book.CatalogEdition.Work.Genre").
 		Preload("Status").
 		Where("student_id = ?", studentID).
 		Find(&loans)
@@ -275,8 +275,7 @@ func GetStudentReading(c *fiber.Ctx) error {
 			speedDays += days
 		}
 
-		if l.BookCopy.Book.GenreID != nil {
-			g := l.BookCopy.Book.Genre.Name
+		if g := bookGenreName(l.BookCopy.Book); g != "" {
 			genreCounts[g]++
 			if genreCounts[g] > maxG {
 				maxG = genreCounts[g]

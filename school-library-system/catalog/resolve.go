@@ -238,6 +238,45 @@ func findOrCreateAuthor(tx *gorm.DB, name string) (*uint, error) {
 	return &a.ID, nil
 }
 
+// FindOrCreateGenre and FindOrCreateTopic mirror the author and publisher
+// helpers: one row per normalized name, shared by every branch. Exported
+// because the book form and the backfill both need them.
+func FindOrCreateGenre(tx *gorm.DB, name string) (*uint, error) {
+	key := NormalizeKey(name)
+	if key == "" {
+		return nil, nil
+	}
+	var g models.CatalogGenre
+	if err := tx.Where("name_key = ?", key).First(&g).Error; err == nil {
+		return &g.ID, nil
+	} else if err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+	g = models.CatalogGenre{Name: name, NameKey: key}
+	if err := tx.Create(&g).Error; err != nil {
+		return nil, fmt.Errorf("create genre %q: %w", name, err)
+	}
+	return &g.ID, nil
+}
+
+func FindOrCreateTopic(tx *gorm.DB, name string) (*uint, error) {
+	key := NormalizeKey(name)
+	if key == "" {
+		return nil, nil
+	}
+	var t models.CatalogTopic
+	if err := tx.Where("name_key = ?", key).First(&t).Error; err == nil {
+		return &t.ID, nil
+	} else if err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+	t = models.CatalogTopic{Name: name, NameKey: key}
+	if err := tx.Create(&t).Error; err != nil {
+		return nil, fmt.Errorf("create topic %q: %w", name, err)
+	}
+	return &t.ID, nil
+}
+
 func findOrCreatePublisher(tx *gorm.DB, name string) (*uint, error) {
 	if NormalizeKey(name) == "" {
 		return nil, nil

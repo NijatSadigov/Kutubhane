@@ -42,6 +42,38 @@ type CatalogPublisher struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// CatalogGenre and CatalogTopic are what a book *is about* — global facts, like
+// its author.
+//
+// Both used to be branch-scoped lists (Genre and Topic in liblary.go), which
+// meant Nəsimi's "Roman" and Gəncə's "Roman" were different rows that no query
+// could join: cross-branch genre filtering and the genre mix on Discover both
+// broke as soon as a second branch catalogued anything. The thing that is
+// genuinely branch-local is the *shelf* a genre lives on, which is what the
+// Location field on those rows was for — so the location stays with the branch
+// and the genre itself comes here.
+type CatalogGenre struct {
+	ID      uint   `json:"id" gorm:"primaryKey"`
+	Name    string `json:"name" gorm:"index"`
+	NameKey string `json:"name_key" gorm:"index"`
+	// BookCount is computed by a subquery in the settings handler, so the list
+	// can say how many books a row is holding before anyone deletes it.
+	// Read-only, no real column.
+	BookCount int       `json:"book_count" gorm:"->;-:migration"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type CatalogTopic struct {
+	ID      uint   `json:"id" gorm:"primaryKey"`
+	Name    string `json:"name" gorm:"index"`
+	NameKey string `json:"name_key" gorm:"index"`
+	// BookCount is computed by a subquery in the settings handler, so the list
+	// can say how many books a row is holding before anyone deletes it.
+	// Read-only, no real column.
+	BookCount int       `json:"book_count" gorm:"->;-:migration"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // Work is the abstract book — the thing a reader means when they say they read
 // "Əli və Nino", regardless of which translation or printing they held.
 // Reviews, ratings and lists attach here.
@@ -54,6 +86,14 @@ type Work struct {
 
 	AuthorID *uint         `json:"author_id"`
 	Author   CatalogAuthor `json:"author" gorm:"foreignKey:AuthorID"`
+
+	// What the book is and what it is about. On the Work rather than the
+	// Edition: a translation or a reprint by another publisher does not change
+	// a book's genre.
+	GenreID *uint        `json:"genre_id"`
+	Genre   CatalogGenre `json:"genre" gorm:"foreignKey:GenreID"`
+	TopicID *uint        `json:"topic_id"`
+	Topic   CatalogTopic `json:"topic" gorm:"foreignKey:TopicID"`
 
 	FirstPublishedYear int `json:"first_published_year"`
 

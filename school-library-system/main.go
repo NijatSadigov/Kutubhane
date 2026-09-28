@@ -26,6 +26,8 @@ func main() {
 		&models.Student{},
 		&models.CatalogAuthor{},
 		&models.CatalogPublisher{},
+		&models.CatalogGenre{},
+		&models.CatalogTopic{},
 		&models.Work{},
 		&models.Edition{},
 		&models.Publisher{},
@@ -82,6 +84,10 @@ func main() {
 			log.Printf("[catalog] WARNING: could not create index (%v). Duplicates may already exist — run the merge tool.", err)
 		}
 	}
+
+	// 2c. Genre and topic belong to the Work, not to a branch's own list. Moves
+	// any still on a holding; idempotent, so it is safe on every boot.
+	database.BackfillWorkGenres()
 
 	// 3. Seed Default Statuses for Each Branch
 	var branches []models.Branch
