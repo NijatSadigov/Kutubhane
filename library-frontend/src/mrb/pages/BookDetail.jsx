@@ -15,6 +15,7 @@ import { useTranslation } from '../../i18n/LanguageContext';
 import { fmtDate } from '../../i18n/dates';
 import { coverColors, genreColors, cefrColors } from '../theme';
 import { Toast } from '../components/primitives';
+import ReserveDialog from '../components/ReserveDialog';
 import Reviews from '../components/Reviews';
 import { useReaderApi } from '../guest';
 
@@ -77,20 +78,12 @@ export default function BookDetail() {
     finally { setBusy(false); }
   }, [book, refresh, t]);
 
-  const reserve = async () => {
+  // The dialog asks when the reader will collect it and for how long, then
+  // posts — the same two questions the catalogue card asks.
+  const [reserving, setReserving] = useState(false);
+  const reserve = () => {
     if (!book?.book_id) return;
-    setBusy(true);
-    try {
-      await api.post('/reservation', { book_id: book.book_id });
-      say(t('mrb.cat.loanRequested'));
-      refresh();
-    } catch (err) {
-      const code = err.response?.data?.code;
-      say(code === 'LIMIT' ? t('mrb.err.limit')
-        : code === 'DUPLICATE' ? t('mrb.err.duplicate')
-        : code === 'NO_COPY' ? t('mrb.err.noCopy')
-        : t('msg.opFailed'));
-    } finally { setBusy(false); }
+    setReserving(true);
   };
 
   if (loading) return <div style={{ padding: 60, textAlign: 'center', color: C.mute }}>{t('common.loading')}</div>;
@@ -127,6 +120,14 @@ export default function BookDetail() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {reserving && (
+        <ReserveDialog
+          book={book} say={say}
+          onClose={() => setReserving(false)}
+          onReserved={() => { setReserving(false); say(t('mrb.cat.loanRequested')); refresh(); }}
+        />
+      )}
+
       {/* ----------------------------------------------------- breadcrumb */}
       <nav style={{ display: 'flex', gap: 8, fontSize: 13, color: C.dim, flexWrap: 'wrap' }}>
         <button onClick={() => nav(cataloguePath)} style={{

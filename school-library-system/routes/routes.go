@@ -103,6 +103,10 @@ func Setup(app *fiber.App) {
 	api.Get("/books", handlers.GetBooks)
 	api.Get("/my-library/:id", handlers.GetMyLibrary)
 	api.Get("/student/:id/stats", handlers.GetStudentStats)
+	// The branch's lending rules, readable by anyone in it: the reservation
+	// form needs the caps it must stay inside.
+	api.Get("/loan-policy", handlers.GetLoanPolicy)
+
 	api.Post("/reservation", handlers.RequestReservation)
 	api.Get("/books/:id", handlers.GetBookDetails)
 

@@ -16,7 +16,19 @@ import {
   Kpi, KpiRow, Pill, Btn, Alert, Label, Input, Chip, Spine, Avatar, Mono,
 } from '../components/StaffShell';
 
-const LOAN_PERIODS = [7, 14, 21];
+// The periods offered at the desk. The branch's own default is always among
+// them and preselected, and nothing above its maximum is offered — a librarian
+// who set a 10-day policy should not be handed a 21-day button.
+const BASE_PERIODS = [7, 14, 21, 30];
+
+function loanPeriods(policy) {
+  const max = policy?.max_loan_days || 30;
+  const def = policy?.default_loan_days || 14;
+  const out = BASE_PERIODS.filter((n) => n <= max);
+  if (!out.includes(def) && def <= max) out.push(def);
+  if (!out.includes(max)) out.push(max);
+  return [...new Set(out)].sort((a, b) => a - b);
+}
 
 export default function CirculationDesk() {
   const { t } = useTranslation();
@@ -111,6 +123,7 @@ function CheckOut({ t, say, reload }) {
   const [books, setBooks] = useState([]);
   const [cart, setCart] = useState([]);
   const [days, setDays] = useState(14);
+  const [policy, setPolicy] = useState(null);
   const [busy, setBusy] = useState(false);
 
   // Open holds too: a PENDING hold leaves its copy AVAILABLE, so copy status
@@ -121,6 +134,11 @@ function CheckOut({ t, say, reload }) {
   useEffect(() => {
     api.get('/class-list').then((r) => setStudents(r.data || [])).catch(() => {});
     api.get('/books').then((r) => setBooks(r.data || [])).catch(() => {});
+    // The branch's lending policy fills the period buttons in.
+    api.get('/loan-policy').then((r) => {
+      setPolicy(r.data || null);
+      if (r.data?.default_loan_days) setDays(r.data.default_loan_days);
+    }).catch(() => {});
     api.get('/reservations').then((r) => {
       const m = {};
       (r.data || []).forEach((res) => {
@@ -190,6 +208,7 @@ function CheckOut({ t, say, reload }) {
         await api.post('/loan', {
           student_id: patron.user_id, book_id: item.book_id,
           tracking_number: item.tracking_number,
+          days: Number(days),
           due_date: due.toISOString().slice(0, 10),
         });
         done++;
@@ -370,7 +389,7 @@ function CheckOut({ t, say, reload }) {
                 <span style={{ fontSize: 12, color: ink.dim, marginRight: 4 }}>
                   {t('staff.desk.period')}
                 </span>
-                {LOAN_PERIODS.map((d) => (
+                {loanPeriods(policy).map((d) => (
                   <Chip key={d} on={days === d} onClick={() => setDays(d)}>
                     {t('staff.desk.nDays', { n: d })}
                   </Chip>

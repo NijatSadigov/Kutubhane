@@ -553,8 +553,12 @@ func CreateLoan(c *fiber.Ctx) error {
 		StudentID      uint   `json:"student_id"`
 		BookID         uint   `json:"book_id"`
 		TrackingNumber string `json:"tracking_number"`
-		DueDate        string `json:"due_date"`
-		Description    string `json:"description"`
+		// The desk's confirmation step sends whichever of these the librarian
+		// touched. Days is clamped to the branch maximum; an explicit DueDate
+		// is the librarian's call and stands.
+		Days        int    `json:"days"`
+		DueDate     string `json:"due_date"`
+		Description string `json:"description"`
 	}
 
 	var req LoanReq
@@ -614,7 +618,19 @@ func CreateLoan(c *fiber.Ctx) error {
 	var loanedCopyStatus models.CopyStatus
 	database.DB.Where("code = 'LOANED' AND branch_id = ?", branchID).First(&loanedCopyStatus)
 
-	dueDate := time.Now().AddDate(0, 0, 14)
+	// How long the loan runs. The desk's own choice first; otherwise what the
+	// reader asked for when they reserved it, if this is fulfilling a hold;
+	// otherwise the branch default. A hardcoded fortnight ignored all three.
+	pol := branchPolicy(branchID)
+	wanted := 0
+	if hasRes {
+		wanted = resForBook.LoanDays
+	}
+	if wanted < 1 {
+		wanted = pol.DefaultLoanDays
+	}
+	days := clampDays(req.Days, wanted, pol.MaxLoanDays)
+	dueDate := time.Now().AddDate(0, 0, days)
 	if req.DueDate != "" {
 		if parsed, err := time.Parse("2006-01-02", req.DueDate); err == nil {
 			dueDate = parsed
@@ -980,9 +996,12 @@ func GetAllReservations(c *fiber.Ctx) error {
 
 func RequestReservation(c *fiber.Ctx) error {
 	type Req struct {
-		StudentID   uint   `json:"student_id"`
-		BookID      uint   `json:"book_id"`
-		PickupDays  int    `json:"pickup_days"` // student's chosen pickup window (days)
+		StudentID uint `json:"student_id"`
+		BookID    uint `json:"book_id"`
+		// How soon the reader will come for it, and how long they need it.
+		// Both are the reader's own ask, and both are capped by the branch.
+		PickupDays  int    `json:"pickup_days"`
+		LoanDays    int    `json:"loan_days"`
 		Description string `json:"description"`
 	}
 
@@ -1051,20 +1070,10 @@ func RequestReservation(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "No free copy available to reserve", "code": "NO_COPY"})
 	}
 
-	// Clamp the student's requested pickup window to the branch maximum.
-	var branch models.Branch
-	database.DB.First(&branch, book.BranchID)
-	maxDays := branch.MaxPickupDays
-	if maxDays < 1 {
-		maxDays = 7
-	}
-	days := r.PickupDays
-	if days < 1 {
-		days = maxDays
-	}
-	if days > maxDays {
-		days = maxDays
-	}
+	// Both windows are the reader's ask, clamped to what the branch allows.
+	pol := branchPolicy(book.BranchID)
+	days := clampDays(r.PickupDays, pol.MaxPickupDays, pol.MaxPickupDays)
+	loanDays := clampDays(r.LoanDays, pol.DefaultLoanDays, pol.MaxLoanDays)
 
 	var pendingStatus models.ReservationStatus
 	database.DB.Where("code = 'PENDING' AND branch_id = ?", book.BranchID).First(&pendingStatus)
@@ -1074,6 +1083,7 @@ func RequestReservation(c *fiber.Ctx) error {
 		BookCopyID:  chosen.ID,
 		RequestDate: time.Now(),
 		PickupDays:  days,
+		LoanDays:    loanDays,
 		StatusID:    &pendingStatus.ID,
 		Description: r.Description,
 	}
@@ -1095,6 +1105,12 @@ func HandleReservation(c *fiber.Ctx) error {
 	id := c.Params("id")
 	type ActionReq struct {
 		Action string `json:"action"` // "Approved" or "Rejected"
+		// The desk may shorten or extend the collection window the reader
+		// asked for — either as a count of days or as an explicit date. Both
+		// are clamped to the branch maximum, so approving cannot grant more
+		// than the policy allows.
+		PickupDays     int    `json:"pickup_days"`
+		PickupDeadline string `json:"pickup_deadline"` // YYYY-MM-DD
 	}
 	var req ActionReq
 	if err := c.BodyParser(&req); err != nil {
@@ -1113,20 +1129,24 @@ func HandleReservation(c *fiber.Ctx) error {
 	if req.Action == "Approved" {
 		var appStatus models.ReservationStatus
 		database.DB.Where("code = 'APPROVED' AND branch_id = ?", branchID).First(&appStatus)
-		// Start the pickup countdown now: the student has PickupDays to collect
-		// it. Where they chose nothing, fall back to the branch's own window
-		// rather than a hardcoded week — that setting is a librarian's to make
-		// (Kitabxana ayarları → Borc qaydaları), so it has to be what applies.
-		days := res.PickupDays
-		if days < 1 {
-			var br models.Branch
-			if database.DB.First(&br, branchID).Error == nil && br.MaxPickupDays > 0 {
-				days = br.MaxPickupDays
-			} else {
-				days = 7
+		// Start the pickup countdown now. The window is the reader's ask, or
+		// the desk's override, clamped to the branch policy either way.
+		pol := branchPolicy(branchID)
+		days := clampDays(req.PickupDays, res.PickupDays, pol.MaxPickupDays)
+		deadline := time.Now().AddDate(0, 0, days)
+
+		// An explicit date wins over a day count, but still cannot run past
+		// what the policy allows.
+		if req.PickupDeadline != "" {
+			if parsed, err := time.Parse("2006-01-02", req.PickupDeadline); err == nil {
+				latest := time.Now().AddDate(0, 0, pol.MaxPickupDays)
+				if parsed.After(latest) {
+					parsed = latest
+				}
+				deadline = parsed
 			}
 		}
-		deadline := time.Now().AddDate(0, 0, days)
+		res.PickupDays = days
 		res.PickupDeadline = &deadline
 		res.StatusID = &appStatus.ID
 		database.DB.Save(&res)
@@ -1166,7 +1186,10 @@ func IssueReservation(c *fiber.Ctx) error {
 
 	resID := c.Params("id")
 	type IssueReq struct {
+		// Either an explicit due date or a number of days; the desk's
+		// confirmation step sends whichever the librarian touched.
 		DueDate string `json:"due_date"`
+		Days    int    `json:"days"`
 	}
 	var req IssueReq
 	c.BodyParser(&req)
@@ -1183,7 +1206,14 @@ func IssueReservation(c *fiber.Ctx) error {
 		return c.Status(403).SendString("Access Denied or Not Found")
 	}
 
-	dueDate := time.Now().AddDate(0, 0, 14)
+	// Handing over a hold runs for as long as the reader asked when they placed
+	// it, unless the desk says otherwise on the confirmation step.
+	pol := branchPolicy(branchID)
+	days := clampDays(req.Days, res.LoanDays, pol.MaxLoanDays)
+	if res.LoanDays < 1 {
+		days = clampDays(req.Days, pol.DefaultLoanDays, pol.MaxLoanDays)
+	}
+	dueDate := time.Now().AddDate(0, 0, days)
 	if req.DueDate != "" {
 		if parsed, err := time.Parse("2006-01-02", req.DueDate); err == nil {
 			dueDate = parsed

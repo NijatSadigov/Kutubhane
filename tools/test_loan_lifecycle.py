@@ -196,12 +196,18 @@ for rid in made:
     call("DELETE", f"/reservation/{rid}", stu)
 
 # Direct loan from the desk, no reservation.
+#
+# The book has to be one the *recipient* is not already holding: a student may
+# not have the same title on two active loans, so picking merely "the first one
+# with a free copy" fails against any data where they already have it. The
+# recipient's own browse carries my_status, which is exactly that fact.
 free = None
-st, cat = call("GET", "/catalog/browse?scope=library", lib)
+st, cat = call("GET", "/catalog/browse?scope=library", other)
 for b in cat["items"]:
-    if b["available_copies"] > 0:
+    if b["available_copies"] > 0 and not b["my_status"]:
         free = b
         break
+assert free, "no book the second student could be given"
 st, books = call("GET", "/books", lib)
 bk = next(b for b in books if b["id"] == free["book_id"])
 tn = next(c["tracking_number"] for c in bk["copies"] if (c.get("status") or {}).get("code") == "AVAILABLE")

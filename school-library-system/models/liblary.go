@@ -172,6 +172,12 @@ type Reservation struct {
 	PickupDays     int        `json:"pickup_days"`
 	PickupDeadline *time.Time `json:"pickup_deadline"`
 
+	// How long the student asked to keep the book. Carried from the request
+	// through to the loan's due date, so a reader who said "I need three weeks"
+	// gets three weeks rather than whatever the desk happened to click. Capped
+	// by the branch's MaxLoanDays.
+	LoanDays int `json:"loan_days"`
+
 	// Dynamic Status
 	StatusID *uint             `json:"status_id"`
 	Status   ReservationStatus `json:"status" gorm:"foreignKey:StatusID"`

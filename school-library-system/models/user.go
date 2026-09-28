@@ -38,6 +38,13 @@ type Branch struct {
 	// expires and the copy is freed. Students pick a window up to this cap.
 	MaxPickupDays int `json:"max_pickup_days" gorm:"default:7"`
 
+	// How long a book is lent for. DefaultLoanDays is what the desk and the
+	// reservation form fill in unasked — a branch that does not care about
+	// per-loan periods simply confirms it — and MaxLoanDays caps what a student
+	// may ask for, the way MaxPickupDays caps the collection window.
+	DefaultLoanDays int `json:"default_loan_days" gorm:"default:14"`
+	MaxLoanDays     int `json:"max_loan_days" gorm:"default:30"`
+
 	Librarians []Librarian `json:"librarians,omitempty" gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	Students   []Student   `json:"students,omitempty" gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }

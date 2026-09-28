@@ -129,6 +129,58 @@ func GetStudentHolds(c *fiber.Ctx) error {
 	})
 }
 
+// BranchPolicy is a branch's lending rules, with the fallbacks applied once so
+// no caller has to remember them. Every place that decides a pickup window or a
+// loan period reads them from here, which is what keeps the reservation form,
+// the approval step and the desk from disagreeing.
+type BranchPolicy struct {
+	LoanLimit       int `json:"loan_limit"`
+	MaxPickupDays   int `json:"max_pickup_days"`
+	DefaultLoanDays int `json:"default_loan_days"`
+	MaxLoanDays     int `json:"max_loan_days"`
+}
+
+func branchPolicy(branchID uint) BranchPolicy {
+	p := BranchPolicy{LoanLimit: 5, MaxPickupDays: 7, DefaultLoanDays: 14, MaxLoanDays: 30}
+	var br models.Branch
+	if database.DB.First(&br, branchID).Error != nil {
+		return p
+	}
+	if br.LoanLimit > 0 {
+		p.LoanLimit = br.LoanLimit
+	}
+	if br.MaxPickupDays > 0 {
+		p.MaxPickupDays = br.MaxPickupDays
+	}
+	if br.DefaultLoanDays > 0 {
+		p.DefaultLoanDays = br.DefaultLoanDays
+	}
+	if br.MaxLoanDays > 0 {
+		p.MaxLoanDays = br.MaxLoanDays
+	}
+	// A default longer than the maximum is a contradiction; the cap wins.
+	if p.DefaultLoanDays > p.MaxLoanDays {
+		p.DefaultLoanDays = p.MaxLoanDays
+	}
+	return p
+}
+
+// clampDays keeps a requested number of days inside [1, max], falling back to
+// fallback when nothing was asked for.
+func clampDays(requested, fallback, max int) int {
+	d := requested
+	if d < 1 {
+		d = fallback
+	}
+	if d > max {
+		d = max
+	}
+	if d < 1 {
+		d = 1
+	}
+	return d
+}
+
 // claimedCopyIDs is every copy tied up by somebody's open hold.
 //
 // It is the set form of copyHasActiveReservation, for the screens that have to
@@ -220,17 +272,30 @@ func sweepExpiredReservations(branchID uint) {
 	}
 }
 
+// GetLoanPolicy is the read-only view of the same policy, for anyone in the
+// branch. A reader needs the caps to fill in a reservation — how soon they must
+// collect, how long they may keep it — and the form should not have to hardcode
+// numbers a librarian is free to change.
+func GetLoanPolicy(c *fiber.Ctx) error {
+	branchID, err := getUserBranchID(c)
+	if err != nil {
+		return c.Status(401).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(branchPolicy(branchID))
+}
+
 // GetBranchSettings returns the caller librarian's branch policy settings.
 func GetBranchSettings(c *fiber.Ctx) error {
 	branchID, err := getUserBranchID(c)
 	if err != nil {
 		return c.Status(401).JSON(fiber.Map{"error": err.Error()})
 	}
-	var br models.Branch
-	if err := database.DB.First(&br, branchID).Error; err != nil {
+	if err := database.DB.First(&models.Branch{}, branchID).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Branch not found"})
 	}
-	return c.JSON(fiber.Map{"loan_limit": br.LoanLimit, "max_pickup_days": br.MaxPickupDays})
+	// The resolved policy, fallbacks already applied — the reservation form and
+	// the desk both prefill from this, so neither has to know the defaults.
+	return c.JSON(branchPolicy(branchID))
 }
 
 // UpdateBranchSettings updates the branch loan limit and/or max pickup days.
@@ -240,8 +305,10 @@ func UpdateBranchSettings(c *fiber.Ctx) error {
 		return c.Status(401).JSON(fiber.Map{"error": err.Error()})
 	}
 	type Req struct {
-		LoanLimit     *int `json:"loan_limit"`
-		MaxPickupDays *int `json:"max_pickup_days"`
+		LoanLimit       *int `json:"loan_limit"`
+		MaxPickupDays   *int `json:"max_pickup_days"`
+		DefaultLoanDays *int `json:"default_loan_days"`
+		MaxLoanDays     *int `json:"max_loan_days"`
 	}
 	var req Req
 	if err := c.BodyParser(&req); err != nil {
@@ -261,6 +328,31 @@ func UpdateBranchSettings(c *fiber.Ctx) error {
 			v = 1
 		}
 		updates["max_pickup_days"] = v
+	}
+	if req.MaxLoanDays != nil {
+		v := *req.MaxLoanDays
+		if v < 1 {
+			v = 1
+		}
+		updates["max_loan_days"] = v
+	}
+	if req.DefaultLoanDays != nil {
+		v := *req.DefaultLoanDays
+		if v < 1 {
+			v = 1
+		}
+		// A default longer than the cap would hand out loans the policy
+		// forbids, so it is clamped to whatever the cap is about to be.
+		max := 0
+		if req.MaxLoanDays != nil {
+			max = *req.MaxLoanDays
+		} else {
+			max = branchPolicy(branchID).MaxLoanDays
+		}
+		if max > 0 && v > max {
+			v = max
+		}
+		updates["default_loan_days"] = v
 	}
 	if len(updates) > 0 {
 		database.DB.Model(&models.Branch{}).Where("id = ?", branchID).Updates(updates)

@@ -11,10 +11,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import api, { assetUrl } from '../../api/axios';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { fmtDate } from '../../i18n/dates';
-import { ink, danger, pill, scrollRowStyle } from '../theme';
-import { Pill, Btn, Spine } from '../components/StaffShell';
+import { shell, ink, danger, pill, radius, font, scrollRowStyle } from '../theme';
+import { Pill, Btn, Spine, Label } from '../components/StaffShell';
 import { ScrollTable } from '../components/StaffTable';
 import { Toast } from './deskShared';
+import LoanDetailsDialog from './LoanDetailsDialog';
+import { Dialog } from './InventoryDialogs';
 
 const HOLD_COLS = 'minmax(0,2fr) minmax(0,1.6fr) 90px 90px 150px 220px';
 
@@ -23,6 +25,8 @@ export default function Reservations() {
   const [reservations, setReservations] = useState([]);
   const [toast, setToast] = useState('');
   const [busy, setBusy] = useState(0);
+  const [issuing, setIssuing] = useState(null);
+  const [approving, setApproving] = useState(null);
 
   const say = (m) => { setToast(m); setTimeout(() => setToast(''), 2600); };
 
@@ -57,12 +61,16 @@ export default function Reservations() {
   }, [open]);
 
   const act = async (r, what) => {
+    // Handing the book over opens the loan details rather than issuing blind:
+    // the desk should see the due date it is about to set, and be able to
+    // change it.
+    if (what === 'issue') { setIssuing(r); return; }
+    // Approving sets the collection deadline, so the desk gets to see and
+    // change it rather than having it silently computed.
+    if (what === 'approve') { setApproving(r); return; }
     setBusy(r.id);
     try {
-      if (what === 'issue') {
-        await api.post(`/reservation/${r.id}/issue`);
-        say(t('staff.holds.issued'));
-      } else {
+      {
         // The endpoint expects the capitalised words, not a verb.
         await api.post(`/reservation/${r.id}`, {
           action: what === 'approve' ? 'Approved' : 'Rejected',
@@ -146,7 +154,115 @@ export default function Reservations() {
         })}
       </ScrollTable>
 
+      {approving && (
+        <ApproveDialog
+          reservation={approving} say={say}
+          onClose={() => setApproving(null)}
+          onDone={() => { setApproving(null); say(t('staff.holds.approved')); load(); }}
+        />
+      )}
+
+      {issuing && (
+        <LoanDetailsDialog
+          reservation={issuing} say={say}
+          onClose={() => setIssuing(null)}
+          onDone={() => { setIssuing(null); say(t('staff.holds.issued')); load(); }}
+        />
+      )}
+
       <Toast>{toast}</Toast>
     </>
+  );
+}
+
+/* ------------------------------------------------- approving a hold */
+
+// Approval is where the collection deadline is set, so it gets a step of its
+// own: the window the reader asked for is prefilled, and the desk may shorten
+// or extend it up to the branch maximum. The server clamps to the same cap, so
+// a date beyond it cannot be saved from here either.
+function ApproveDialog({ reservation, onClose, onDone, say }) {
+  const { t } = useTranslation();
+  const [policy, setPolicy] = useState(null);
+  const [days, setDays] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const asked = reservation.pickup_days || 0;
+
+  useEffect(() => {
+    let alive = true;
+    api.get('/loan-policy')
+      .then((r) => {
+        if (!alive) return;
+        const p = r.data || {};
+        setPolicy(p);
+        setDays(asked > 0 ? Math.min(asked, p.max_pickup_days || 7) : (p.max_pickup_days || 7));
+      })
+      .catch(() => { if (alive) setPolicy({}); });
+    return () => { alive = false; };
+  }, [asked]);
+
+  const max = policy?.max_pickup_days || 7;
+  const choices = [...new Set([1, 2, 3, 5, 7].filter((n) => n <= max).concat(max))]
+    .sort((a, b) => a - b);
+
+  const by = (n) => {
+    const d = new Date();
+    d.setDate(d.getDate() + Number(n || 0));
+    return fmtDate(d);
+  };
+
+  const confirm = async () => {
+    setBusy(true);
+    try {
+      await api.post(`/reservation/${reservation.id}`, {
+        action: 'Approved', pickup_days: days,
+      });
+      onDone();
+    } catch (e) {
+      say(e.response?.data?.error || t('msg.opFailed'));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog title={t('staff.approve.title')} onClose={onClose} t={t}>
+      <div style={{ fontSize: 13, color: ink.body, marginTop: -8 }}>
+        {reservation.book_copy?.book?.title} · {reservation.student?.name}
+      </div>
+
+      {!policy ? (
+        <div style={{ fontSize: 13, color: ink.dim }}>{t('common.loading')}</div>
+      ) : (
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Label>{t('staff.approve.window')}</Label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {choices.map((n) => {
+                const on = days === n;
+                return (
+                  <button key={n} onClick={() => setDays(n)} style={{
+                    background: on ? '#082F49' : '#fff',
+                    color: on ? '#fff' : ink.body,
+                    border: '1px solid ' + (on ? '#082F49' : shell.control),
+                    borderRadius: radius.control, padding: '7px 13px',
+                    fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font.ui,
+                  }}>{t('staff.desk.nDays', { n })}</button>
+                );
+              })}
+            </div>
+            <span style={{ fontSize: 12, color: ink.dim }}>
+              {days ? t('staff.approve.until', { date: by(days) }) : ''}
+              {asked > 0 ? ' · ' + t('staff.approve.askedFor', { n: asked }) : ''}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <Btn kind="secondary" onClick={onClose}>{t('common.cancel')}</Btn>
+            <Btn onClick={confirm} disabled={busy || !days}>{t('staff.approve.confirm')}</Btn>
+          </div>
+        </>
+      )}
+    </Dialog>
   );
 }

@@ -20,6 +20,7 @@ import { coverColors, genreColors, cefrColors } from '../theme';
 import { useSchoolLabel } from '../useSchoolLabel';
 import { useReaderApi } from '../guest';
 import { Toast } from '../components/primitives';
+import ReserveDialog from '../components/ReserveDialog';
 
 /* Literal design values, kept together so they read like the spec. */
 const C = {
@@ -444,22 +445,13 @@ function BookCard({ book, onOpen, say, t, reload, guest }) {
   const starW = ((Math.max(0, Math.min(5, Number(book.rating) || 0)) / 5) * 100) + '%';
 
   const stop = (e) => e.stopPropagation();
+  const [reserving, setReserving] = useState(false);
 
-  const requestLoan = async (e) => {
+  // Reserving asks the reader when they will collect it and how long they need
+  // it, so the dialog does the posting.
+  const requestLoan = (e) => {
     stop(e);
-    setBusy(true);
-    try {
-      await api.post('/reservation', { book_id: book.book_id });
-      say(t('mrb.cat.loanRequested'));
-      reload();
-    } catch (err) {
-      const code = err.response?.data?.code;
-      say(code === 'LIMIT' ? t('mrb.err.limit')
-        : code === 'DUPLICATE' ? t('mrb.err.duplicate')
-        : code === 'NO_COPY' ? t('mrb.err.noCopy')
-        : t('msg.opFailed'));
-      reload();
-    } finally { setBusy(false); }
+    setReserving(true);
   };
 
   const toggleFavorite = async (e) => {
@@ -634,6 +626,15 @@ function BookCard({ book, onOpen, say, t, reload, guest }) {
         >{onShelf ? t('mrb.cat.onShelf') : t('mrb.cat.addToShelf')}</CardButton>
 
         <MyStatusAction book={book} canBorrow={canBorrow} busy={busy} onRequest={requestLoan} t={t} />
+        {reserving && (
+          <div onClick={stop}>
+            <ReserveDialog
+              book={book} say={say}
+              onClose={() => setReserving(false)}
+              onReserved={() => { setReserving(false); say(t('mrb.cat.loanRequested')); reload(); }}
+            />
+          </div>
+        )}
         </>)}
       </div>
     </div>

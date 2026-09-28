@@ -52,6 +52,8 @@ export function SettingsLimits() {
   const { t } = useTranslation();
   const [limit, setLimit] = useState('');
   const [pickup, setPickup] = useState('');
+  const [loanDays, setLoanDays] = useState('');
+  const [maxLoan, setMaxLoan] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState('');
@@ -63,6 +65,8 @@ export function SettingsLimits() {
       const r = await api.get('/branch-settings');
       setLimit(String(r.data?.loan_limit ?? ''));
       setPickup(String(r.data?.max_pickup_days ?? ''));
+      setLoanDays(String(r.data?.default_loan_days ?? ''));
+      setMaxLoan(String(r.data?.max_loan_days ?? ''));
     } catch { say(t('msg.opFailed')); }
     finally { setLoaded(true); }
   }, [say, t]);
@@ -74,6 +78,8 @@ export function SettingsLimits() {
       await api.put('/branch-settings', {
         loan_limit: Number(limit),
         max_pickup_days: Number(pickup),
+        default_loan_days: Number(loanDays),
+        max_loan_days: Number(maxLoan),
       });
       say(t('staff.set.limitsSaved'));
       load();
@@ -87,6 +93,12 @@ export function SettingsLimits() {
   // typed one.
   const limitOk = limit !== '' && Number(limit) >= 0;
   const pickupOk = pickup !== '' && Number(pickup) >= 1;
+  const maxLoanOk = maxLoan !== '' && Number(maxLoan) >= 1;
+  // The default is what the desk fills in unasked, so it cannot exceed the cap
+  // the same screen sets — the endpoint would clamp it and the saved value
+  // would differ from the typed one.
+  const loanDaysOk = loanDays !== '' && Number(loanDays) >= 1
+    && (!maxLoanOk || Number(loanDays) <= Number(maxLoan));
 
   return (
     <>
@@ -107,10 +119,23 @@ export function SettingsLimits() {
             bad={loaded && !pickupOk} badText={t('staff.set.pickupDaysBad')}
           />
 
+          <Field
+            label={t('staff.set.loanDays')}
+            hint={t('staff.set.loanDaysHint')}
+            value={loanDays} onChange={setLoanDays} min={1} disabled={!loaded}
+            bad={loaded && !loanDaysOk} badText={t('staff.set.loanDaysBad')}
+          />
+          <Field
+            label={t('staff.set.maxLoanDays')}
+            hint={t('staff.set.maxLoanDaysHint')}
+            value={maxLoan} onChange={setMaxLoan} min={1} disabled={!loaded}
+            bad={loaded && !maxLoanOk} badText={t('staff.set.maxLoanDaysBad')}
+          />
+
           <Alert tone="approval">{t('staff.set.limitsOverrideNote')}</Alert>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Btn onClick={save} disabled={busy || !loaded || !limitOk || !pickupOk}>
+            <Btn onClick={save} disabled={busy || !loaded || !limitOk || !pickupOk || !loanDaysOk || !maxLoanOk}>
               {t('common.save')}
             </Btn>
           </div>
