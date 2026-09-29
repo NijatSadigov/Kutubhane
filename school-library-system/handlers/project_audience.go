@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"errors"
+
 	"school-library-system/database"
 	"school-library-system/models"
 
@@ -22,6 +24,46 @@ import (
 // school administrator's choice against, and an unchecked choice here is a
 // tenancy hole rather than a feature.
 
+// apiError carries the status, the message and the short code the screens key
+// their wording off.
+//
+// It exists because the validation below is shared by two entry points — a
+// project's audience can be chosen when it is created and changed afterwards —
+// and the shared half must not lose the `code` by being squeezed through
+// fiber.NewError, which renders as plain text and would leave every screen
+// falling back to "something went wrong".
+type apiError struct {
+	Status  int
+	Message string
+	Code    string
+}
+
+func (e apiError) Error() string { return e.Message }
+
+// sendErr renders an apiError as the {error, code} JSON every screen expects,
+// and passes anything else through untouched.
+func sendErr(c *fiber.Ctx, err error) error {
+	var ae apiError
+	if errors.As(err, &ae) {
+		m := fiber.Map{"error": ae.Message}
+		if ae.Code != "" {
+			m["code"] = ae.Code
+		}
+		return c.Status(ae.Status).JSON(m)
+	}
+	return err
+}
+
+// AudienceRequest is the target group as a caller states it. Shared, because a
+// project's audience can be chosen when it is created as well as changed
+// afterwards, and the two must not drift into checking different things.
+type AudienceRequest struct {
+	Audience     string `json:"audience"`
+	BranchIDs    []uint `json:"branch_ids"`
+	ClassroomIDs []uint `json:"classroom_ids"`
+	SchoolIDs    []uint `json:"school_ids"`
+}
+
 // SetProjectAudience replaces a project's target group.
 func SetProjectAudience(c *fiber.Ctx) error {
 	p, err := findProject(c)
@@ -30,17 +72,9 @@ func SetProjectAudience(c *fiber.Ctx) error {
 	}
 	role, _ := c.Locals("role").(string)
 
-	var req struct {
-		Audience     string `json:"audience"`
-		BranchIDs    []uint `json:"branch_ids"`
-		ClassroomIDs []uint `json:"classroom_ids"`
-		SchoolIDs    []uint `json:"school_ids"`
-	}
+	var req AudienceRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid Input"})
-	}
-	if !models.ValidAudience(req.Audience) {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid audience"})
 	}
 
 	// The branch a branch-scoped caller is confined to; 0 for the
@@ -50,74 +84,78 @@ func SetProjectAudience(c *fiber.Ctx) error {
 		return err
 	}
 
+	if err := applyAudience(p, role, callerBranch, req); err != nil {
+		return sendErr(c, err)
+	}
+
+	database.DB.Preload("Classrooms").Preload("Branches").Preload("Schools").First(p, p.ID)
+	return c.JSON(projectViews([]models.Project{*p}, false)[0])
+}
+
+// applyAudience validates a target group and writes it. Returns a fiber error
+// carrying the code the screens key their messages off.
+func applyAudience(p *models.Project, role string, callerBranch uint, req AudienceRequest) error {
+	if !models.ValidAudience(req.Audience) {
+		return apiError{400, "Invalid audience", ""}
+	}
+
 	switch req.Audience {
 	case models.AudienceBranches:
 		if len(req.BranchIDs) == 0 {
-			return c.Status(400).JSON(fiber.Map{
-				"error": "Name at least one branch", "code": "EMPTY_AUDIENCE"})
+			return apiError{400, "Name at least one branch", "EMPTY_AUDIENCE"}
 		}
 		var branches []models.Branch
 		database.DB.Where("id IN ? AND school_id = ?", req.BranchIDs, p.SchoolID).Find(&branches)
 		if len(branches) != len(req.BranchIDs) {
-			return c.Status(400).JSON(fiber.Map{
-				"error": "A branch does not belong to this school", "code": "BAD_BRANCH"})
+			return apiError{400, "A branch does not belong to this school", "BAD_BRANCH"}
 		}
 		if callerBranch != 0 {
 			for _, b := range branches {
 				if b.ID != callerBranch {
-					return c.Status(403).JSON(fiber.Map{
-						"error": "You can only aim a project at your own branch",
-						"code":  "OUTSIDE_BRANCH"})
+					return apiError{403, "You can only aim a project at your own branch", "OUTSIDE_BRANCH"}
 				}
 			}
 		}
 		if err := database.DB.Model(p).Association("Branches").Replace(branches); err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": "Could not save the branches"})
+			return apiError{500, "Could not save the branches", ""}
 		}
 
 	case models.AudienceClasses:
 		if len(req.ClassroomIDs) == 0 {
-			return c.Status(400).JSON(fiber.Map{
-				"error": "Name at least one class", "code": "EMPTY_AUDIENCE"})
+			return apiError{400, "Name at least one class", "EMPTY_AUDIENCE"}
 		}
 		var rooms []models.Classroom
 		database.DB.Where("id IN ? AND school_id = ?", req.ClassroomIDs, p.SchoolID).Find(&rooms)
 		if len(rooms) != len(req.ClassroomIDs) {
-			return c.Status(400).JSON(fiber.Map{
-				"error": "A class does not belong to this school", "code": "BAD_CLASS"})
+			return apiError{400, "A class does not belong to this school", "BAD_CLASS"}
 		}
 		if callerBranch != 0 {
 			for _, r := range rooms {
 				if r.BranchID != callerBranch {
-					return c.Status(403).JSON(fiber.Map{
-						"error": "You can only aim a project at your own branch's classes",
-						"code":  "OUTSIDE_BRANCH"})
+					return apiError{403, "You can only aim a project at your own branch's classes", "OUTSIDE_BRANCH"}
 				}
 			}
 		}
 		if err := database.DB.Model(p).Association("Classrooms").Replace(rooms); err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": "Could not save the classes"})
+			return apiError{500, "Could not save the classes", ""}
 		}
 
 	case models.AudienceSchools:
 		// See the note at the top: until alliances exist, only a platform
 		// admin may name another school.
 		if role != "admin" {
-			return c.Status(403).JSON(fiber.Map{
-				"error": "Reaching another school needs an alliance, which does not exist yet",
-				"code":  "NO_ALLIANCES"})
+			return apiError{403, "Reaching another school needs an alliance, which does not exist yet", "NO_ALLIANCES"}
 		}
 		if len(req.SchoolIDs) == 0 {
-			return c.Status(400).JSON(fiber.Map{
-				"error": "Name at least one school", "code": "EMPTY_AUDIENCE"})
+			return apiError{400, "Name at least one school", "EMPTY_AUDIENCE"}
 		}
 		var schools []models.School
 		database.DB.Where("id IN ?", req.SchoolIDs).Find(&schools)
 		if len(schools) != len(req.SchoolIDs) {
-			return c.Status(400).JSON(fiber.Map{"error": "A school does not exist", "code": "BAD_SCHOOL"})
+			return apiError{400, "A school does not exist", "BAD_SCHOOL"}
 		}
 		if err := database.DB.Model(p).Association("Schools").Replace(schools); err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": "Could not save the schools"})
+			return apiError{500, "Could not save the schools", ""}
 		}
 	}
 
@@ -129,8 +167,7 @@ func SetProjectAudience(c *fiber.Ctx) error {
 	// there and narrowed at read time by the project's own audience.
 	syncChallengeScope(p, req.Audience)
 
-	database.DB.Preload("Classrooms").Preload("Branches").Preload("Schools").First(p, p.ID)
-	return c.JSON(projectViews([]models.Project{*p}, false)[0])
+	return nil
 }
 
 // syncChallengeScope keeps the challenge behind a project pointing at the same

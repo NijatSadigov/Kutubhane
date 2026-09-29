@@ -8,6 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // Layihələr — the school's reading projects and campaigns.
@@ -134,6 +135,14 @@ func CreateProject(c *fiber.Ctx) error {
 		// Whether the whole school is running it. A branch-scoped caller can
 		// only raise a school-wide project if they say so explicitly.
 		SchoolWide bool `json:"school_wide"`
+
+		// The target group and the reading list, both optional and both
+		// settable here rather than only after the fact — a librarian setting
+		// up a campaign knows who it is for and what is on it at the moment
+		// they write it down, and making them save twice to say so is a worse
+		// form for no gain. The same helpers validate them either way.
+		AudienceRequest
+		EditionIDs []uint `json:"edition_ids"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid Input"})
@@ -181,6 +190,26 @@ func CreateProject(c *fiber.Ctx) error {
 	if err := database.DB.Create(&p).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Could not create the project"})
 	}
+
+	// The audience and the reading list, when the form gave them. A project
+	// that was created but could not be aimed or filled is worse than no
+	// project, so a failure here takes it back out rather than leaving a
+	// half-made campaign the librarian has to notice and clean up.
+	role, _ := c.Locals("role").(string)
+	if req.Audience != "" {
+		if err := applyAudience(&p, role, branchID, req.AudienceRequest); err != nil {
+			database.DB.Delete(&p)
+			return sendErr(c, err)
+		}
+	}
+	if len(req.EditionIDs) > 0 {
+		if err := applyBooks(&p, uid, req.EditionIDs); err != nil {
+			database.DB.Delete(&p)
+			return sendErr(c, err)
+		}
+	}
+
+	database.DB.Preload("Classrooms").Preload("Branches").Preload("Schools").First(&p, p.ID)
 	return c.JSON(projectViews([]models.Project{p}, false)[0])
 }
 
@@ -266,7 +295,17 @@ func DeleteProject(c *fiber.Ctx) error {
 			"error": "A project that has started is cancelled, not deleted",
 			"code":  "CANCEL_INSTEAD"})
 	}
-	database.DB.Delete(p)
+	// The audience join rows hold a foreign key to the project, so they have
+	// to go first — Postgres refuses the delete otherwise. `clause.Associations`
+	// clears them in the same breath.
+	//
+	// The error was previously discarded and the handler answered
+	// `{"deleted": true}` regardless, so a delete that the database had
+	// refused looked like it had worked and the row quietly stayed. Reporting
+	// a failure is the whole point of checking.
+	if err := database.DB.Select(clause.Associations).Delete(p).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Could not delete the project"})
+	}
 	return c.JSON(fiber.Map{"deleted": true})
 }
 

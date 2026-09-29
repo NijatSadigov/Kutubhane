@@ -155,7 +155,13 @@ function audienceLabel(p, t) {
       return n.length <= 2 ? n.join(', ') : t('staff.pr.audNBranches', { n: n.length });
     }
     case 'CLASSES': {
-      const n = names(p.classrooms, 'label');
+      // Classroom.Label() is a Go method, not a column, so a project's own
+      // classrooms arrive as grade and letter with no label — unlike
+      // /classrooms, which returns a view that has one. Build it here rather
+      // than printing "undefined, undefined".
+      const n = (p.classrooms || [])
+        .map((r) => r.label || [r.grade, r.letter].filter(Boolean).join('-'))
+        .filter(Boolean);
       return n.length <= 3 ? n.join(', ') : t('staff.pr.audNClasses', { n: n.length });
     }
     case 'SCHOOLS': {
@@ -422,13 +428,15 @@ function AudiencePicker({ project: p, t, say, onChanged }) {
   const { user } = useContext(AuthContext);
   const isAdmin = user?.role === 'admin';
 
-  const [audience, setAudience] = useState(p.audience || 'SCHOOL');
   const [branches, setBranches] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [schools, setSchools] = useState([]);
-  const [pickedBranches, setPickedBranches] = useState(() => (p.branches || []).map((b) => b.id));
-  const [pickedRooms, setPickedRooms] = useState(() => (p.classrooms || []).map((r) => r.id));
-  const [pickedSchools, setPickedSchools] = useState(() => (p.schools || []).map((s) => s.id));
+  const [aud, setAud] = useState(() => ({
+    audience: p.audience || 'SCHOOL',
+    branch_ids: (p.branches || []).map((b) => b.id),
+    classroom_ids: (p.classrooms || []).map((r) => r.id),
+    school_ids: (p.schools || []).map((s) => s.id),
+  }));
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -445,51 +453,23 @@ function AudiencePicker({ project: p, t, say, onChanged }) {
     return () => { alive = false; };
   }, [isAdmin]);
 
-  const toggle = (list, setList) => (id) => setList(
-    list.includes(id) ? list.filter((x) => x !== id) : [...list, id],
-  );
-
-  const OPTIONS = [
-    ['SCHOOL', t('staff.pr.aud.SCHOOL')],
-    ['BRANCHES', t('staff.pr.aud.BRANCHES')],
-    ['CLASSES', t('staff.pr.aud.CLASSES')],
-    ...(isAdmin ? [['SCHOOLS', t('staff.pr.aud.SCHOOLS')]] : []),
-  ];
-
   // An audience that names nobody would silently mean "everyone", so it is
   // refused here as well as at the endpoint.
-  const chosen = audience === 'BRANCHES' ? pickedBranches
-    : audience === 'CLASSES' ? pickedRooms
-      : audience === 'SCHOOLS' ? pickedSchools : null;
-  const ready = chosen === null || chosen.length > 0;
+  const key = aud.audience === 'BRANCHES' ? 'branch_ids'
+    : aud.audience === 'CLASSES' ? 'classroom_ids'
+      : aud.audience === 'SCHOOLS' ? 'school_ids' : null;
+  const ready = key === null || (aud[key] || []).length > 0;
 
   const save = async () => {
     setBusy(true);
     try {
-      await api.put(`/projects/${p.id}/audience`, {
-        audience,
-        branch_ids: pickedBranches,
-        classroom_ids: pickedRooms,
-        school_ids: pickedSchools,
-      });
+      await api.put(`/projects/${p.id}/audience`, aud);
       say(t('staff.pr.audSaved'));
       onChanged();
     } catch (e) {
       say(e.response?.data?.error || t('msg.opFailed'));
     } finally { setBusy(false); }
   };
-
-  const list = audience === 'BRANCHES'
-    ? branches.map((b) => [b.id, b.name])
-    : audience === 'CLASSES'
-      ? rooms.map((r) => [r.id, r.label])
-      : audience === 'SCHOOLS'
-        ? schools.map((s) => [s.id, s.name])
-        : [];
-  const picked = audience === 'BRANCHES' ? pickedBranches
-    : audience === 'CLASSES' ? pickedRooms : pickedSchools;
-  const setPicked = audience === 'BRANCHES' ? setPickedBranches
-    : audience === 'CLASSES' ? setPickedRooms : setPickedSchools;
 
   return (
     <div style={{
@@ -501,48 +481,13 @@ function AudiencePicker({ project: p, t, say, onChanged }) {
         {t('staff.pr.audienceNote')}
       </span>
 
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {OPTIONS.map(([v, label]) => {
-          const on = audience === v;
-          return (
-            <button key={v} onClick={() => setAudience(v)} style={{
-              background: on ? '#082F49' : '#fff', color: on ? '#fff' : ink.body,
-              border: '1px solid ' + (on ? '#082F49' : shell.control),
-              borderRadius: radius.control, padding: '7px 13px',
-              fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font.ui,
-            }}>{label}</button>
-          );
-        })}
-      </div>
+      <AudienceFields
+        value={aud} onChange={setAud} isAdmin={isAdmin}
+        branches={branches} rooms={rooms} schools={schools} t={t}
+      />
 
-      {audience !== 'SCHOOL' && (
-        <>
-          {list.length === 0 ? (
-            <span style={{ fontSize: 12, color: ink.dim }}>{t('staff.pr.audNothing')}</span>
-          ) : (
-            <div style={{
-              display: 'grid', gap: 4,
-              gridTemplateColumns: 'repeat(auto-fill, minmax(150px,1fr))',
-            }}>
-              {list.map(([id, label]) => (
-                <label key={id} style={{
-                  display: 'flex', alignItems: 'center', gap: 7, fontSize: 13,
-                }}>
-                  <input type="checkbox" checked={picked.includes(id)}
-                    onChange={() => toggle(picked, setPicked)(id)} />
-                  {label}
-                </label>
-              ))}
-            </div>
-          )}
-          {!ready && (
-            <span style={{ fontSize: 12, color: '#B4232A' }}>{t('staff.pr.audEmpty')}</span>
-          )}
-        </>
-      )}
-
-      {audience === 'SCHOOLS' && (
-        <span style={{ fontSize: 12, color: '#92400E' }}>{t('staff.pr.audAllianceNote')}</span>
+      {!ready && (
+        <span style={{ fontSize: 12, color: '#B4232A' }}>{t('staff.pr.audEmpty')}</span>
       )}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -552,6 +497,158 @@ function AudiencePicker({ project: p, t, say, onChanged }) {
         </Btn>
       </div>
     </div>
+  );
+}
+
+/* ------------------------------------------------------- picking books */
+
+// Choosing titles for a reading list.
+//
+// The first cut was a text box that searched titles and listed the matches as
+// a row of words, which is a poor way to recognise a book: a librarian knows a
+// cover long before they can recall how the title is spelled. So this shows
+// covers, opens with the branch's own shelf rather than an empty box, keeps
+// what is already chosen visible at the top, and lets a title be dropped from
+// there without hunting for it again in the results.
+//
+// It is used by the new-project form and by the panel, so a reading list is
+// assembled the same way whether it is being written or edited.
+function BookPicker({ chosen, onChange, t }) {
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Open with something to look at. An empty box gives no clue that the
+  // catalogue is what is being searched.
+  const load = useCallback(async (term) => {
+    setLoading(true);
+    try {
+      const r = term
+        ? await api.get('/catalog/search', { params: { q: term } })
+        : await api.get('/catalog/browse', { params: { scope: 'library', limit: 24 } });
+      const rows = r.data?.items || r.data || [];
+      setResults(rows.slice(0, 24));
+    } catch { setResults([]); } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(''); }, [load]);
+
+  const ids = chosen.map((b) => b.edition_id);
+
+  // Updates go through a function rather than being built from `chosen`,
+  // because two adds in quick succession both read the same captured list and
+  // the second overwrites the first — a book silently not added. `onChange` is
+  // a useState setter at both call sites, so it takes an updater.
+  const add = (b) => onChange((prev) => (
+    prev.some((x) => x.edition_id === b.edition_id) ? prev : [...prev, b]
+  ));
+  const drop = (id) => onChange((prev) => prev.filter((b) => b.edition_id !== id));
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* What is already on the list, with its covers, so the shape of the
+          campaign is visible while more are added. */}
+      {chosen.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {chosen.map((b) => (
+            <div key={b.edition_id} style={{
+              position: 'relative', width: 74,
+              display: 'flex', flexDirection: 'column', gap: 4,
+            }}>
+              <Cover book={b} h={100} />
+              <span style={{
+                fontSize: 10, lineHeight: 1.25, color: ink.body,
+                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}>{b.title}</span>
+              <button onClick={() => drop(b.edition_id)} aria-label={t('common.remove')}
+                style={{
+                  position: 'absolute', top: -5, right: -5, width: 20, height: 20,
+                  borderRadius: 999, border: '1px solid ' + shell.border,
+                  background: '#fff', cursor: 'pointer', fontSize: 11,
+                  lineHeight: 1, color: '#B4232A', padding: 0,
+                }}>✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <Input
+          value={q}
+          onChange={(e) => { setQ(e.target.value); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); load(q.trim()); } }}
+          placeholder={t('staff.pr.bookSearch')} style={{ flex: '1 1 200px', width: 'auto' }}
+        />
+        <Btn kind="secondary" onClick={() => load(q.trim())} disabled={loading}>
+          {t('staff.pr.findBook')}
+        </Btn>
+        {q && (
+          <Btn kind="secondary" onClick={() => { setQ(''); load(''); }}>
+            {t('staff.pr.clearSearch')}
+          </Btn>
+        )}
+      </div>
+
+      <span style={{ fontSize: 11, color: ink.dim }}>
+        {q ? t('staff.pr.searchingCatalogue') : t('staff.pr.showingShelf')}
+      </span>
+
+      {results.length === 0 ? (
+        <span style={{ fontSize: 12, color: ink.dim }}>
+          {loading ? t('common.loading') : t('staff.pr.noBooks')}
+        </span>
+      ) : (
+        <div style={{
+          display: 'grid', gap: 10, maxHeight: 260, overflowY: 'auto', paddingRight: 4,
+          gridTemplateColumns: 'repeat(auto-fill, minmax(84px, 1fr))',
+        }}>
+          {results.map((r) => {
+            const on = ids.includes(r.edition_id);
+            return (
+              <button key={r.edition_id} onClick={() => add(r)} disabled={on}
+                title={[r.title, r.author_name].filter(Boolean).join(' · ')}
+                style={{
+                  display: 'flex', flexDirection: 'column', gap: 4, padding: 0,
+                  border: 0, background: 'transparent', font: 'inherit',
+                  cursor: on ? 'default' : 'pointer', textAlign: 'left',
+                  opacity: on ? 0.45 : 1,
+                }}>
+                <Cover book={r} h={112} ring={on} />
+                <span style={{
+                  fontSize: 10, lineHeight: 1.25, color: ink.text,
+                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}>{r.title}</span>
+                <span style={{ fontSize: 9, color: ink.dim }}>
+                  {on ? t('staff.pr.alreadyOn') : (r.author_name || '')}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// A cover, or the title on a coloured card when there is no image — the same
+// fallback the reader app uses, so a book without a cover is still
+// recognisable rather than a grey box.
+function Cover({ book, h, ring }) {
+  const src = book.cover_url;
+  const common = {
+    width: '100%', height: h, borderRadius: 6, objectFit: 'cover',
+    border: ring ? '2px solid #082F49' : '1px solid ' + shell.border,
+    display: 'block',
+  };
+  if (src) return <img src={src} alt="" style={common} />;
+  return (
+    <span style={{
+      ...common, background: '#0C4A6E', color: '#fff',
+      fontSize: 9, fontWeight: 700, padding: 6,
+      display: 'flex', alignItems: 'flex-end', overflow: 'hidden',
+    }}>{book.title}</span>
   );
 }
 
@@ -568,23 +665,19 @@ function AudiencePicker({ project: p, t, say, onChanged }) {
 // nothing appears for readers — which is right, because there is nothing for
 // them to read.
 function ReadingList({ project: p, t, say, onChanged }) {
-  const [q, setQ] = useState('');
-  const [results, setResults] = useState([]);
-  const [searching, setSearching] = useState(false);
   const [busy, setBusy] = useState(false);
   const [asking, setAsking] = useState(null); // edition_id a question is being written for
 
-  const books = p.books || [];
-  const ids = books.map((b) => b.edition_id);
+  const books = useMemo(() => p.books || [], [p.books]);
+  // The list being edited, separate from the saved one, so the picker can be
+  // played with and abandoned. On an existing project the saved list is what
+  // readers are working through, and rewriting it on every click would be a
+  // change nobody asked for.
+  const [draft, setDraft] = useState(books);
+  useEffect(() => { setDraft(books); }, [books]);
 
-  const search = async () => {
-    if (!q.trim()) return;
-    setSearching(true);
-    try {
-      const r = await api.get('/catalog/search', { params: { q: q.trim() } });
-      setResults((r.data || []).slice(0, 8));
-    } catch { setResults([]); } finally { setSearching(false); }
-  };
+  const dirty = draft.length !== books.length
+    || draft.some((b, i) => b.edition_id !== books[i]?.edition_id);
 
   const setBooks = async (next) => {
     setBusy(true);
@@ -596,13 +689,9 @@ function ReadingList({ project: p, t, say, onChanged }) {
     } finally { setBusy(false); }
   };
 
-  const add = (editionId) => {
-    if (ids.includes(editionId)) return;
-    setBooks([...ids, editionId]);
-    setQ(''); setResults([]);
-  };
-
-  const removeBook = (editionId) => setBooks(ids.filter((i) => i !== editionId));
+  const removeBook = (editionId) => setBooks(
+    books.map((b) => b.edition_id).filter((i) => i !== editionId),
+  );
 
   return (
     <div style={{
@@ -677,46 +766,21 @@ function ReadingList({ project: p, t, say, onChanged }) {
         </div>
       )}
 
-      {/* The picker searches the shared catalogue, so a project's reading list
-          is made of real editions rather than retyped titles. */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <Input
-          value={q} onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); search(); } }}
-          placeholder={t('staff.pr.bookSearch')} style={{ flex: '1 1 200px', width: 'auto' }}
-        />
-        <Btn kind="secondary" onClick={search} disabled={searching || !q.trim()}>
-          {t('staff.pr.findBook')}
-        </Btn>
-      </div>
-
-      {results.length > 0 && (
-        <div style={{
-          border: '1px solid ' + shell.border, borderRadius: radius.control, overflow: 'hidden',
-        }}>
-          {results.map((r) => {
-            const already = ids.includes(r.edition_id);
-            return (
-              <button key={r.edition_id} disabled={already || busy}
-                onClick={() => add(r.edition_id)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                  textAlign: 'left', padding: '8px 10px', border: 0,
-                  borderBottom: '1px solid ' + shell.rowLine,
-                  background: already ? shell.canvas : '#fff',
-                  cursor: already ? 'default' : 'pointer', font: 'inherit',
-                  color: already ? ink.muted : ink.text,
-                }}>
-                <span style={{ flex: 1, fontSize: 13 }}>
-                  <strong>{r.title}</strong>
-                  {r.author_name && <span style={{ color: ink.dim }}> · {r.author_name}</span>}
-                </span>
-                <span style={{ fontSize: 11, color: ink.dim }}>
-                  {already ? t('staff.pr.alreadyOn') : t('staff.pr.addBook')}
-                </span>
-              </button>
-            );
-          })}
+      {/* Picking from the shared catalogue, so a reading list is made of real
+          editions rather than retyped titles. Saving is explicit here, because
+          on an existing project a stray click would otherwise rewrite the list
+          readers are already working through. */}
+      <BookPicker chosen={draft} onChange={setDraft} t={t} />
+      {dirty && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, color: ink.dim }}>
+            {t('staff.pr.nBooks', { n: draft.length })}
+          </span>
+          <span style={{ flex: 1 }} />
+          <Btn kind="secondary" onClick={() => setDraft(books)}
+            style={{ padding: '5px 10px', fontSize: 12 }}>{t('common.cancel')}</Btn>
+          <Btn onClick={() => setBooks(draft.map((b) => b.edition_id))} disabled={busy}
+            style={{ padding: '5px 10px', fontSize: 12 }}>{t('staff.pr.saveBooks')}</Btn>
         </div>
       )}
     </div>
@@ -793,6 +857,31 @@ export function NewProject() {
   });
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState('');
+  const { user } = useContext(AuthContext);
+  const isAdmin = user?.role === 'admin';
+
+  // The target group and the reading list are chosen here, not after the fact:
+  // whoever is setting up a campaign knows who it is for and what is on it at
+  // the moment they write it down.
+  const [aud, setAud] = useState({
+    audience: 'SCHOOL', branch_ids: [], classroom_ids: [], school_ids: [],
+  });
+  const [picked, setPicked] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [schools, setSchools] = useState([]);
+
+  useEffect(() => {
+    let alive = true;
+    api.get('/branches', { params: { scope: 'mine' } })
+      .then((r) => { if (alive) setBranches(r.data || []); }).catch(() => {});
+    api.get('/classrooms').then((r) => { if (alive) setRooms(r.data || []); }).catch(() => {});
+    if (isAdmin) {
+      api.get('/admin/school').then((r) => { if (alive) setSchools(r.data || []); }).catch(() => {});
+    }
+    return () => { alive = false; };
+  }, [isAdmin]);
+
   const say = (m) => { setToast(m); setTimeout(() => setToast(''), 3200); };
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
@@ -800,7 +889,12 @@ export function NewProject() {
   // The endpoint refuses a number with nothing being counted; saying so here
   // means the form does not have to be submitted to find that out.
   const needsUnit = target > 0 && !form.goal_unit.trim();
-  const ready = form.title.trim() !== '' && !needsUnit;
+  // An audience that names nobody would quietly mean everybody.
+  const audKey = aud.audience === 'BRANCHES' ? 'branch_ids'
+    : aud.audience === 'CLASSES' ? 'classroom_ids'
+      : aud.audience === 'SCHOOLS' ? 'school_ids' : null;
+  const audEmpty = audKey !== null && (aud[audKey] || []).length === 0;
+  const ready = form.title.trim() !== '' && !needsUnit && !audEmpty;
 
   const save = async () => {
     setBusy(true);
@@ -812,6 +906,8 @@ export function NewProject() {
         starts_on: form.starts_on, ends_on: form.ends_on,
         goal_target: target, goal_unit: form.goal_unit.trim(),
         school_wide: form.school_wide,
+        ...aud,
+        edition_ids: picked.map((b) => b.edition_id),
       });
       nav('/staff/projects');
     } catch (e) {
@@ -869,22 +965,55 @@ export function NewProject() {
           </label>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <label style={{ width: 130, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <Label>{t('staff.pr.goalTarget')}</Label>
+        {/* The goal, written as the sentence it is rather than as two fields
+            whose relationship the reader has to guess: a number, and the thing
+            that number counts. The line underneath says it back. */}
+        <div style={{
+          border: '1px solid ' + shell.border, borderRadius: radius.card, padding: 12,
+          display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
+          <Label>{t('staff.pr.goalSection')}</Label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <Input type="number" min={0} value={form.goal_target}
-              onChange={set('goal_target')} placeholder="0" />
-          </label>
-          <label style={{ flex: '1 1 180px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <Label>{t('staff.pr.goalUnit')}</Label>
+              onChange={set('goal_target')} placeholder="0" style={{ width: 110 }} />
             <Input value={form.goal_unit} onChange={set('goal_unit')}
-              placeholder={t('staff.pr.goalUnitHint')} />
-          </label>
+              placeholder={t('staff.pr.goalUnitHint')} style={{ flex: '1 1 160px', width: 'auto' }} />
+          </div>
+          <span style={{ fontSize: 12, color: needsUnit ? '#B4232A' : ink.dim }}>
+            {needsUnit
+              ? t('staff.pr.unitNeeded')
+              : target > 0
+                ? t('staff.pr.goalReads', { n: target, unit: form.goal_unit.trim() })
+                : t('staff.pr.goalNote')}
+          </span>
         </div>
-        {needsUnit && (
-          <span style={{ fontSize: 12, color: '#B4232A' }}>{t('staff.pr.unitNeeded')}</span>
-        )}
-        <span style={{ fontSize: 12, color: ink.dim }}>{t('staff.pr.goalNote')}</span>
+
+        {/* Who it is for, chosen here rather than only after it exists. */}
+        <div style={{
+          border: '1px solid ' + shell.border, borderRadius: radius.card, padding: 12,
+          display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
+          <Label>{t('staff.pr.audience')}</Label>
+          <span style={{ fontSize: 12, color: ink.dim, marginTop: -4 }}>
+            {t('staff.pr.audienceNote')}
+          </span>
+          <AudienceFields
+            value={aud} onChange={setAud} isAdmin={isAdmin}
+            branches={branches} rooms={rooms} schools={schools} t={t}
+          />
+        </div>
+
+        {/* And what is on it. Optional: a book drive has no reading list. */}
+        <div style={{
+          border: '1px solid ' + shell.border, borderRadius: radius.card, padding: 12,
+          display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
+          <Label>{t('staff.pr.reading')}</Label>
+          <span style={{ fontSize: 12, color: ink.dim, marginTop: -4 }}>
+            {t('staff.pr.readingNote')}
+          </span>
+          <BookPicker chosen={picked} onChange={setPicked} t={t} />
+        </div>
 
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
           <input type="checkbox" checked={form.school_wide}
@@ -899,6 +1028,71 @@ export function NewProject() {
       </div>
 
       <Toast>{toast}</Toast>
+    </>
+  );
+}
+
+// The audience controls, shared by the new-project form and the panel so the
+// two cannot offer different choices or scope them differently.
+function AudienceFields({ value, onChange, isAdmin, branches, rooms, schools, t }) {
+  const OPTIONS = [
+    ['SCHOOL', t('staff.pr.aud.SCHOOL')],
+    ['BRANCHES', t('staff.pr.aud.BRANCHES')],
+    ['CLASSES', t('staff.pr.aud.CLASSES')],
+    ...(isAdmin ? [['SCHOOLS', t('staff.pr.aud.SCHOOLS')]] : []),
+  ];
+
+  const list = value.audience === 'BRANCHES' ? branches.map((b) => [b.id, b.name])
+    : value.audience === 'CLASSES' ? rooms.map((r) => [r.id, r.label])
+      : value.audience === 'SCHOOLS' ? schools.map((s) => [s.id, s.name]) : [];
+
+  const key = value.audience === 'BRANCHES' ? 'branch_ids'
+    : value.audience === 'CLASSES' ? 'classroom_ids' : 'school_ids';
+  const picked = value[key] || [];
+
+  const toggle = (id) => onChange({
+    ...value,
+    [key]: picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id],
+  });
+
+  return (
+    <>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {OPTIONS.map(([v, label]) => {
+          const on = value.audience === v;
+          return (
+            <button key={v} type="button" onClick={() => onChange({ ...value, audience: v })}
+              style={{
+                background: on ? '#082F49' : '#fff', color: on ? '#fff' : ink.body,
+                border: '1px solid ' + (on ? '#082F49' : shell.control),
+                borderRadius: radius.control, padding: '7px 13px',
+                fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font.ui,
+              }}>{label}</button>
+          );
+        })}
+      </div>
+
+      {value.audience !== 'SCHOOL' && (
+        list.length === 0 ? (
+          <span style={{ fontSize: 12, color: ink.dim }}>{t('staff.pr.audNothing')}</span>
+        ) : (
+          <div style={{
+            display: 'grid', gap: 4,
+            gridTemplateColumns: 'repeat(auto-fill, minmax(150px,1fr))',
+          }}>
+            {list.map(([id, label]) => (
+              <label key={id} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13 }}>
+                <input type="checkbox" checked={picked.includes(id)} onChange={() => toggle(id)} />
+                {label}
+              </label>
+            ))}
+          </div>
+        )
+      )}
+
+      {value.audience === 'SCHOOLS' && (
+        <span style={{ fontSize: 12, color: '#92400E' }}>{t('staff.pr.audAllianceNote')}</span>
+      )}
     </>
   );
 }

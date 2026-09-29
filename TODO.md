@@ -255,7 +255,24 @@ with the reasoning:
       through, so it never reaches a browser.
 
       **The word "Hədəf" is the school's own name**, so it is not used as a
-      label for anything else. The goal field is `Məqsəd` / `Amaç` / `Goal`.
+      label for anything else. The goal field is `Məqsəd` / `Amaç` / `Goal`,
+      written as the sentence it is — a number and the thing it counts, with a
+      line underneath saying it back ("Məqsəd: 500 səhifə toplanacaq").
+
+      **A reading project *is* a Müsabiqə.** The kind was called "Oxu
+      kampaniyası" while readers call the same object Müsabiqələr; it is
+      `Müsabiqə (oxu)` now, because two names for one thing is how a buyer
+      ends up asking which is which.
+
+      **The audience and the reading list are set at creation**, not only
+      afterwards. `CreateProject` reuses the same `applyAudience` and
+      `applyBooks` the later endpoints use, so the two entry points cannot
+      check different things, and a create whose audience or books are refused
+      deletes the project again rather than leaving it half-made.
+
+      The book picker shows covers and opens on the branch's own shelf rather
+      than an empty search box — a librarian recognises a cover long before
+      they recall a spelling.
 
       **A target group** (buyer, 2026-09-29). `Audience` is one of SCHOOL,
       BRANCHES, CLASSES or SCHOOLS, with a join table behind each of the last

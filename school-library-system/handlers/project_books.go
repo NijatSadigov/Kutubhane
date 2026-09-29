@@ -60,20 +60,30 @@ func SetProjectBooks(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid Input"})
 	}
 
+	if err := applyBooks(p, uid, req.EditionIDs); err != nil {
+		return sendErr(c, err)
+	}
+	return c.JSON(fiber.Map{"books": projectBooks(p)})
+}
+
+// applyBooks validates and writes a project's reading list. Shared, because a
+// reading list can be given when the project is created as well as changed
+// afterwards, and the two must not check different things.
+func applyBooks(p *models.Project, uid uint, editionIDs []uint) error {
+
 	// Every edition must be real, or a reading list points at nothing.
-	if len(req.EditionIDs) > 0 {
+	if len(editionIDs) > 0 {
 		var n int64
-		database.DB.Model(&models.Edition{}).Where("id IN ?", req.EditionIDs).Count(&n)
-		if int(n) != len(req.EditionIDs) {
-			return c.Status(400).JSON(fiber.Map{
-				"error": "A book on the list does not exist", "code": "BAD_EDITION"})
+		database.DB.Model(&models.Edition{}).Where("id IN ?", editionIDs).Count(&n)
+		if int(n) != len(editionIDs) {
+			return apiError{400, "A book on the list does not exist", "BAD_EDITION"}
 		}
 	}
 
 	if p.ChallengeID == nil {
-		if len(req.EditionIDs) == 0 {
+		if len(editionIDs) == 0 {
 			// Nothing to do, and no reason to create an empty campaign.
-			return c.JSON(fiber.Map{"books": []ProjectBookView{}})
+			return nil
 		}
 		ch := models.Challenge{
 			SchoolID: p.SchoolID, BranchID: p.BranchID,
@@ -88,7 +98,7 @@ func SetProjectBooks(c *fiber.Ctx) error {
 			ch.EndsAt = *p.EndsOn
 		}
 		if err := database.DB.Create(&ch).Error; err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": "Could not start the reading list"})
+			return apiError{500, "Could not start the reading list", ""}
 		}
 		database.DB.Model(p).Update("challenge_id", ch.ID)
 		p.ChallengeID = &ch.ID
@@ -99,13 +109,13 @@ func SetProjectBooks(c *fiber.Ctx) error {
 	// which is what someone reordering a list expects, and losing them to a
 	// stray click is not.
 	database.DB.Where("challenge_id = ?", *p.ChallengeID).Delete(&models.ChallengeBook{})
-	for i, ed := range req.EditionIDs {
+	for i, ed := range editionIDs {
 		database.DB.Create(&models.ChallengeBook{
 			ChallengeID: *p.ChallengeID, EditionID: ed, Sort: i,
 		})
 	}
 
-	return c.JSON(fiber.Map{"books": projectBooks(p)})
+	return nil
 }
 
 // AddProjectQuestion writes one quiz question against a book on the list.

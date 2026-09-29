@@ -259,6 +259,27 @@ schools are partners is the Phase 3 alliance work, and without it there is
 nothing to check a school administrator's choice against. The endpoint answers
 `NO_ALLIANCES` and the screen says so.
 
+**A reading project *is* a Müsabiqə.** The kind was labelled "Oxu kampaniyası"
+while readers call the same thing Müsabiqələr, which made two names for one
+object. It is `Müsabiqə (oxu)` / `Yarışma (okuma)` / `Reading challenge` now.
+
+**The audience and the reading list are chosen when a project is created**, not
+only afterwards — `CreateProject` takes them and reuses the same `applyAudience`
+and `applyBooks` the later endpoints do, so the two entry points cannot check
+different things. A create whose audience or books are refused **deletes the
+project again** rather than leaving a half-made campaign.
+
+Two bugs found while wiring that up, both worth knowing:
+
+- **`DeleteProject` discarded the error and always answered `{"deleted":true}`.**
+  The audience join rows hold a foreign key, so Postgres refused the delete and
+  the row silently stayed while the screen said it had gone. It clears
+  associations and checks the error now.
+- **The book picker lost a title when two were added quickly**, because each
+  add rebuilt the list from a captured value. It takes an updater function
+  instead. Only visible when clicking faster than a re-render — which is what
+  a script does, and occasionally a person.
+
 **"Hədəf" is the school's own name**, so never use it as a label for anything
 else. The first cut of Layihələr labelled the goal field `Hədəf` and it read as
 if it were asking which school. It is `Məqsəd` / `Amaç` / `Goal` now.
