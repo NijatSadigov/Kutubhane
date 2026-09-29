@@ -138,6 +138,40 @@ was exercised without touching real data.
 
 ---
 
+## Session record — 2026-09-29, twelve commits
+
+`ee1471b` … `a0e4d7f`, all pushed. In order:
+
+| | |
+|---|---|
+| `ee1471b` | Notifications — one table, three producers, a bell in each shell |
+| `8f69d43` | The bell where a manager actually lands |
+| `ce62d1c` | End-of-year "collect the whole set" |
+| `a48f374` | Year rollover, Üzvlər search + class cards |
+| `85afe5b` | Search by the words on the row; dərslik catalogue by subject |
+| `699ef29` | Layihələr — projects and campaigns |
+| `fefba33` | Books and quizzes on a project; the "Hədəf" rename |
+| `2f02cec` | A project's target group |
+| `07fee95` | One-form project setup; "Müsabiqə" |
+| `aadec22` | Quiz rules enforced server-side |
+| `4e1abd7` | A reader writing a question |
+| `a0e4d7f` | The e-reader |
+
+**The pattern that kept repeating**, worth carrying forward: nearly every bug
+this session was a screen that looked right. `DeleteProject` answered
+`{"deleted": true}` while Postgres refused it. `ListChallenges` ignored
+`BranchID`, so a branch-scoped campaign went to the whole school. A zero date
+read as "01.01.1" and told readers a campaign was over before it began. The
+book picker dropped a title when two were clicked quickly. None of these
+showed up as an error; all of them showed up by reading the data back or by
+logging in as somebody else.
+
+**Where things stand.** TODO's "Now" has three items left: dropping `Book`'s
+duplicated columns, the decorative `teachers.subject`, and the read-only branch
+workspace for a manager. The reader-facing side of Layihələr is complete;
+the staff-facing side of the *old* dashboards (manager, admin) is still the
+larger unfinished area.
+
 ## What the 2026-09-29 session did
 
 **Notifications** — the one missing reason three separate features were each

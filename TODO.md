@@ -66,6 +66,11 @@ with the reasoning:
       that did not come back. 4-A went from eight open-fill-submit cycles to
       one dialog
 
+- [ ] **A grant presentation.** Goals, motivation, what is built, what it can
+      do — with screenshots taken from the running product rather than mocked.
+      Everything needed to shoot them is in `HANDOFF.md`: the logins, the two
+      servers, and which screens are worth showing. Nothing to build first
+
 - [ ] **Drop `Book`'s duplicated columns.** `title`, `isbn`, `language`,
       `cefr_level`, `publication_year`, `edition`, `page_count`, `cover_url`
       are now unread wherever an edition is preloaded — the `AfterFind` hook on
