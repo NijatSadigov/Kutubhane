@@ -81,7 +81,7 @@ cd school-library-system && go test ./... && go run ./cmd/apiaudit -writes
 cd library-frontend && npm run build && npx eslint src/mrb src/staff src/i18n
 ```
 
-Last run: 23 Go tests, **236 API checks across 5 roles**, build clean,
+Last run: 23 Go tests, **249 API checks across 5 roles**, build clean,
 `src/mrb` + `src/staff` + `src/i18n` lint clean. (`npx eslint src` reports 12
 errors, all pre-existing in the manager/admin/student dashboards and shared
 components — down from ~20 since the librarian's dashboard was deleted.)
@@ -129,6 +129,9 @@ was exercised without touching real data.
 | `school-library-system/handlers/notifications.go` | `notify()`, the bell's two endpoints, and the overdue reminder |
 | `library-frontend/src/notifications.js` | what a notification *says* and where it links — one place, both shells |
 | `library-frontend/src/components/NotificationBell.jsx` | the bell itself; one implementation, a palette per shell |
+| `school-library-system/models/project.go` | Layihələr — projects and their append-only log |
+| `school-library-system/handlers/project.go` | projects; progress and standings summed from the log |
+| `library-frontend/src/staff/pages/Projects.jsx` | the Layihələr list, its panel, and the new-project form |
 | `library-frontend/src/home.js` | one place deciding where each role lands after login |
 | `library-frontend/src/i18n/dates.js` | language-aware dates — see the Intl warning below |
 | `Hedef Kutuphane clickable prototype (1)/` | **the design**, untracked |
@@ -208,6 +211,31 @@ The server refuses a write without `confirm`, so an API call cannot skip what
 the screen insists on, and refuses a second run into a year that already has
 classes. The final grade defaults to 11 and is editable — a guess about
 Azerbaijani schooling, not a fact about every school.
+
+**Layihələr is a real domain** — the rail's last placeholder. The school's
+reading projects and campaigns: book drives, events, reading pushes.
+
+It is **deliberately not** the challenges screen, and the buyer chose that
+deliberately when asked. A challenge is a book list with quizzes that readers
+join individually; a project has a measurable goal, a lifecycle, classes as
+participants and a log of what happened. Progress is summed from that log and
+never stored — the textbook-ledger rule again — and the class-against-class
+standings are a group-by over it, so they cannot disagree with their own
+entries.
+
+The `Challenge` API is still unbuilt on the staff side; the challenge builder
+stays on the TODO list and is a separate job from this one.
+
+Two things worth knowing if you touch it. A project opens in a **panel on the
+list**, not at `/staff/projects/:id` — `locate()` derives the screen from the
+URL, so a `:id` would be a route `nav.js` cannot name and the page title would
+go blank; tickets already work this way. And a started project is **cancelled,
+not deleted**, because what the school tried is worth as much as what it
+finished.
+
+`ComingSoon.jsx` now has **no caller** — Layihələr was the last `soon: true`
+domain. The flag still exists in `nav.js` but nothing routes it, so a future
+placeholder domain needs its route putting back.
 
 **Üzvlər gained a real search and a class view** — the search now reaches
 e-mail, class and the titles a reader is holding, and a Siyahı / Siniflər

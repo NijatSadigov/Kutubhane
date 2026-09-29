@@ -19,13 +19,13 @@ import Loans from './pages/Loans';
 import Inventory from './pages/Inventory';
 import Members from './pages/Members';
 import MemberInvites from './pages/MemberInvites';
-import ComingSoon from './pages/ComingSoon';
 import { SettingsLists, SettingsStatuses, SettingsLimits } from './pages/SettingsScreens';
 import { MyTickets, NewTicket, TicketInbox } from './pages/Support';
 import Textbooks from './pages/Textbooks';
 import TextbookRequests from './pages/TextbookRequests';
 import NewTextbookRequest from './pages/NewTextbookRequest';
 import Classrooms from './pages/Classrooms';
+import Projects, { NewProject } from './pages/Projects';
 import {
   SettingsClassrooms, SettingsTeachers, SettingsSubjects, SettingsYears,
 } from './pages/DerslikSettings';
@@ -81,12 +81,15 @@ export default function StaffApp() {
           <Route path="catalogue" element={<Textbooks />} />
           <Route path="classrooms" element={<Classrooms />} />
         </Route>
-        <Route path="projects" element={
-          <ComingSoon
-            titleKey="staff.soon.projects.title"
-            bodyKey="staff.soon.projects.body"
-          />
-        } />
+        {/* Layihələr — reading projects and campaigns. A project opens in a
+            panel on the list rather than at its own path, the way a ticket
+            thread does: `locate()` resolves a screen from the URL, so a
+            /staff/projects/:id would be a route the nav table cannot name and
+            would lose the page title. */}
+        <Route path="projects">
+          <Route index element={<Projects />} />
+          <Route path="new" element={<NewProject />} />
+        </Route>
         {/* Dərslik sistemi ayarları — the school's own structure. */}
         <Route path="textbook-settings">
           <Route index element={<Navigate to="/staff/textbook-settings/classrooms" replace />} />

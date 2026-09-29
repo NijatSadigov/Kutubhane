@@ -176,6 +176,19 @@ func Setup(app *fiber.App) {
 	// action rather than a nightly sweep, so it is a write the librarian makes.
 	api.Post("/desk/overdue/remind", middleware.IsLibrarian, handlers.RemindOverdue)
 
+	// Layihələr — the school's reading projects and campaigns. Guarded by
+	// IsTeacher, which admits the library, the administration and teachers:
+	// a class-against-class campaign is a teacher's business too, and the
+	// handlers scope a branch caller to their own branch plus the school-wide
+	// ones.
+	api.Get("/projects", middleware.IsTeacher, handlers.GetProjects)
+	api.Post("/projects", middleware.IsTeacher, handlers.CreateProject)
+	api.Get("/projects/:id", middleware.IsTeacher, handlers.GetProject)
+	api.Put("/projects/:id", middleware.IsTeacher, handlers.UpdateProject)
+	api.Delete("/projects/:id", middleware.IsTeacher, handlers.DeleteProject)
+	api.Post("/projects/:id/updates", middleware.IsTeacher, handlers.AddProjectUpdate)
+	api.Put("/projects/:id/classrooms", middleware.IsTeacher, handlers.SetProjectClassrooms)
+
 	// Notifications. Deliberately not role-guarded: the recipients span
 	// students, teachers, librarians and managers, and the scope is always the
 	// caller's own user id rather than anything in the request.

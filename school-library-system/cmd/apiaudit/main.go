@@ -295,6 +295,19 @@ func readChecks() []check {
 	}
 	add("", "/api/notifications", []int{401}, "notifications need a session")
 
+	// --- layihələr ---
+	// The library, the administration and teachers all run projects; a reader
+	// has no business in the staff console's planning.
+	for _, r := range []string{"librarian", "manager", "admin", "teacher"} {
+		add(r, "/api/projects", ok, "")
+	}
+	add("librarian", "/api/projects?status=open", ok, "the default filter")
+	add("student", "/api/projects", denied, "a reader does not see the school's planning")
+	add("", "/api/projects", []int{401}, "projects need a session")
+	add("librarian", "/api/projects?status=NONSENSE", []int{400}, "bad status filter")
+	add("librarian", "/api/projects?kind=NONSENSE", []int{400}, "bad kind filter")
+	add("librarian", "/api/projects/99999", []int{404}, "unknown project")
+
 	// --- promoting the school a year ---
 	// The preview changes nothing, so it is safe to call here; the write is in
 	// writeChecks and only ever asserts a refusal.
@@ -371,6 +384,11 @@ func writeChecks() []check {
 		{role: "manager", method: "POST", path: "/api/desk/overdue/remind", want: denied, note: "a school administrator does not run a branch's desk"},
 		{role: "librarian", method: "POST", path: "/api/desk/overdue/remind", want: []int{400}, note: "a reminder naming no loans is refused"},
 		{role: "", method: "POST", path: "/api/notifications/seen", want: []int{401}, note: "marking read needs a session"},
+		// Layihələr. A body-less POST is refused for want of a title, which is
+		// also what keeps this check from creating anything.
+		{role: "student", method: "POST", path: "/api/projects", want: denied, note: "a reader does not plan the school's projects"},
+		{role: "librarian", method: "POST", path: "/api/projects", want: []int{400}, note: "a project with no title is refused"},
+		{role: "student", method: "POST", path: "/api/projects/1/updates", want: denied, note: "a reader does not write the project log"},
 		// The end-of-year collection. Same guard as the per-title path, and an
 		// empty body is refused rather than silently recording nothing — which
 		// also keeps these checks inert against a real database.

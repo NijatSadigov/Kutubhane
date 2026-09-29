@@ -60,10 +60,16 @@ export const DOMAINS = [
     ],
   },
   {
+    // Layihələr — the school's reading projects and campaigns. Teachers are
+    // in, because a class-against-class campaign is run by the classes; the
+    // endpoints admit the same four roles, so nothing here 403s.
     key: 'projects',
     labelKey: 'staff.dom.projects',
-    roles: ALL_STAFF,
-    soon: true,
+    roles: WITH_TEACHERS,
+    screens: [
+      { path: '', labelKey: 'staff.nav.projectList', badge: 'projects_open', roles: WITH_TEACHERS },
+      { path: 'new', labelKey: 'staff.nav.projectNew', roles: WITH_TEACHERS },
+    ],
   },
   {
     key: 'members',

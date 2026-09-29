@@ -34,7 +34,7 @@ demo activity and takes `BASE` to choose which server.
 cd library-frontend && npm run build && npx eslint src/mrb src/staff
 ```
 
-Last run: 23 Go tests pass, **236 API checks across 5 roles**, 33/33
+Last run: 23 Go tests pass, **249 API checks across 5 roles**, 33/33
 loan-lifecycle checks pass, build and lint clean.
 
 The audit's count is deterministic — every `add()` in `cmd/apiaudit` is
@@ -204,6 +204,40 @@ with the reasoning:
 
 ## Done
 
+- [x] **Layihələr** (buyer, 2026-09-29) — the rail's last placeholder is a
+      real domain. The school's reading projects and campaigns: book drives,
+      events, reading campaigns.
+
+      **Deliberately not folded into `Challenge`.** A challenge is a book list
+      with quizzes that readers join individually and are scored on. A project
+      has a measurable goal rather than a fixed list of titles, a lifecycle
+      (planned → active → done/cancelled) because it is planned before it runs
+      and reviewed after, **classes** as participants rather than individual
+      sign-ups, and a log of what happened. Folding either into the other would
+      have meant a model half-empty whichever kind it held.
+
+      **Progress is derived from the log, never stored** — the same rule as the
+      textbook ledger, for the same reason. The class-against-class scoreboard
+      is a group-by over that log, so standings cannot disagree with the
+      entries they are built from. A project that beats its goal reports the
+      real number and clamps only the bar.
+
+      Scope follows Challenge's convention rather than a third one: the school
+      owns it, `BranchID` narrows it to a branch, nil means school-wide. A
+      branch sees its own plus the school's. Guarded by `IsTeacher`, which
+      admits the library, the administration **and** teachers — a
+      class-against-class campaign is the classes' business — and the nav gives
+      those same four roles the domain, so nothing there 403s.
+
+      A project opens in a panel on the list rather than at `/staff/projects/:id`:
+      `locate()` derives the screen from the URL, so a `:id` would be a route
+      `nav.js` cannot name and the page title would go blank. Tickets already
+      work this way.
+
+      A started project is **cancelled, not deleted** — what the school tried
+      is worth as much as what it finished. Only one that never began can be
+      removed outright.
+
 - [x] **Moving the school up a year** (buyer, 2026-09-29). 7-A becomes 8-A and
       the final grade graduates; alumni stay alumni and are never swept up
       again. `GET /academic-years/rollover/preview` and
@@ -317,8 +351,8 @@ with the reasoning:
       | Rail | Top bar |
       |---|---|
       | Kitabxana | Kitab verilişi · Kataloq və inventar · Rezerv edilən kitablar · Verilən kitablar · Kitab sorğuları |
-      | Dərslik sistemi | *tezliklə* |
-      | Layihələr | *tezliklə* |
+      | Dərslik sistemi | *built since — see the dərslik entries below* |
+      | Layihələr | Layihələr · Yeni layihə *(built 2026-09-29)* |
       | Üzvlər | Üzvlər · Dəvət linkləri |
       | Kitabxana ayarları | Kataloq siyahıları · Status və vəziyyətlər · Borc qaydaları |
       | Dərslik sistemi ayarları | *tezliklə* |
