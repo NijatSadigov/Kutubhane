@@ -10,6 +10,32 @@ import ReaderStatsModal from '../../components/ReaderStatsModal';
 import BookRequestsQueue from '../../components/BookRequestsQueue';
 import ManagerBranchWorkspace from '../../components/ManagerBranchWorkspace';
 import { useTranslation } from '../../i18n/LanguageContext';
+import NotificationBell from '../../components/NotificationBell';
+
+// A manager receives ticket-reply notifications but lands *here* — the old
+// dashboard — rather than in the console, because `homePathFor()` still sends
+// them to /manager. Without this the bell existed only on screens they do not
+// start on, so the notification they were sent was invisible until they
+// wandered into /staff.
+//
+// This screen is slated for retirement (see TODO), and instrumenting code
+// that is being deleted is normally the wrong trade. It is worth it here
+// because the alternative is a notification nobody reads. It goes when the
+// dashboard does.
+//
+// Tailwind greys, to match the navbar it sits in rather than either shell.
+const BELL = {
+    border: '#E5E7EB',
+    hoverBg: '#F9FAFB',
+    text: '#6B7280',
+    dim: '#6B7280',
+    dot: '#DC2626',
+    dotRing: '#fff',
+    panelBorder: '#E5E7EB',
+    panelText: '#111827',
+    unreadBg: '#F0F9FF',
+    radius: 12,
+};
 
 const ManagerDashboard = () => {
     const { logout } = useContext(AuthContext);
@@ -141,6 +167,7 @@ const ManagerDashboard = () => {
                         </h1>
                         <div className="flex items-center gap-5">
                             <LanguageSwitcher />
+                            <NotificationBell role="manager" palette={BELL} />
                             <button onClick={() => setIsProfileOpen(true)} className="flex items-center gap-2 text-gray-500 hover:text-sky-600 transition-colors text-sm font-medium">
                                 <UserIcon size={18} /> {t('nav.profile')}
                             </button>

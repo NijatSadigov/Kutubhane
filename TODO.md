@@ -192,14 +192,13 @@ with the reasoning:
 - [ ] Azerbaijani strings are AI-translated, never reviewed by a native speaker
 - [ ] `Staff Console.dc.html` freezes when opened as a prototype — read the
       source as the spec
-- [ ] **A manager gets notifications they cannot see from where they land.**
-      They receive `TICKET_REPLY`, but `homePathFor()` sends them to
-      `/manager` — the *old* dashboard, which has no bell. The bell is only in
-      the two new shells. They do see it the moment they enter `/staff`, and
-      answering tickets already happens there, so it is a rough edge rather
-      than a broken feature. It closes by itself when the manager dashboard is
-      retired; until then the alternative is instrumenting a screen that is
-      being deleted
+- [x] **A manager gets notifications where they actually land.** They receive
+      `TICKET_REPLY` but `homePathFor()` sends them to `/manager` — the *old*
+      dashboard — so the bell in the two new shells was invisible to them until
+      they wandered into `/staff`. The old dashboard has the bell now, which
+      means instrumenting a screen that is slated for deletion; worth it,
+      because the alternative was a notification nobody reads. It goes when the
+      dashboard does
 
 ## Done
 
