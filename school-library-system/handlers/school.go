@@ -232,6 +232,21 @@ func GetClassrooms(c *fiber.Ctx) error {
 		q = q.Joins("JOIN classroom_teachers ct ON ct.classroom_id = classrooms.id").
 			Where("ct.teacher_user_id = ?", uid)
 	}
+	// A librarian runs one branch, and every other list they are shown is
+	// scoped to it. Without this a librarian in Nəsimi saw Gəncə's classes
+	// too — which no screen intends and Sinif dərslikləri says outright it
+	// does not ("a teacher sees their own classes; the library sees the
+	// branch's"). The school administration keeps the school-wide view.
+	if role == "librarian" {
+		branchID, err := getUserBranchID(c)
+		if err != nil {
+			return c.Status(403).JSON(fiber.Map{"error": err.Error()})
+		}
+		q = q.Where("classrooms.branch_id = ?", branchID)
+	}
+	if b := c.QueryInt("branch_id"); b > 0 {
+		q = q.Where("classrooms.branch_id = ?", b)
+	}
 	if y := c.QueryInt("year_id"); y > 0 {
 		q = q.Where("classrooms.academic_year_id = ?", y)
 	}

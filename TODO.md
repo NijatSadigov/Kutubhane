@@ -34,7 +34,7 @@ demo activity and takes `BASE` to choose which server.
 cd library-frontend && npm run build && npx eslint src/mrb src/staff
 ```
 
-Last run: 23 Go tests pass, **227 API checks across 5 roles**, 33/33
+Last run: 23 Go tests pass, **236 API checks across 5 roles**, 33/33
 loan-lifecycle checks pass, build and lint clean.
 
 The audit's count is deterministic — every `add()` in `cmd/apiaudit` is
@@ -203,6 +203,48 @@ with the reasoning:
       dashboard does
 
 ## Done
+
+- [x] **Moving the school up a year** (buyer, 2026-09-29). 7-A becomes 8-A and
+      the final grade graduates; alumni stay alumni and are never swept up
+      again. `GET /academic-years/rollover/preview` and
+      `POST /academic-years/rollover`, both administration-only.
+
+      **It creates next year's classrooms rather than renaming this year's.**
+      Renaming would be fewer writes and would quietly rewrite history: the
+      textbook ledger is keyed on `ClassroomID`, so last year's movements for
+      7-A would start reading as 8-A's, and what a class held in a year it no
+      longer exists in would be unanswerable. Holdings are derived from that
+      ledger precisely so a number cannot drift from its own history.
+
+      Only ACTIVE students in a classroom move. The legacy `Grade` and
+      `ClassGroup` fields move with them, because the reader screens still
+      print those and letting them go stale is how "7-A" ends up on an
+      eighth-grader's profile. Teachers carry across as a starting point —
+      easier to remove than to reassign every class from nothing.
+
+      Two steps, because it cannot be undone from a screen: a preview that
+      changes nothing and names every class with the textbooks it still owes,
+      then a confirm. The server refuses a write with no `confirm`, so an API
+      call cannot skip what the screen insists on, and refuses a second run
+      into a year that already has classes. One transaction throughout.
+
+      The final grade defaults to **11** and is editable per run — a guess
+      about Azerbaijani schooling rather than a fact about every school.
+
+- [x] **Üzvlər: a real search, and a class view** (buyer, 2026-09-29). The
+      search now covers name, e-mail, class, status and **the titles a reader
+      is holding** — "who has 1984?" is asked across the counter daily and had
+      no answer on this screen. Terms are ANDed, so a second word narrows.
+      `/class-list` gained `email` and `classroom_label`, filled in two queries
+      rather than one per row.
+
+      A Siyahı / Siniflər toggle switches the same readers between one long
+      list and a card per class, each card showing its roll, how many books are
+      out and how many are late. Opening a card lists the children in it, and
+      picking one opens the same reader panel the table uses. Cards are built
+      from the *filtered* list, so searching narrows both views rather than
+      letting them disagree. Readers with no class get a card of their own — a
+      branch's list is not allowed to quietly lose people.
 
 - [x] **End-of-year "return the whole set".** `POST /textbook-movements/bulk`
       collects every title a class still holds in one **atomic** write. Every

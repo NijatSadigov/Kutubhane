@@ -1006,7 +1006,63 @@ func GetClassList(c *fiber.Ctx) error {
 	query.Preload("Loans").Preload("Loans.Status").
 		Preload("Loans.BookCopy").Preload("Loans.BookCopy.Book").
 		Find(&students)
-	return c.JSON(students)
+	return c.JSON(classListViews(students))
+}
+
+// ClassListEntry is a student as the Members screen needs them: the model, plus
+// the two things a librarian searches by that are not on it — the address they
+// registered with, and the class they sit in by name rather than by id.
+//
+// Additive, so the circulation desk's own use of /class-list is untouched.
+type ClassListEntry struct {
+	models.Student
+	Email          string `json:"email"`
+	ClassroomLabel string `json:"classroom_label"`
+}
+
+// classListViews fills in the email and the class label in two queries rather
+// than one per row — a branch with six hundred readers would otherwise be six
+// hundred round trips to print a table.
+func classListViews(students []models.Student) []ClassListEntry {
+	ids := make([]uint, 0, len(students))
+	roomIDs := make([]uint, 0, len(students))
+	for _, s := range students {
+		ids = append(ids, s.UserID)
+		if s.ClassroomID != nil {
+			roomIDs = append(roomIDs, *s.ClassroomID)
+		}
+	}
+
+	emails := map[uint]string{}
+	if len(ids) > 0 {
+		var rows []struct {
+			ID    uint
+			Email string
+		}
+		database.DB.Model(&models.User{}).Select("id, email").Where("id IN ?", ids).Scan(&rows)
+		for _, r := range rows {
+			emails[r.ID] = r.Email
+		}
+	}
+
+	labels := map[uint]string{}
+	if len(roomIDs) > 0 {
+		var rooms []models.Classroom
+		database.DB.Where("id IN ?", roomIDs).Find(&rooms)
+		for _, r := range rooms {
+			labels[r.ID] = r.Label()
+		}
+	}
+
+	out := make([]ClassListEntry, 0, len(students))
+	for _, s := range students {
+		e := ClassListEntry{Student: s, Email: emails[s.UserID]}
+		if s.ClassroomID != nil {
+			e.ClassroomLabel = labels[*s.ClassroomID]
+		}
+		out = append(out, e)
+	}
+	return out
 }
 
 func GetMyLibrary(c *fiber.Ctx) error {

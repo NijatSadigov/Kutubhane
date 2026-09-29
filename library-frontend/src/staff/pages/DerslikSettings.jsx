@@ -597,8 +597,170 @@ export function SettingsYears() {
           </div>
         ))}
       </div>
+
+      <RolloverPanel years={years} t={t} say={say} onDone={() => setKey((k) => k + 1)} />
+
       <Toast>{toast}</Toast>
     </>
+  );
+}
+
+/* ------------------------------------------- promoting the school a year */
+
+// Yeni dərs ilinə keçid — 7-A becomes 8-A, and the top year leaves.
+//
+// This is the one action in the system that cannot be undone from a screen, so
+// it is deliberately two steps: a preview that changes nothing and names every
+// class, and a confirm that is disabled until the preview has been read. The
+// server enforces the same thing — it refuses a write with no `confirm` — so a
+// direct API call cannot skip what the screen insists on either.
+//
+// It creates next year's classrooms rather than renaming this year's, which is
+// what keeps the textbook ledger honest: movements are keyed on classroom, so
+// renaming would rewrite the history of a class that no longer exists.
+function RolloverPanel({ years, t, say, onDone }) {
+  const [fromId, setFromId] = useState('');
+  const [toId, setToId] = useState('');
+  const [finalGrade, setFinalGrade] = useState('11');
+  const [plan, setPlan] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  // The current year is what a school promotes out of, so it is the default.
+  useEffect(() => {
+    if (!fromId && years.length > 0) {
+      const cur = years.find((y) => y.is_current) || years[0];
+      setFromId(String(cur.id));
+    }
+  }, [years, fromId]);
+
+  // Any edit to the inputs invalidates a preview that is on screen: confirming
+  // a plan that was built from different years is exactly the mistake this
+  // two-step shape exists to prevent.
+  const change = (setter) => (e) => { setter(e.target.value); setPlan(null); };
+
+  const preview = async () => {
+    setBusy(true);
+    try {
+      const r = await api.get('/academic-years/rollover/preview', {
+        params: { from_year_id: fromId, to_year_id: toId, final_grade: finalGrade || 11 },
+      });
+      setPlan(r.data);
+    } catch (e) {
+      say(e.response?.data?.error || e.response?.data || t('msg.opFailed'));
+    } finally { setBusy(false); }
+  };
+
+  const apply = async () => {
+    setBusy(true);
+    try {
+      const r = await api.post('/academic-years/rollover', {
+        from_year_id: Number(fromId), to_year_id: Number(toId),
+        final_grade: Number(finalGrade) || 11,
+        confirm: true, make_current: true,
+      });
+      say(t('staff.ds.rollDone', {
+        promoted: r.data?.promoted ?? 0, graduated: r.data?.graduated ?? 0,
+      }));
+      setPlan(null);
+      onDone();
+    } catch (e) {
+      say(e.response?.data?.error || t('msg.opFailed'));
+    } finally { setBusy(false); }
+  };
+
+  if (years.length < 2) {
+    return (
+      <Card>
+        <strong style={{ fontSize: 13 }}>{t('staff.ds.rollTitle')}</strong>
+        <div style={{ fontSize: 13, color: ink.dim }}>{t('staff.ds.rollNeedsTwo')}</div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <strong style={{ fontSize: 13 }}>{t('staff.ds.rollTitle')}</strong>
+      <div style={{ fontSize: 13, color: ink.body }}>{t('staff.ds.rollSub')}</div>
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <label style={{ flex: '1 1 150px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <Label>{t('staff.ds.rollFrom')}</Label>
+          <select value={fromId} onChange={change(setFromId)} style={selectStyle}>
+            {years.map((y) => <option key={y.id} value={y.id}>{y.label}</option>)}
+          </select>
+        </label>
+        <label style={{ flex: '1 1 150px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <Label>{t('staff.ds.rollTo')}</Label>
+          <select value={toId} onChange={change(setToId)} style={selectStyle}>
+            <option value="">{t('staff.ds.rollPick')}</option>
+            {years.filter((y) => String(y.id) !== String(fromId))
+              .map((y) => <option key={y.id} value={y.id}>{y.label}</option>)}
+          </select>
+        </label>
+        <label style={{ width: 120, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <Label>{t('staff.ds.rollFinalGrade')}</Label>
+          <Input type="number" min={1} max={13} value={finalGrade}
+            onChange={change(setFinalGrade)} />
+        </label>
+        <Btn kind="secondary" onClick={preview} disabled={busy || !toId}>
+          {t('staff.ds.rollPreview')}
+        </Btn>
+      </div>
+
+      {plan && (
+        <div style={{
+          border: '1px solid ' + shell.border, borderRadius: radius.card,
+          overflow: 'hidden', marginTop: 4,
+        }}>
+          <div style={{
+            padding: '10px 14px', background: shell.headerBg,
+            borderBottom: '1px solid ' + shell.border, fontSize: 13, fontWeight: 700,
+          }}>
+            {t('staff.ds.rollPlanHead', {
+              from: plan.from_year, to: plan.to_year,
+              promoted: plan.promoted, graduating: plan.graduating,
+            })}
+          </div>
+
+          {plan.already_has_classes && (
+            <div style={{ padding: '10px 14px', fontSize: 12, color: '#B4232A' }}>
+              {t('staff.ds.rollAlready')}
+            </div>
+          )}
+
+          {plan.classes.map((c) => (
+            <div key={c.classroom_id} style={{
+              display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+              padding: '9px 14px', borderTop: '1px solid ' + shell.rowLine, fontSize: 13,
+            }}>
+              <strong style={{ minWidth: 110 }}>
+                {c.graduates ? t('staff.ds.rollGraduates', { from: c.from }) : `${c.from} → ${c.to}`}
+              </strong>
+              <span style={{ color: ink.dim }}>
+                {t('staff.mem.cardStudents', { n: c.student_count })}
+              </span>
+              <span style={{ flex: 1 }} />
+              {c.outstanding > 0 && (
+                <Pill colors={pill('overdue')}>
+                  {t('staff.ds.rollOutstanding', { n: c.outstanding })}
+                </Pill>
+              )}
+            </div>
+          ))}
+
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+            padding: '10px 14px', borderTop: '1px solid ' + shell.border,
+          }}>
+            <span style={{ fontSize: 12, color: '#92400E' }}>{t('staff.ds.rollWarning')}</span>
+            <span style={{ flex: 1 }} />
+            <Btn onClick={apply} disabled={busy || plan.classes.length === 0}>
+              {t('staff.ds.rollApply')}
+            </Btn>
+          </div>
+        </div>
+      )}
+    </Card>
   );
 }
 

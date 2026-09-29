@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../../api/axios';
 import { useTranslation } from '../../i18n/LanguageContext';
-import { shell, ink, radius, pill, overdueColors } from '../theme';
+import { shell, ink, radius, font, pill, overdueColors } from '../theme';
 import { Kpi, KpiRow, Pill, Btn, Input, Avatar, Mono, Alert } from '../components/StaffShell';
 import { Dialog } from './InventoryDialogs';
 import { fmtDate } from '../../i18n/dates';
@@ -26,6 +26,8 @@ export default function Members() {
   const { t } = useTranslation();
   const [students, setStudents] = useState([]);
   const [q, setQ] = useState('');
+  const [view, setView] = useState('list'); // 'list' | 'classes'
+  const [openClass, setOpenClass] = useState(null);
   const [selected, setSelected] = useState(null);
   const [toast, setToast] = useState('');
 
@@ -37,13 +39,63 @@ export default function Members() {
     api.get('/class-list').then((r) => setStudents(r.data || [])).catch(() => {});
   }, [reloadKey]);
 
-  const term = q.trim().toLowerCase();
-  const shown = term
-    ? students.filter((s) =>
-      (s.name || '').toLowerCase().includes(term)
-      || String(s.grade || '').includes(term)
-      || (s.class_group || '').toLowerCase().includes(term))
-    : students;
+  // Everything a librarian at the desk might have in their head when they
+  // start typing: the child, how to reach them, where they sit, and — the one
+  // that is not about the person at all — the book they are holding. "Who has
+  // 1984?" is a question asked across the counter every day, and it used to
+  // have no answer on this screen.
+  //
+  // Terms are ANDed, so "7-a gecikmiş" narrows twice rather than widening.
+  const haystack = useCallback((s) => [
+    s.name,
+    s.email,
+    s.classroom_label,
+    s.grade ? `${s.grade}-${s.class_group || ''}` : '',
+    s.grade,
+    s.class_group,
+    s.status,
+    ...(s.loans || []).filter((l) => !l.return_date).flatMap((l) => [
+      l.book_copy?.book?.title,
+      l.book_copy?.tracking_number,
+    ]),
+  ].filter(Boolean).join(' ').toLowerCase(), []);
+
+  const shown = useMemo(() => {
+    const terms = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (terms.length === 0) return students;
+    return students.filter((s) => {
+      const hay = haystack(s);
+      return terms.every((term) => hay.includes(term));
+    });
+  }, [students, q, haystack]);
+
+  // The same readers, grouped by the class they sit in. Built from the
+  // *filtered* list, so searching narrows the cards as well as the table
+  // rather than the two views disagreeing about what is being looked at.
+  //
+  // Readers with no classroom are a card of their own rather than being
+  // dropped: a branch's list is not allowed to quietly lose people, and an
+  // unassigned reader is usually exactly who a librarian is hunting for.
+  const classCards = useMemo(() => {
+    const by = new Map();
+    shown.forEach((s) => {
+      const key = s.classroom_label || gradeOf(s) || '';
+      const card = by.get(key) || { key, label: key, students: [], out: 0, late: 0 };
+      const open = (s.loans || []).filter((l) => !l.return_date);
+      card.out += open.length;
+      if (open.some((l) => l.due_date && new Date(l.due_date) < new Date())) card.late++;
+      card.students.push(s);
+      by.set(key, card);
+    });
+    return [...by.values()].sort((a, b) => {
+      // Unassigned last; otherwise by grade then letter, read out of the label.
+      if (!a.key) return 1;
+      if (!b.key) return -1;
+      const [ag, al] = a.key.split('-');
+      const [bg, bl] = b.key.split('-');
+      return (Number(ag) - Number(bg)) || String(al || '').localeCompare(String(bl || ''));
+    });
+  }, [shown]);
 
   const totals = useMemo(() => {
     let out = 0, late = 0, withBooks = 0;
@@ -74,12 +126,36 @@ export default function Members() {
           placeholder={t('staff.mem.search')}
           style={{ flex: '1 1 260px', width: 'auto' }}
         />
+        {/* The design's own screens-within-a-screen control, the same one the
+            Verilən kitablar filter uses. Two ways of looking at one branch:
+            every reader at once, or class by class. */}
+        <div style={{ display: 'flex', gap: 4 }}>
+          {[['list', t('staff.mem.viewList')], ['classes', t('staff.mem.viewClasses')]].map(([v, label]) => {
+            const on = view === v;
+            return (
+              <button key={v} onClick={() => { setView(v); setOpenClass(null); }} style={{
+                background: on ? '#082F49' : '#fff', color: on ? '#fff' : ink.body,
+                border: '1px solid ' + (on ? '#082F49' : shell.control),
+                borderRadius: radius.control, padding: '8px 14px',
+                fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font.ui,
+              }}>{label}</button>
+            );
+          })}
+        </div>
       </div>
+
+      {view === 'classes' && (
+        <ClassCards
+          classes={classCards} openClass={openClass} setOpenClass={setOpenClass}
+          selected={selected} setSelected={setSelected} t={t}
+        />
+      )}
 
       <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div style={{
           flex: '999 1 520px', minWidth: 0, background: '#fff',
           border: '1px solid ' + shell.border, borderRadius: radius.card, overflowX: 'auto',
+          display: view === 'list' ? undefined : 'none',
         }}>
           <div style={{ minWidth: 560 }}>
             <div style={{
@@ -291,4 +367,119 @@ function initialsOf(name) {
 function gradeOf(s) {
   if (!s?.grade) return '';
   return `${s.grade}${s.class_group ? '-' + s.class_group : ''}`;
+}
+
+/* ------------------------------------------- the branch, class by class */
+
+// Üzvlər seen as classes rather than as one long list.
+//
+// A librarian's questions are often about a room rather than a person — who is
+// in 7-A, how many of them are holding something, is anyone late. A card
+// answers all three at a glance; opening one drops to the children in it, and
+// picking a child opens the same reader panel the table uses, so nothing about
+// a reader is learned twice.
+function ClassCards({ classes, openClass, setOpenClass, selected, setSelected, t }) {
+  if (classes.length === 0) {
+    return (
+      <div style={{
+        background: '#fff', border: '1px solid ' + shell.border, borderRadius: radius.card,
+        padding: 28, textAlign: 'center', fontSize: 13, color: ink.dim,
+      }}>{t('staff.mem.none')}</div>
+    );
+  }
+
+  const open = classes.find((c) => c.key === openClass);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{
+        display: 'grid', gap: 12,
+        gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))',
+      }}>
+        {classes.map((c) => {
+          const on = c.key === openClass;
+          return (
+            <button
+              key={c.key || 'unassigned'}
+              onClick={() => { setOpenClass(on ? null : c.key); setSelected(null); }}
+              style={{
+                textAlign: 'left', cursor: 'pointer', font: 'inherit',
+                background: on ? '#082F49' : '#fff',
+                color: on ? '#fff' : ink.text,
+                border: '1px solid ' + (on ? '#082F49' : shell.border),
+                borderRadius: radius.card, padding: '14px 16px',
+                display: 'flex', flexDirection: 'column', gap: 6,
+              }}
+            >
+              <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.01em' }}>
+                {c.label || t('staff.mem.noClass')}
+              </span>
+              <span style={{ fontSize: 12, color: on ? '#BAE6FD' : ink.dim }}>
+                {t('staff.mem.cardStudents', { n: c.students.length })}
+              </span>
+              <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                <Pill colors={pill(c.out ? 'out' : 'available')}>
+                  {t('staff.mem.cardOut', { n: c.out })}
+                </Pill>
+                {c.late > 0 && (
+                  <Pill colors={pill('overdue')}>{t('staff.mem.cardLate', { n: c.late })}</Pill>
+                )}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {open && (
+        <div style={{
+          background: '#fff', border: '1px solid ' + shell.border,
+          borderRadius: radius.card, overflow: 'hidden',
+        }}>
+          <div style={{
+            padding: '10px 16px', background: shell.headerBg,
+            borderBottom: '1px solid ' + shell.border,
+            fontSize: 13, fontWeight: 800,
+          }}>
+            {open.label || t('staff.mem.noClass')}
+            <span style={{ fontWeight: 600, color: ink.dim }}>
+              {' · '}{t('staff.mem.cardStudents', { n: open.students.length })}
+            </span>
+          </div>
+          {open.students.map((s) => {
+            const openLoans = (s.loans || []).filter((l) => !l.return_date);
+            const worst = openLoans.reduce((n, l) => {
+              if (!l.due_date) return n;
+              const d = Math.floor((new Date() - new Date(l.due_date)) / 86400000);
+              return d > n ? d : n;
+            }, 0);
+            const on = selected?.user_id === s.user_id;
+            return (
+              <div
+                key={s.user_id}
+                onClick={() => setSelected(on ? null : s)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 16px', borderBottom: '1px solid ' + shell.rowLine,
+                  fontSize: 13, minHeight: 44, cursor: 'pointer',
+                  background: on ? shell.rowSelected : 'transparent',
+                }}
+              >
+                <Avatar initials={initialsOf(s.name)} size={28} />
+                <strong style={{
+                  flex: 1, minWidth: 0, overflow: 'hidden',
+                  textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{s.name}</strong>
+                <span style={{ color: ink.dim, fontSize: 12 }}>{openLoans.length}</span>
+                {worst > 0
+                  ? <Pill colors={overdueColors(worst)}>{t('staff.desk.overdueDays', { n: worst })}</Pill>
+                  : <Pill colors={pill(openLoans.length ? 'out' : 'available')}>
+                    {openLoans.length ? t('staff.pill.onLoan') : t('staff.mem.clear')}
+                  </Pill>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }

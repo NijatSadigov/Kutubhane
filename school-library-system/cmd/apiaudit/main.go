@@ -295,6 +295,18 @@ func readChecks() []check {
 	}
 	add("", "/api/notifications", []int{401}, "notifications need a session")
 
+	// --- promoting the school a year ---
+	// The preview changes nothing, so it is safe to call here; the write is in
+	// writeChecks and only ever asserts a refusal.
+	add("manager", "/api/academic-years/rollover/preview?from_year_id=1&to_year_id=1", []int{400},
+		"promoting a year into itself is refused")
+	add("manager", "/api/academic-years/rollover/preview?from_year_id=1&to_year_id=99999", []int{404},
+		"an unknown target year is refused")
+	for _, r := range []string{"librarian", "teacher", "student"} {
+		add(r, "/api/academic-years/rollover/preview?from_year_id=1&to_year_id=2", denied,
+			r+" must not see the promotion plan")
+	}
+
 	// --- no token at all on a protected route ---
 	add("", "/api/books", []int{401}, "unauthenticated must be refused")
 	add("", "/api/admin/school", []int{401}, "unauthenticated must be refused")
@@ -365,6 +377,13 @@ func writeChecks() []check {
 		{role: "student", method: "POST", path: "/api/textbook-movements/bulk", want: denied, note: "a reader does not collect a class set"},
 		{role: "", method: "POST", path: "/api/textbook-movements/bulk", want: []int{401}, note: "collecting a set needs a session"},
 		{role: "teacher", method: "POST", path: "/api/textbook-movements/bulk", want: []int{400}, note: "an empty collection is refused"},
+		// Promoting the school a year is the administration's, and cannot be
+		// done without confirming the preview first — which is also what keeps
+		// this check inert: with no body there is no confirm, so nothing runs.
+		{role: "librarian", method: "POST", path: "/api/academic-years/rollover", want: denied, note: "a librarian does not promote the school"},
+		{role: "teacher", method: "POST", path: "/api/academic-years/rollover", want: denied, note: "a teacher does not promote the school"},
+		{role: "student", method: "POST", path: "/api/academic-years/rollover", want: denied, note: "a reader does not promote the school"},
+		{role: "manager", method: "POST", path: "/api/academic-years/rollover", want: []int{400}, note: "promoting without confirming the preview is refused"},
 	}
 }
 

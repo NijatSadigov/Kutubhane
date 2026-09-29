@@ -81,7 +81,7 @@ cd school-library-system && go test ./... && go run ./cmd/apiaudit -writes
 cd library-frontend && npm run build && npx eslint src/mrb src/staff src/i18n
 ```
 
-Last run: 23 Go tests, **227 API checks across 5 roles**, build clean,
+Last run: 23 Go tests, **236 API checks across 5 roles**, build clean,
 `src/mrb` + `src/staff` + `src/i18n` lint clean. (`npx eslint src` reports 12
 errors, all pre-existing in the manager/admin/student dashboards and shared
 components — down from ~20 since the librarian's dashboard was deleted.)
@@ -191,6 +191,28 @@ a way around what the per-title dialog insists on. The note rides on the LOST
 and DAMAGED rows only; putting it on the RETURN as well made the ledger read as
 though one child had handed back the other thirty-eight.
 
+**Moving the school up a year** — `academic-years/rollover`, preview and apply.
+7-A becomes 8-A, the final grade graduates, alumni stay alumni.
+
+The decision worth knowing: **it creates next year's classrooms rather than
+renaming this year's.** The textbook ledger is keyed on `ClassroomID`, so
+renaming would make last year's movements for 7-A read as 8-A's and leave "what
+did that class hold" unanswerable. A year's classrooms are that year's record.
+Tested on a **scratch clone**, never the real database, and the check that
+mattered was that `textbook_movements` still pointed at the old classrooms
+afterwards.
+
+It cannot be undone from a screen, so it is two steps: a preview that changes
+nothing and names every class with the textbooks it still owes, then a confirm.
+The server refuses a write without `confirm`, so an API call cannot skip what
+the screen insists on, and refuses a second run into a year that already has
+classes. The final grade defaults to 11 and is editable — a guess about
+Azerbaijani schooling, not a fact about every school.
+
+**Üzvlər gained a real search and a class view** — the search now reaches
+e-mail, class and the titles a reader is holding, and a Siyahı / Siniflər
+toggle shows the same readers as a card per class that opens to its roll.
+
 ### Three bugs this turned up, all the shapes this file warns about
 
 - **The manager's notification called a ticket theirs.** One i18n key serves
@@ -203,6 +225,11 @@ though one child had handed back the other thirty-eight.
   I nearly took the blame for it — hiding the bell with `display:none` and
   re-measuring showed the height was identical either way. **Pre-existing, not
   the bell.** Worth checking that way before "fixing" a layout.
+- **A librarian saw every branch's classrooms, not their own.** `GetClassrooms`
+  filtered by school only, while `Sinif dərslikləri` says outright that "the
+  library sees the branch's". Invisible in demo data because Gəncə has no
+  classes — which is exactly what Gəncə is the fixture for. A librarian is
+  branch-scoped now; the administration keeps the school-wide view.
 - **The bulk collection wrote the write-off note onto the plain RETURN row**,
   so the ledger read as though one child had returned the other thirty-eight.
   Only visible by reading the rows back out of the database after a successful

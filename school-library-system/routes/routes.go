@@ -302,6 +302,11 @@ func Setup(app *fiber.App) {
 	api.Get("/academic-years", middleware.IsTeacher, handlers.GetAcademicYears)
 	api.Post("/academic-years", middleware.IsManager, handlers.CreateAcademicYear)
 	api.Put("/academic-years/:id/current", middleware.IsManager, handlers.SetCurrentAcademicYear)
+	// Promoting the school a year: 7-A becomes 8-A and the top year leaves.
+	// The preview changes nothing and the apply cannot be undone, which is why
+	// they are two calls rather than one.
+	api.Get("/academic-years/rollover/preview", middleware.IsManager, handlers.PreviewRollover)
+	api.Post("/academic-years/rollover", middleware.IsManager, handlers.ApplyRollover)
 
 	api.Get("/branches", middleware.IsTeacher, handlers.GetSchoolBranches)
 	api.Get("/subjects", middleware.IsTeacher, handlers.GetSubjects)
