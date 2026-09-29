@@ -132,7 +132,13 @@ func main() {
 	}))
 
 	// Serve uploaded covers and e-books statically (public; names are unguessable).
-	app.Static("/uploads", "./uploads")
+	// Covers are public — they are on the catalogue a guest can browse.
+	//
+	// E-books are **not** served from here. They used to be, which meant the
+	// file was one guessed URL away from anybody at all, signed in or not, and
+	// downloadable in a click. They go through GET /api/ebook/:id now, which
+	// checks who is asking and whether the book is theirs to read.
+	app.Static("/uploads/covers", "./uploads/covers")
 
 	routes.Setup(app)
 

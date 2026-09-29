@@ -73,6 +73,11 @@ type BrowseCard struct {
 	// "log today's reading" button.
 	MyLoanID *uint `json:"my_loan_id"`
 
+	// HasEbook says the branch's copy has a file to read in the browser. The
+	// file itself is never on the card — reading it goes through
+	// /api/ebook/:id, which checks the book is this reader's to open.
+	HasEbook bool `json:"has_ebook"`
+
 	// ShelfStatus is OWNED / WANT / READING / READ when the book is on their
 	// shelf; IsFavorite is independent of it.
 	ShelfStatus string `json:"shelf_status"`
@@ -333,6 +338,7 @@ func BrowseCatalogue(c *fiber.Ctx) error {
 			card.HeldHere = true
 			id := h.ID
 			card.BookID = &id
+			card.HasEbook = strings.TrimSpace(h.EBookURL) != ""
 			if card.CoverURL == "" {
 				card.CoverURL = h.CoverURL
 			}

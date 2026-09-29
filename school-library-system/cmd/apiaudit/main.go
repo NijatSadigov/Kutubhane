@@ -309,6 +309,15 @@ func readChecks() []check {
 	add("librarian", "/api/projects/99999", []int{404}, "unknown project")
 	add("librarian", "/api/projects/99999/suggestions", []int{404}, "unknown project has no suggestions")
 	add("student", "/api/projects/1/suggestions", denied, "a reader does not read the review queue")
+
+	// --- e-books ---
+	// The file is no longer a public URL. These assert the gate, not the
+	// bytes: a reader with no claim to the book is refused, and an
+	// unauthenticated caller never gets as far as the check.
+	add("", "/api/ebook/1", []int{401}, "an e-book needs a session")
+	add("", "/api/ebook/1/info", []int{401}, "even asking about one needs a session")
+	add("student", "/api/ebook/99999/info", []int{404}, "unknown book")
+	add("librarian", "/api/ebook/99999", []int{404}, "unknown book")
 	// The audience picker must not offer a branch the endpoint would refuse.
 	add("librarian", "/api/branches?scope=mine", ok, "a librarian's own branch only")
 	add("manager", "/api/branches?scope=mine", ok, "the administration keeps the school")

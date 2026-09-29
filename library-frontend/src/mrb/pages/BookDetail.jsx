@@ -278,6 +278,8 @@ export default function BookDetail() {
                 }}
               >{t('mrb.writeReview')}</Action>
 
+              <ReadOnlineAction book={book} t={t} />
+
               <LoanAction book={book} busy={busy} onReserve={reserve} t={t} />
 
               <Action
@@ -337,6 +339,20 @@ function Action({ bg, fg, border, children, ...rest }) {
 
 // The borrow slot: an offer, or a statement of where the reader already stands.
 // Same rule as the catalogue card, so the two screens cannot disagree.
+// Reading it here, when the branch's copy has a file and the reader is
+// entitled to it. The button only decides where to go — whether the book is
+// actually theirs to open is the server's call, and the reader screen says so
+// plainly if the answer is no.
+function ReadOnlineAction({ book, t }) {
+  const nav = useNavigate();
+  if (!book.has_ebook || !book.book_id) return null;
+  return (
+    <Action bg={C.deep} fg="#fff" border={C.deep} onClick={() => nav(`/app/read/${book.book_id}`)}>
+      {t('mrb.read.openHere')}
+    </Action>
+  );
+}
+
 function LoanAction({ book, busy, onReserve, t }) {
   const note = (bg, fg, border, text) => (
     <span style={{

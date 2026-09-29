@@ -81,7 +81,7 @@ cd school-library-system && go test ./... && go run ./cmd/apiaudit -writes
 cd library-frontend && npm run build && npx eslint src/mrb src/staff src/i18n
 ```
 
-Last run: 23 Go tests, **263 API checks across 5 roles**, build clean,
+Last run: 23 Go tests, **267 API checks across 5 roles**, build clean,
 `src/mrb` + `src/staff` + `src/i18n` lint clean. (`npx eslint src` reports 12
 errors, all pre-existing in the manager/admin/student dashboards and shared
 components — down from ~20 since the librarian's dashboard was deleted.)
@@ -258,6 +258,29 @@ endpoint then refused — a screen that shows a choice it cannot honour.
 schools are partners is the Phase 3 alliance work, and without it there is
 nothing to check a school administrator's choice against. The endpoint answers
 `NO_ALLIANCES` and the screen says so.
+
+**E-books are read in the browser, and are no longer a public file.**
+
+Said plainly, because it is easy to oversell: **a web page cannot stop a
+screenshot.** No browser gives a page that power. What the reader does do is
+remove every easy path to a copy and make a deliberate one traceable:
+
+- the PDF used to sit under `/uploads` and was one guessed URL away from
+  anybody at all, signed in or not. `app.Static` now serves `/uploads/covers`
+  only; the bytes go through `GET /api/ebook/:id`, which checks the book is
+  out to this reader or on their shelf;
+- the page fetches those bytes once and hands them straight to pdf.js. They
+  never become an object URL, so there is no link to open in a new tab and no
+  file to save;
+- **every page carries the reader's own name**, drawn onto the same canvas as
+  the page so it cannot be removed by hiding an element. That is the part that
+  works — a photograph of a page says who took it.
+
+The right-click block, the print block and the unselectable canvas are friction,
+not protection, and the code says so where they are.
+
+`pdfjs-dist` is a new dependency, loaded on demand so the reader app does not
+carry it for visits that never open a book.
 
 **The quiz has rules, and they are enforced on the server.** Seconds per
 question, how many of the pool each reader is asked, one attempt, and readers

@@ -210,6 +210,11 @@ func Setup(app *fiber.App) {
 	// Notifications. Deliberately not role-guarded: the recipients span
 	// students, teachers, librarians and managers, and the scope is always the
 	// caller's own user id rather than anything in the request.
+	// Reading an e-book. The file is no longer a public URL under /uploads —
+	// these check who is asking and whether the book is theirs to read.
+	api.Get("/ebook/:id/info", handlers.GetEbookInfo)
+	api.Get("/ebook/:id", handlers.GetEbook)
+
 	api.Get("/notifications", handlers.GetNotifications)
 	api.Post("/notifications/seen", handlers.MarkNotificationsSeen)
 

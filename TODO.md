@@ -34,7 +34,7 @@ demo activity and takes `BASE` to choose which server.
 cd library-frontend && npm run build && npx eslint src/mrb src/staff
 ```
 
-Last run: 23 Go tests pass, **263 API checks across 5 roles**, 33/33
+Last run: 23 Go tests pass, **267 API checks across 5 roles**, 33/33
 loan-lifecycle checks pass, build and lint clean.
 
 The audit's count is deterministic — every `add()` in `cmd/apiaudit` is
@@ -173,6 +173,22 @@ with the reasoning:
       leavers, damaged and lost, kept out of the borrow limit
 - [ ] Catalogue 1.6–1.8: external ids, duplicate merge tool, move read paths
       onto Edition, drop the duplicated columns from `Book`
+
+- [x] **E-books are read in the browser** (buyer, 2026-09-29). A book with a
+      file gets a "Burada oxu" button; pages are drawn onto a canvas rather
+      than handed over as a file.
+
+      **The honest limit: a web page cannot block a screenshot.** No browser
+      gives a page that power, so nothing here claims to. What it does is
+      remove the easy paths and make a deliberate copy traceable — the PDF was
+      a public URL under `/uploads` and is not any more, the bytes never become
+      a link the reader can open or save, and **every page carries the
+      reader's own name**, drawn onto the same canvas as the page.
+
+      Entitlement is the server's: the book must be out to that reader or on
+      their shelf. Staff may open it to check what they uploaded.
+
+      New dependency: `pdfjs-dist`, imported on demand.
 
 ## Known issues
 

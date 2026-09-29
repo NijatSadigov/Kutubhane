@@ -12,17 +12,30 @@ import Discover from './pages/Discover';
 import BookDetail from './pages/BookDetail';
 import MyShelf from './pages/MyShelf';
 import Challenges from './pages/Challenges';
+import Reader from './pages/Reader';
 
 export default function MrbApp() {
   return (
-    <AppShell>
-      <Routes>
-        <Route index element={<Discover />} />
-        <Route path="catalogue" element={<Catalogue />} />
-        <Route path="book/:editionId" element={<BookDetail />} />
-        <Route path="challenges" element={<Challenges />} />
-        <Route path="shelf" element={<MyShelf />} />
-      </Routes>
-    </AppShell>
+    <Routes>
+      {/* The e-reader is the whole window — a book with the site's header and
+          search bar above it is not a book. So it sits outside AppShell
+          rather than inside it. */}
+      <Route path="read/:id" element={<Reader />} />
+
+      <Route
+        path="*"
+        element={(
+          <AppShell>
+            <Routes>
+              <Route index element={<Discover />} />
+              <Route path="catalogue" element={<Catalogue />} />
+              <Route path="book/:editionId" element={<BookDetail />} />
+              <Route path="challenges" element={<Challenges />} />
+              <Route path="shelf" element={<MyShelf />} />
+            </Routes>
+          </AppShell>
+        )}
+      />
+    </Routes>
   );
 }
