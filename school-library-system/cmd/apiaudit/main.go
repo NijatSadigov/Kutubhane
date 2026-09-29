@@ -286,6 +286,15 @@ func readChecks() []check {
 		add(r, "/api/admin/school", denied, r+" must not reach admin data")
 	}
 
+	// --- notifications ---
+	// Deliberately not role-guarded: the recipients span every role, and the
+	// scope is the caller's own user id. So every role must be able to read
+	// their own, and nobody may read without a session.
+	for _, r := range []string{"admin", "manager", "librarian", "teacher", "student"} {
+		add(r, "/api/notifications", ok, "everyone has a bell of their own")
+	}
+	add("", "/api/notifications", []int{401}, "notifications need a session")
+
 	// --- no token at all on a protected route ---
 	add("", "/api/books", []int{401}, "unauthenticated must be refused")
 	add("", "/api/admin/school", []int{401}, "unauthenticated must be refused")
@@ -337,6 +346,19 @@ func writeChecks() []check {
 		{role: "teacher", method: "POST", path: "/api/textbooks", want: denied, note: "a teacher does not edit the catalogue"},
 		{role: "teacher", method: "POST", path: "/api/loan", want: denied, note: "a teacher does not issue library loans"},
 		{role: "teacher", method: "PUT", path: "/api/textbook-requests/1", want: denied, note: "a teacher does not drive the library's side"},
+		// Notifications: an overdue reminder is the desk's to send. Nobody
+		// else may nudge a reader, and a reminder with no loans named is a
+		// mistake rather than a silent no-op.
+		//
+		// There is no check here that actually *sends* one: that would create
+		// notification rows, and this suite must stay safe against the real
+		// database. The empty-selection case is the one write that is provably
+		// inert, which is why it is the only non-refusal here.
+		{role: "student", method: "POST", path: "/api/desk/overdue/remind", want: denied, note: "a reader cannot remind themselves"},
+		{role: "teacher", method: "POST", path: "/api/desk/overdue/remind", want: denied, note: "a teacher does not run the library's desk"},
+		{role: "manager", method: "POST", path: "/api/desk/overdue/remind", want: denied, note: "a school administrator does not run a branch's desk"},
+		{role: "librarian", method: "POST", path: "/api/desk/overdue/remind", want: []int{400}, note: "a reminder naming no loans is refused"},
+		{role: "", method: "POST", path: "/api/notifications/seen", want: []int{401}, note: "marking read needs a session"},
 	}
 }
 

@@ -71,6 +71,7 @@ func main() {
 		&models.TextbookRequest{},
 		&models.TextbookRequestLine{},
 		&models.TextbookMovement{},
+		&models.Notification{},
 	)
 	// 2b. Catalog integrity constraints that AutoMigrate cannot express.
 	//

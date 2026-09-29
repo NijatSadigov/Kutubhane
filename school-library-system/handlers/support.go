@@ -511,6 +511,20 @@ func appendTicketReply(c *fiber.Ctx, t *models.Ticket, uid uint, fromAdmin bool)
 	}
 	database.DB.Save(t)
 
+	// Tell the other side. This is the one place both reply handlers pass
+	// through, so hooking it here covers branch → administration and
+	// administration → branch without either handler knowing about it.
+	//
+	// "The administration" is a role, not a person, so a reply from the branch
+	// fans out to every manager of the school.
+	params := map[string]any{"subject": t.Subject}
+	if fromAdmin {
+		notify(t.AuthorID, models.NotifyTicketReply, models.NotifySubjectTicket, t.ID, params)
+	} else {
+		notifyMany(schoolAdministrators(t.SchoolID),
+			models.NotifyTicketReply, models.NotifySubjectTicket, t.ID, params)
+	}
+
 	return c.JSON(reply)
 }
 

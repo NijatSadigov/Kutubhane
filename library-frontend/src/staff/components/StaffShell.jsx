@@ -22,12 +22,28 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { AuthContext } from '../../context/AuthContext';
 import { useTranslation } from '../../i18n/LanguageContext';
-import { shell, ink, radius, font, roleOf, SIDEBAR_WIDTH } from '../theme';
+import { shell, ink, radius, font, danger, roleOf, SIDEBAR_WIDTH } from '../theme';
+import NotificationBell from '../../components/NotificationBell';
 import { useSchoolLabel } from '../../mrb/useSchoolLabel';
 import ProfileModal from '../../pages/ProfileModal';
 import {
   visibleDomains, visibleScreens, domainPath, screenPath, domainBadge, locate,
 } from '../nav';
+
+// The bell sits on the white top bar, so it takes the console's own greys
+// rather than the sidebar's deep blue.
+const BELL = {
+  border: shell.border,
+  hoverBg: shell.canvas,
+  text: ink.text,
+  dim: ink.dim,
+  dot: danger.base,
+  dotRing: '#fff',
+  panelBorder: shell.border,
+  panelText: ink.text,
+  unreadBg: shell.rowSelected,
+  radius: radius.card,
+};
 import '../../mrb/responsive.css';
 
 export default function StaffShell({ children }) {
@@ -230,6 +246,8 @@ export default function StaffShell({ children }) {
               }}
             />
           </form>
+
+          <NotificationBell role={role} palette={BELL} />
 
           <span style={{
             background: theme.chip[0], color: theme.chip[1], borderRadius: 999,

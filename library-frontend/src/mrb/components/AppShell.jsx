@@ -8,22 +8,39 @@ import { useContext, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { AuthContext } from '../../context/AuthContext';
-import { brand, slate, danger, font, layout } from '../theme';
+import { brand, slate, danger, font, layout, radius } from '../theme';
 import { streakFromLogs } from '../streak';
 import AccountMenu from './AccountMenu';
+import NotificationBell from '../../components/NotificationBell';
 import SiteHeader from './SiteHeader';
 import { useSchoolLabel } from '../useSchoolLabel';
 import api from '../../api/axios';
 import '../responsive.css';
 
+// The reader's header is white on #F8FAFC, so the bell takes the app's own
+// slates and the logo red for the unread count.
+const BELL = {
+  border: slate.border,
+  hoverBg: slate.surface,
+  text: slate.text,
+  dim: slate.dim,
+  dot: brand.red,
+  dotRing: '#fff',
+  panelBorder: slate.border,
+  panelText: slate.text,
+  unreadBg: brand.tint50,
+  radius: radius.smallCard,
+};
+
 export default function AppShell({ children }) {
   const loc = useLocation();
+  const { user } = useContext(AuthContext);
 
   return (
     <div style={{ minHeight: '100vh', background: slate.bg, fontFamily: font.ui, color: slate.text }}>
       <SiteHeader
         schoolPill={<SchoolPill />}
-        tail={<><StreakPill /><AccountMenu /></>}
+        tail={<><StreakPill /><NotificationBell role={user?.role} palette={BELL} /><AccountMenu /></>}
       />
 
       {/* Every app screen in the prototype uses the same 1360px main at

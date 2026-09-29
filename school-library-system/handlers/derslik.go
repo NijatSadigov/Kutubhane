@@ -481,6 +481,11 @@ func HandleTextbookRequest(c *fiber.Ctx) error {
 	if d := parseDay(req.PickupOn); !d.IsZero() {
 		updates["pickup_on"] = d
 	}
+	// Whether this save is the moment the request *becomes* ready, as opposed
+	// to a save that leaves it ready. The teacher is told once; a librarian
+	// correcting a desk note afterwards must not nudge them again.
+	becameReady := req.Status == models.ReqReady && tr.Status != models.ReqReady
+
 	if req.Status == models.ReqReady {
 		now := time.Now()
 		updates["ready_at"] = now
@@ -488,6 +493,12 @@ func HandleTextbookRequest(c *fiber.Ctx) error {
 	database.DB.Model(&tr).Updates(updates)
 
 	database.DB.Preload("Lines.Textbook.Subject").Preload("Classroom").First(&tr, tr.ID)
+
+	if becameReady {
+		notify(tr.TeacherID, models.NotifyTextbookReady, models.NotifySubjectTextbookRequest, tr.ID,
+			map[string]any{"class": tr.Classroom.Label(), "titles": len(tr.Lines)})
+	}
+
 	return c.JSON(requestViews([]models.TextbookRequest{tr})[0])
 }
 

@@ -172,6 +172,16 @@ func Setup(app *fiber.App) {
 	// Circulation desk: KPIs, today's counter activity and the overdue list.
 	api.Get("/desk/summary", middleware.IsLibrarian, handlers.GetDeskSummary)
 
+	// The desk's "send a reminder" on an overdue row. A deliberate human
+	// action rather than a nightly sweep, so it is a write the librarian makes.
+	api.Post("/desk/overdue/remind", middleware.IsLibrarian, handlers.RemindOverdue)
+
+	// Notifications. Deliberately not role-guarded: the recipients span
+	// students, teachers, librarians and managers, and the scope is always the
+	// caller's own user id rather than anything in the request.
+	api.Get("/notifications", handlers.GetNotifications)
+	api.Post("/notifications/seen", handlers.MarkNotificationsSeen)
+
 	// Registration tokens (invite links)
 	api.Get("/registration-tokens", middleware.IsLibrarian, handlers.GetRegistrationTokens)
 	api.Post("/registration-tokens", middleware.IsLibrarian, handlers.CreateRegistrationToken)

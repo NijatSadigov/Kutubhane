@@ -5,8 +5,12 @@
 // screen's `loans` and `overdue` tabs merge here, with its tab control demoted
 // to a filter — Hamısı / Gecikmiş — over one list. Nothing from either tab is
 // lost: the 44px rows, the amber → orange → coral day count, the 18px
-// checkboxes and bulk bar, the honest "no notification channel yet" note and
-// the change-due-date action all carry over.
+// checkboxes and bulk bar and the change-due-date action all carry over.
+//
+// The bulk bar's "send a reminder" used to be a button that said reminders
+// would work once a notification channel existed, with a note underneath
+// saying so. The channel exists now, so both the note and the apology are
+// gone and the button posts to `/desk/overdue/remind`.
 //
 // The two views need different columns (only the overdue one has a checkbox and
 // a day count), so the filter picks the column set as well as the rows.
@@ -16,7 +20,7 @@ import api from '../../api/axios';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { fmtDate } from '../../i18n/dates';
 import { shell, ink, radius, font, overdueColors, scrollRowStyle } from '../theme';
-import { Pill, Btn, Mono, Alert } from '../components/StaffShell';
+import { Pill, Btn, Mono } from '../components/StaffShell';
 import { ScrollTable } from '../components/StaffTable';
 import { Toast, DueDateDialog } from './deskShared';
 
@@ -30,6 +34,7 @@ export default function Loans() {
   const [overdue, setOverdue] = useState([]);
   const [editing, setEditing] = useState(null);
   const [selected, setSelected] = useState({});
+  const [sending, setSending] = useState(false);
   const [toast, setToast] = useState('');
 
   const say = (m) => { setToast(m); setTimeout(() => setToast(''), 2600); };
@@ -54,6 +59,23 @@ export default function Loans() {
     () => Object.keys(selected).filter((k) => selected[k]),
     [selected],
   );
+
+  // Sending a reminder is a deliberate act by the librarian, not a nightly
+  // sweep — which is also why sending twice is allowed. The desk's list can be
+  // minutes stale, so the endpoint re-checks each loan and answers with how
+  // many it actually sent; a reader who returned their book this morning is
+  // skipped rather than told off.
+  const remind = () => {
+    setSending(true);
+    api.post('/desk/overdue/remind', { loan_ids: selectedIds.map(Number) })
+      .then((r) => {
+        const n = Number(r.data?.sent || 0);
+        say(n > 0 ? t('staff.overdue.remindSent', { n }) : t('staff.overdue.remindNone'));
+        if (n > 0) setSelected({});
+      })
+      .catch(() => say(t('msg.opFailed')))
+      .finally(() => setSending(false));
+  };
 
   return (
     <>
@@ -124,18 +146,13 @@ export default function Loans() {
             </span>
             <span style={{ flex: 1 }} />
             <Btn
-              disabled={selectedIds.length === 0}
-              onClick={() => say(t('staff.overdue.remindSoon'))}
+              disabled={selectedIds.length === 0 || sending}
+              onClick={remind}
             >{t('staff.overdue.remind')}</Btn>
             <Btn kind="secondary" disabled={selectedIds.length === 0} onClick={() => setSelected({})}>
               {t('staff.overdue.clear')}
             </Btn>
           </div>
-
-          {/* Reminders need a notification channel, which nothing in this
-              system has yet. Saying so beats a button that quietly does
-              nothing. */}
-          <Alert tone="approval">{t('staff.overdue.noNotifications')}</Alert>
 
           <ScrollTable
             min={820} columns={OD_COLS}

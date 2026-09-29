@@ -1,4 +1,4 @@
-# Session handoff — 2026-09-28
+# Session handoff — 2026-09-29
 
 Read this first, then `TODO.md` for the checklist. `ROADMAP.md` has the
 reasoning and a dated log; `PROJECT_BRIEF.md` describes the system for someone
@@ -6,18 +6,21 @@ who has never seen it.
 
 ---
 
-## ⚠️ Committed but unpushed — do this first
+## The remote
 
-The working tree is clean and there **is** a remote, contrary to what this file
-used to say: `origin` is `github.com/NijatSadigov/Kutubhane.git`, reachable,
-and `backend-dynamic-categories` already tracks it. It is simply **16 commits
-behind**:
+`origin` is `github.com/NijatSadigov/Kutubhane.git`, reachable, and
+`backend-dynamic-categories` tracks it. **It is in sync as of 2026-09-29.**
+
+A note on counting, because this file got it wrong once: it claimed 16 commits
+were unpushed when only 2 were. The other 14 had already reached `origin` and
+the local `origin/...` ref was stale. **`git fetch` before believing a number
+like that**, including one written here:
 
 ```bash
-git push origin backend-dynamic-categories
+git fetch origin && git log origin/backend-dynamic-categories..HEAD --oneline
 ```
 
-Two things found while checking it was safe to push:
+Two things found while checking it was safe to push, both still true:
 
 - **The repository is public** (`"visibility": "public"`). Worth a conscious
   decision for a product being sold.
@@ -47,6 +50,10 @@ cd library-frontend && npm run dev
 Postgres must be up: db `school_library`, user `postgres`, password `2334`.
 Backend :8000 (override with `PORT`), frontend :5180.
 
+Both are also in `.claude/launch.json` now (`school-library-backend` and
+`library-frontend`), so a Claude Code session starts them through its own
+preview tooling rather than backgrounding a shell.
+
 **Logins**, all password `Test1234`:
 
 | Who | Email |
@@ -74,10 +81,15 @@ cd school-library-system && go test ./... && go run ./cmd/apiaudit -writes
 cd library-frontend && npm run build && npx eslint src/mrb src/staff src/i18n
 ```
 
-Last run: 23 Go tests, **207 API checks across 5 roles**, build clean,
+Last run: 23 Go tests, **224 API checks across 5 roles**, build clean,
 `src/mrb` + `src/staff` + `src/i18n` lint clean. (`npx eslint src` reports 12
 errors, all pre-existing in the manager/admin/student dashboards and shared
 components — down from ~20 since the librarian's dashboard was deleted.)
+
+The audit count is deterministic: every `add()` in `cmd/apiaudit` is
+unconditional, so it does not drift with the data. This file said 207 when the
+suite really ran 213 — the number was simply stale, and two runs against
+different data confirmed it. If it disagrees, something changed.
 
 Three further suites live in the session scratchpad rather than the repo, and
 are worth recreating if you touch what they cover: the dərslik cycle end to end
@@ -113,11 +125,68 @@ was exercised without touching real data.
 | `school-library-system/handlers/school.go` | the school's structure: years, subjects, classrooms, teachers, the lean student list |
 | `school-library-system/handlers/derslik.go` | the textbook catalogue, the request cycle, what a class holds |
 | `tools/seed_derslik.py` | re-runnable demo data for the dərslik system |
+| `school-library-system/models/notification.go` | the notification row — facts, never a sentence |
+| `school-library-system/handlers/notifications.go` | `notify()`, the bell's two endpoints, and the overdue reminder |
+| `library-frontend/src/notifications.js` | what a notification *says* and where it links — one place, both shells |
+| `library-frontend/src/components/NotificationBell.jsx` | the bell itself; one implementation, a palette per shell |
 | `library-frontend/src/home.js` | one place deciding where each role lands after login |
 | `library-frontend/src/i18n/dates.js` | language-aware dates — see the Intl warning below |
 | `Hedef Kutuphane clickable prototype (1)/` | **the design**, untracked |
 
 ---
+
+## What the 2026-09-29 session did
+
+**Notifications** — the one missing reason three separate features were each
+incomplete. One `Notification` table keyed on `UserID`, three producers, a bell
+in each shell.
+
+The decision that shaped everything: **the row stores facts, not sentences.**
+A `kind` plus a JSON `params` bag; `src/notifications.js` builds the sentence
+from the same i18n file as the rest of the app. That buys three things — a
+reader who switches language sees the notification in the new one rather than
+whatever was frozen at write time, no Azerbaijani goes anywhere near a Go
+string literal (see the UTF-8 trap below), and the strings stay in the one file
+that already holds them. The cost is that a notification can only say what the
+i18n file anticipates, which is fine for three fixed kinds.
+
+| Kind | Fires | Goes to |
+|---|---|---|
+| `TEXTBOOK_READY` | `UpdateTextbookRequest`, on the **transition** into READY | the teacher who raised it |
+| `TICKET_REPLY` | `appendTicketReply` — the one choke point both reply handlers pass through | the *other* side |
+| `LOAN_OVERDUE` | `POST /desk/overdue/remind`, the desk's button | the reader |
+
+Three things worth keeping in mind. READY fires on the transition, not the
+state, so a librarian editing a desk note afterwards does not nudge the teacher
+again. "The administration" is a role rather than a person, so a reply from the
+branch fans out to every `Manager` of the school — a platform admin has no
+school and is deliberately left out, matching how the ticket queue already
+scopes them. And the reminder is a *human* action, not a nightly sweep, which
+is why sending twice is allowed and why there is no scheduler.
+
+`GET /notifications` and `POST /notifications/seen` sit on the plain
+authenticated group with **no role guard** — that is what lets one endpoint
+serve a student, a teacher, a librarian and a manager. Scope is always the
+caller's own user id and cannot be widened by a query parameter.
+
+The bell lives in each shell's header and is **not** a nav entry, so
+`staff/nav.js` was not touched. It links only to screens that table already
+defines. Polling rather than sockets, following the lazy-sweep idiom this
+codebase already uses: on mount, on navigation, and every 60s while the tab is
+visible.
+
+### Two bugs this turned up, both the shapes this file warns about
+
+- **The manager's notification called a ticket theirs.** One i18n key serves
+  both ends of the thread, and it read "Müraciət**inizə** yeni cavab" — *your*
+  ticket. For the librarian who raised it that is right; for the administration
+  answering their queue it is wrong. It is neutral now ("Müraciətə"). Invisible
+  from the code, and it looked perfectly correct until I logged in as the other
+  side.
+- **The staff top bar wraps at 1024px** and puts the role chip on a second row.
+  I nearly took the blame for it — hiding the bell with `display:none` and
+  re-measuring showed the height was identical either way. **Pre-existing, not
+  the bell.** Worth checking that way before "fixing" a layout.
 
 ## What the 2026-09-28 session did
 
@@ -225,7 +294,10 @@ and look.**
   formats it `"M09 27, Sun"`. Month and weekday names are tabulated by hand in
   `src/i18n/dates.js`. Do not "simplify" that file back to `Intl`.
 - **`gofmt -w .` reformats the whole repo**, which is not gofmt-clean. Format
-  only the files you touched.
+  only the files you touched. As of 2026-09-29 exactly **two** files are
+  non-gofmt — `handlers/admin.go` and `handlers/regtoken.go` — not the four
+  this file used to claim. `gofmt -l .` is the check; it should print those two
+  and nothing else.
 - The Windows console cannot print `ə`; use `PYTHONIOENCODING=utf-8`.
 - The browser pane's screenshots often fail with a render timeout and its
   console buffer keeps **stale** errors with old `?t=` timestamps. Prefer

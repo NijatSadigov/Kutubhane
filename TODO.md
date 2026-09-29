@@ -34,8 +34,12 @@ demo activity and takes `BASE` to choose which server.
 cd library-frontend && npm run build && npx eslint src/mrb src/staff
 ```
 
-Last run: 23 Go tests pass, **207 API checks across 5 roles**, 33/33
+Last run: 23 Go tests pass, **224 API checks across 5 roles**, 33/33
 loan-lifecycle checks pass, build and lint clean.
+
+The audit's count is deterministic — every `add()` in `cmd/apiaudit` is
+unconditional, so two runs against different data still agree. If it disagrees
+with this number, something changed; it is not drift.
 
 **Where things live.** `library-frontend/src/mrb/` is the new myredbookshelf UI
 (`/` landing, `/app/*` reader app). The old role dashboards are still at
@@ -48,13 +52,13 @@ loan-lifecycle checks pass, build and lint clean.
 Nothing here is blocking; pick by what the buyer will feel. A suggested order,
 with the reasoning:
 
-- [ ] **Push.** 16 commits sit only on this disk. See `HANDOFF.md`
+- [x] **Push.** Done 2026-09-28. Only 2 commits were actually outstanding —
+      15 of the "16" had already reached `origin` in the previous session, so
+      fetch first before believing a count like this one
 
-- [ ] **Notifications.** Three features are each incomplete for this one
-      missing reason: a textbook request going *Hazırdır*, a ticket reply, and
-      an overdue reminder all rely on somebody refreshing. The overdue screen
-      already says so on screen rather than pretending. Doing this finishes
-      three things at once and is the largest single win left
+- [x] **Notifications.** Done 2026-09-29. One `Notification` table keyed on
+      `UserID`, three producers, one bell in each shell. See `HANDOFF.md` for
+      the shape and the one decision that drove it
 
 - [ ] **End-of-year "return the whole set".** Collecting a class set is one
       dialog per title today — eight presses for 4-A. An hour's work that a
@@ -156,7 +160,12 @@ with the reasoning:
       your own school; under-16 protections; no DMs
 - [ ] **Battles & alliances**: head-to-head, per-field sharing toggles, audit log
 - [ ] **Book clubs**: club, membership, threads, posts
-- [ ] **Notifications**: nothing exists today
+- [ ] **Notifications beyond the three kinds that exist.** The table and the
+      bell are built; what is not built is a *channel out of the app* (e-mail
+      or SMS), a per-user preference for which kinds you want, and automatic
+      overdue reminders. The last one was deliberately left out: reminders are
+      a librarian's decision today, and a nightly sweep needs a per-day dedupe
+      key because this codebase has no scheduler and sweeps lazily on read
 - [ ] **Dərslik** (classroom textbooks): `Class`, `Subject`, `AcademicYear`,
       bulk issue at year start, bulk return at year end, mid-year joiners and
       leavers, damaged and lost, kept out of the borrow limit
@@ -183,9 +192,48 @@ with the reasoning:
 - [ ] Azerbaijani strings are AI-translated, never reviewed by a native speaker
 - [ ] `Staff Console.dc.html` freezes when opened as a prototype — read the
       source as the spec
-- [ ] Nothing pushed to a remote; single machine, no backup
+- [ ] **A manager gets notifications they cannot see from where they land.**
+      They receive `TICKET_REPLY`, but `homePathFor()` sends them to
+      `/manager` — the *old* dashboard, which has no bell. The bell is only in
+      the two new shells. They do see it the moment they enter `/staff`, and
+      answering tickets already happens there, so it is a rough edge rather
+      than a broken feature. It closes by itself when the manager dashboard is
+      retired; until then the alternative is instrumenting a screen that is
+      being deleted
 
 ## Done
+
+- [x] **Notifications**, and with them the three features that were each
+      incomplete for the one missing reason. One `Notification` table keyed on
+      `UserID` — which works because all three consumers already address a
+      user: `Loan.StudentID` references `Student.UserID`, and
+      `TextbookRequest.TeacherID` and `Ticket.AuthorID` are user ids too.
+
+      **The row stores facts, not sentences.** A `kind` and a JSON `params`
+      bag; the sentence is built in `src/notifications.js` from the same i18n
+      file as everything else. So a reader who switches language sees the
+      notification in the new one instead of whatever was frozen at write
+      time, and no Azerbaijani ever goes near a Go string literal. Verified by
+      switching AZ → EN with a notification on screen and watching the same
+      stored row re-render.
+
+      Three producers. A textbook request fires on the *transition* into
+      `READY`, not the state, so a librarian editing a desk note afterwards
+      does not nudge the teacher twice. A ticket reply hooks
+      `appendTicketReply`, the one choke point both reply handlers pass
+      through, and fans out to every `Manager` of the school when the branch
+      is the one replying — "the administration" is a role, not a person.
+      An overdue reminder is the desk's button made real
+      (`POST /desk/overdue/remind`), deliberately human rather than a nightly
+      sweep, which is also why sending twice is allowed.
+
+      The bell is in both shells' headers and is **not** a nav entry, so
+      `staff/nav.js` was not touched. Polling, not sockets: on mount, on
+      navigation, and every 60s while the tab is visible.
+
+      `staff.overdue.noNotifications` — the honest "reminders are not possible
+      yet" alert — is gone from all three languages, because it stopped being
+      true.
 
 - [x] **A `teacher` role**, with the dərslik system it exists for. Scoped like a
       librarian — one branch, one school — admitted to `/staff` by an
