@@ -22,6 +22,8 @@ export default function Textbooks() {
   const [subjects, setSubjects] = useState([]);
   const [grade, setGrade] = useState('');
   const [q, setQ] = useState('');
+  const [view, setView] = useState('list'); // 'list' | 'subjects'
+  const [openSubject, setOpenSubject] = useState(null);
   const [editing, setEditing] = useState(null);
   const [toast, setToast] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
@@ -41,16 +43,58 @@ export default function Textbooks() {
     [books],
   );
 
+  // Everything printed on a row, plus the things a librarian knows about a
+  // title that the row has no column for — its publisher, its ISBN, the year
+  // and the language. Searching only title/author/subject meant the two
+  // questions asked most at a desk with a delivery note in hand, "did we order
+  // the Çaşıoğlu one?" and "is this ISBN already in?", had no answer here.
+  //
+  // The state words come from the same i18n keys the row renders, so a search
+  // matches what is on screen and follows the language.
+  const haystack = useCallback((b) => [
+    b.title, b.author, b.subject?.name, b.publisher, b.isbn, b.language,
+    b.year, b.grade,
+    t('staff.tb.gradeN', { n: b.grade }),
+    b.issued_copies > 0 ? t('staff.tb.out') : '',
+    b.written_off_copies > 0 ? [t('staff.tb.lost'), t('staff.tb.writtenOff')].join(' ') : '',
+    b.available_copies > 0 ? t('staff.tb.freeN', { n: '' }) : '',
+  ].filter(Boolean).join(' ').toLowerCase(), [t]);
+
+  // Terms are ANDed, so "riyaziyyat 5" narrows twice rather than widening.
   const shown = useMemo(() => {
-    const term = q.trim().toLowerCase();
+    const terms = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
     return books.filter((b) => {
       if (grade && String(b.grade) !== String(grade)) return false;
-      if (!term) return true;
-      return (b.title || '').toLowerCase().includes(term)
-        || (b.author || '').toLowerCase().includes(term)
-        || (b.subject?.name || '').toLowerCase().includes(term);
+      if (terms.length === 0) return true;
+      const hay = haystack(b);
+      return terms.every((term) => hay.includes(term));
     });
-  }, [books, grade, q]);
+  }, [books, grade, q, haystack]);
+
+  // The same titles grouped by the thing a dərslik is actually organised by.
+  // Built from the *filtered* list, so the grade chips and the search narrow
+  // the cards too rather than letting the two views disagree.
+  //
+  // A title with no subject gets its own card rather than vanishing — an
+  // uncatalogued textbook is usually exactly the one being looked for.
+  const subjectCards = useMemo(() => {
+    const by = new Map();
+    shown.forEach((b) => {
+      const key = b.subject?.name || '';
+      const card = by.get(key)
+        || { key, label: key, books: [], stock: 0, out: 0, lost: 0 };
+      card.books.push(b);
+      card.stock += b.total_copies || 0;
+      card.out += b.issued_copies || 0;
+      card.lost += b.written_off_copies || 0;
+      by.set(key, card);
+    });
+    return [...by.values()].sort((a, b) => {
+      if (!a.key) return 1;
+      if (!b.key) return -1;
+      return a.key.localeCompare(b.key);
+    });
+  }, [shown]);
 
   const totals = useMemo(() => books.reduce((a, b) => ({
     titles: a.titles + 1,
@@ -82,11 +126,32 @@ export default function Textbooks() {
             </GradeChip>
           ))}
         </div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {[['list', t('staff.mem.viewList')], ['subjects', t('staff.tb.viewSubjects')]].map(([v, label]) => {
+            const on = view === v;
+            return (
+              <button key={v} onClick={() => { setView(v); setOpenSubject(null); }} style={{
+                background: on ? '#082F49' : '#fff', color: on ? '#fff' : ink.body,
+                border: '1px solid ' + (on ? '#082F49' : shell.control),
+                borderRadius: radius.control, padding: '8px 14px',
+                fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font.ui,
+              }}>{label}</button>
+            );
+          })}
+        </div>
         <Btn onClick={() => setEditing({})} style={{ padding: '9px 14px' }}>
           {t('staff.tb.add')}
         </Btn>
       </div>
 
+      {view === 'subjects' && (
+        <SubjectCards
+          cards={subjectCards} openSubject={openSubject} setOpenSubject={setOpenSubject}
+          onEdit={setEditing} t={t}
+        />
+      )}
+
+      {view === 'list' && (
       <ScrollTable
         min={880} columns={COLS}
         head={[t('staff.col.book'), t('staff.tb.subject'), t('staff.tb.grade'),
@@ -125,6 +190,7 @@ export default function Textbooks() {
           </div>
         ))}
       </ScrollTable>
+      )}
 
       {editing && (
         <TextbookDialog
@@ -147,6 +213,117 @@ function GradeChip({ on, children, ...rest }) {
       borderRadius: 999, padding: '6px 12px', fontSize: 12, fontWeight: 700,
       cursor: 'pointer', fontFamily: font.ui, whiteSpace: 'nowrap',
     }}>{children}</button>
+  );
+}
+
+/* ------------------------------------------ the catalogue, subject by subject */
+
+// The same titles seen as subjects rather than as one long list — the shape a
+// dərslik catalogue is actually organised by, and the one a librarian thinks
+// in when a delivery arrives for Riyaziyyat.
+//
+// A card answers the three questions about a subject at once: how many titles,
+// how many copies exist, and how many are out with classes. Opening one lists
+// its titles with the same edit action the table has, so nothing is reachable
+// from one view and not the other.
+function SubjectCards({ cards, openSubject, setOpenSubject, onEdit, t }) {
+  if (cards.length === 0) {
+    return (
+      <div style={{
+        background: '#fff', border: '1px solid ' + shell.border, borderRadius: radius.card,
+        padding: 28, textAlign: 'center', fontSize: 13, color: ink.dim,
+      }}>{t('staff.tb.none')}</div>
+    );
+  }
+
+  const open = cards.find((c) => c.key === openSubject);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{
+        display: 'grid', gap: 12,
+        gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
+      }}>
+        {cards.map((c) => {
+          const on = c.key === openSubject;
+          return (
+            <button
+              key={c.key || 'nosubject'}
+              onClick={() => setOpenSubject(on ? null : c.key)}
+              style={{
+                textAlign: 'left', cursor: 'pointer', font: 'inherit',
+                background: on ? '#082F49' : '#fff',
+                color: on ? '#fff' : ink.text,
+                border: '1px solid ' + (on ? '#082F49' : shell.border),
+                borderRadius: radius.card, padding: '14px 16px',
+                display: 'flex', flexDirection: 'column', gap: 6,
+              }}
+            >
+              <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.01em' }}>
+                {c.label || t('staff.tb.cardNoSubject')}
+              </span>
+              <span style={{ fontSize: 12, color: on ? '#BAE6FD' : ink.dim }}>
+                {t('staff.tb.cardTitles', { n: c.books.length })}
+                {' · '}
+                {t('staff.tb.cardStock', { n: c.stock })}
+              </span>
+              <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                <Pill colors={pill(c.out ? 'out' : 'available')}>
+                  {t('staff.tb.cardOut', { n: c.out })}
+                </Pill>
+                {c.lost > 0 && (
+                  <Pill colors={pill('overdue')}>{t('staff.tb.cardLost', { n: c.lost })}</Pill>
+                )}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {open && (
+        <div style={{
+          background: '#fff', border: '1px solid ' + shell.border,
+          borderRadius: radius.card, overflow: 'hidden',
+        }}>
+          <div style={{
+            padding: '10px 16px', background: shell.headerBg,
+            borderBottom: '1px solid ' + shell.border, fontSize: 13, fontWeight: 800,
+          }}>
+            {open.label || t('staff.tb.cardNoSubject')}
+            <span style={{ fontWeight: 600, color: ink.dim }}>
+              {' · '}{t('staff.tb.cardTitles', { n: open.books.length })}
+            </span>
+          </div>
+          {open.books.map((b) => (
+            <div key={b.id} style={{
+              display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+              padding: '10px 16px', borderBottom: '1px solid ' + shell.rowLine,
+              fontSize: 13, minHeight: 44,
+            }}>
+              <span style={{ flex: '1 1 200px', minWidth: 0 }}>
+                <strong style={{
+                  display: 'block', overflow: 'hidden',
+                  textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{b.title}</strong>
+                <span style={{ fontSize: 11, color: ink.dim }}>
+                  {[t('staff.tb.gradeN', { n: b.grade }), b.author].filter(Boolean).join(' · ')}
+                </span>
+              </span>
+              <span style={{ color: ink.dim, fontSize: 12 }}>
+                {t('staff.tb.freeN', { n: b.available_copies })}
+              </span>
+              {b.issued_copies > 0 && (
+                <Pill colors={pill('out')}>{b.issued_copies}</Pill>
+              )}
+              {b.written_off_copies > 0 && (
+                <Pill colors={pill('overdue')}>{b.written_off_copies}</Pill>
+              )}
+              <Btn kind="secondary" onClick={() => onEdit(b)}>{t('common.edit')}</Btn>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

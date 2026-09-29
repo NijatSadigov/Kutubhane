@@ -46,19 +46,34 @@ export default function Members() {
   // have no answer on this screen.
   //
   // Terms are ANDed, so "7-a gecikmiş" narrows twice rather than widening.
-  const haystack = useCallback((s) => [
-    s.name,
-    s.email,
-    s.classroom_label,
-    s.grade ? `${s.grade}-${s.class_group || ''}` : '',
-    s.grade,
-    s.class_group,
-    s.status,
-    ...(s.loans || []).filter((l) => !l.return_date).flatMap((l) => [
-      l.book_copy?.book?.title,
-      l.book_copy?.tracking_number,
-    ]),
-  ].filter(Boolean).join(' ').toLowerCase(), []);
+  // The state words come from the same i18n keys the pills render from, so
+  // searching matches what is actually on the row and follows the language
+  // rather than freezing one spelling of "late" into the code. All three ways
+  // the console words it are included — "Gecikib" on a pill, "{n} gün
+  // gecikib" on a desk row, "{n} gecikmiş" on a class card — because a
+  // librarian types the word they just read, and they are not the same word.
+  const haystack = useCallback((s) => {
+    const open = (s.loans || []).filter((l) => !l.return_date);
+    const late = open.some((l) => l.due_date && new Date(l.due_date) < new Date());
+    const state = late
+      ? [t('staff.pill.overdue'), t('staff.desk.overdueDays', { n: '' }), t('staff.mem.cardLate', { n: '' })]
+      : [open.length ? t('staff.pill.onLoan') : t('staff.mem.clear')];
+
+    return [
+      s.name,
+      s.email,
+      s.classroom_label,
+      s.grade ? `${s.grade}-${s.class_group || ''}` : '',
+      s.grade,
+      s.class_group,
+      s.status,
+      ...state,
+      ...open.flatMap((l) => [
+        l.book_copy?.book?.title,
+        l.book_copy?.tracking_number,
+      ]),
+    ].filter(Boolean).join(' ').toLowerCase();
+  }, [t]);
 
   const shown = useMemo(() => {
     const terms = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
