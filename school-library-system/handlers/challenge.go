@@ -130,15 +130,20 @@ func GetChallenge(c *fiber.Ctx) error {
 	// Reviews exist now, and posting one ticks this step — see
 	// markChallengeReviewed in review.go.
 	summary["review_step_available"] = true
+	// Whether this reader may write a question of their own for it.
+	summary["quiz_open_submissions"] = ch.QuizOpenSubmissions
 	return c.JSON(summary)
 }
 
 func challengeSummary(ch models.Challenge, uid uint) fiber.Map {
 	now := time.Now()
 	state := "active"
-	if now.Before(ch.StartsAt) {
+	// A zero date means "not set", not "the year one" — the same trap the join
+	// check fell into. A project created without dates was described to every
+	// reader as finished.
+	if !ch.StartsAt.IsZero() && now.Before(ch.StartsAt) {
 		state = "upcoming"
-	} else if now.After(ch.EndsAt) {
+	} else if !ch.EndsAt.IsZero() && now.After(ch.EndsAt) {
 		state = "finished"
 	}
 
@@ -192,8 +197,11 @@ func challengeSummary(ch models.Challenge, uid uint) fiber.Map {
 	return fiber.Map{
 		"id": ch.ID, "title": ch.Title, "description": ch.Description,
 		"scope": ch.Scope, "prizes": ch.Prizes,
-		"starts_at": ch.StartsAt, "ends_at": ch.EndsAt,
-		"state": state, "days_left": int(ch.EndsAt.Sub(now).Hours() / 24),
+		// A date that was never set goes out as null rather than as the zero
+		// time, which every screen was rendering as "01.01.1". Same for the
+		// countdown: a campaign with no end has no days left, it just runs.
+		"starts_at": nilIfZero(ch.StartsAt), "ends_at": nilIfZero(ch.EndsAt),
+		"state": state, "days_left": daysLeft(ch.EndsAt, now),
 		"participants": participants, "joined": joined > 0,
 		"book_count": len(ch.Books), "covers": covers,
 		"points": pointsFor(ch.ID, uid), "max_points": maxPoints,

@@ -291,10 +291,14 @@ with the reasoning:
       right before approving — a good question with the wrong answer marked is
       worth keeping.
 
-      Still to do on the reader's side: the screen for **writing** a suggestion.
-      The endpoint (`POST /challenges/:id/suggest`) and the whole review queue
-      exist and are exercised, but the reader app has no form for it yet, so
-      today a suggestion can only arrive through the API.
+      The reader's side is built too: a `+ Sual təklif et` link on each book of
+      a challenge they have joined, when the library has opened suggestions.
+      The form says plainly that a librarian approves it before anybody is
+      asked it, because somebody who writes a question and never sees it again
+      would reasonably think it had been lost. The quiz modal now shows the
+      clock and says "one go" *before* they start rather than after, and the
+      "try again" button is gone — the server refuses a second attempt, so the
+      button was an offer that could not be kept.
 
       **A target group** (buyer, 2026-09-29). `Audience` is one of SCHOOL,
       BRANCHES, CLASSES or SCHOOLS, with a join table behind each of the last

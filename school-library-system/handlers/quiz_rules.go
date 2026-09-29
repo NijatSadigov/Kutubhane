@@ -103,3 +103,22 @@ func secondsLeft(s models.QuizSession, secondsPerQuestion, questions int) int {
 // slow connection spends carrying the answers back. The limit is there to stop
 // somebody looking the answers up, not to punish bad wifi.
 const quizGraceSeconds = 15
+
+// nilIfZero sends an unset date out as null rather than as the zero time.
+// Every screen was rendering that zero as "01.01.1", which reads like a bug
+// because it is one.
+func nilIfZero(t time.Time) any {
+	if t.IsZero() {
+		return nil
+	}
+	return t
+}
+
+// daysLeft is the countdown, or nil when the campaign has no end date — an
+// open-ended one has no days left, it simply runs.
+func daysLeft(ends time.Time, now time.Time) any {
+	if ends.IsZero() {
+		return nil
+	}
+	return int(ends.Sub(now).Hours() / 24)
+}

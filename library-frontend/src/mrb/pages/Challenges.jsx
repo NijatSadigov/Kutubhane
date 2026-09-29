@@ -38,6 +38,7 @@ export default function Challenges() {
   const [past, setPast] = useState([]);
   const [loading, setLoading] = useState(true);
   const [quiz, setQuiz] = useState(null);
+  const [suggesting, setSuggesting] = useState(null); // {challengeID, book}
   const [toast, setToast] = useState('');
 
   const say = useCallback((m) => { setToast(m); setTimeout(() => setToast(''), 2400); }, []);
@@ -117,7 +118,7 @@ export default function Challenges() {
             <ChallengeDetail
               detail={detail} t={t} say={say} nav={nav}
               onReload={() => { loadDetail(selected); loadList(); }}
-              onQuiz={setQuiz}
+              onQuiz={setQuiz} onSuggest={setSuggesting}
             />
           )}
 
@@ -130,6 +131,12 @@ export default function Challenges() {
           quiz={quiz} t={t} say={say}
           onClose={() => setQuiz(null)}
           onDone={() => { setQuiz(null); loadDetail(selected); loadList(); }}
+        />
+      )}
+      {suggesting && (
+        <SuggestModal
+          target={suggesting} t={t} say={say}
+          onClose={() => setSuggesting(null)}
         />
       )}
       <Toast message={toast} />
@@ -152,6 +159,14 @@ function organiser(ch, t) {
   return school || t('mrb.ch.school');
 }
 
+// The run of dates, or nothing at all when neither was set. Printing the zero
+// time as "01.01.1 – 01.01.1" was how an open-ended campaign looked before.
+function dateRange(ch) {
+  const parts = [ch.starts_at && fmtDate(ch.starts_at), ch.ends_at && fmtDate(ch.ends_at)]
+    .filter(Boolean);
+  return parts.join(' – ');
+}
+
 function stateTone(ch, t) {
   if (ch.state === 'upcoming') {
     return {
@@ -160,6 +175,11 @@ function stateTone(ch, t) {
     };
   }
   if (ch.state === 'finished') return { bg: C.surface, fg: C.dim, label: t('mrb.ch.finished') };
+  // A campaign with no end date has no countdown — it simply runs. Saying
+  // "0 gün qaldı" for one would read as though it were over.
+  if (ch.days_left == null) {
+    return { bg: C.sky100, fg: C.deep, label: t('mrb.ch.running') };
+  }
   const urgent = ch.days_left <= 7;
   return {
     bg: urgent ? C.coralBg : C.sky100, fg: urgent ? C.coralFg : C.deep,
@@ -202,7 +222,7 @@ function ChallengeCard({ ch, active, onClick, t }) {
           ))}
         </div>
         <span style={{ fontSize: 12, color: C.dim }}>
-          {[fmtDate(ch.starts_at), fmtDate(ch.ends_at)].join(' – ')}
+          {dateRange(ch)}
           {' · '}{t('mrb.ch.nReaders', { n: ch.participants })}
         </span>
       </div>
@@ -235,7 +255,7 @@ function Spine({ src, seed, w, h, radius = 3, shadow = '0 2px 4px rgba(15,23,42,
 
 /* ---------------------------------------------------------------- detail */
 
-function ChallengeDetail({ detail, t, say, nav, onReload, onQuiz }) {
+function ChallengeDetail({ detail, t, say, nav, onReload, onQuiz, onSuggest }) {
   const [busy, setBusy] = useState(false);
   const tone = stateTone(detail, t);
 
@@ -301,7 +321,7 @@ function ChallengeDetail({ detail, t, say, nav, onReload, onQuiz }) {
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 13, color: C.slate }}>
             <span style={{ background: C.surface, borderRadius: 8, padding: '5px 10px' }}>
-              {fmtDate(detail.starts_at)} – {fmtDate(detail.ends_at)}
+              {dateRange(detail)}
             </span>
             <span style={{ background: C.surface, borderRadius: 8, padding: '5px 10px' }}>
               {t('mrb.ch.nReaders', { n: detail.participants })}
@@ -356,6 +376,7 @@ function ChallengeDetail({ detail, t, say, nav, onReload, onQuiz }) {
             <BookRow
               key={b.edition_id} b={b} detail={detail} t={t} nav={nav}
               onRead={() => markRead(b.edition_id, true)} onQuiz={() => openQuiz(b)}
+              onSuggest={() => onSuggest({ challengeID: detail.id, book: b })}
             />
           ))}
         </div>
@@ -366,7 +387,7 @@ function ChallengeDetail({ detail, t, say, nav, onReload, onQuiz }) {
   );
 }
 
-function BookRow({ b, detail, t, nav, onRead, onQuiz }) {
+function BookRow({ b, detail, t, nav, onRead, onQuiz, onSuggest }) {
   const open = () => nav(`/app/book/${b.edition_id}`);
   return (
     <div style={{
@@ -412,6 +433,17 @@ function BookRow({ b, detail, t, nav, onRead, onQuiz }) {
             : b.next === 'quiz' ? t('mrb.ch.takeQuiz')
             : t('mrb.writeReview')}
         </Act>
+      )}
+
+      {/* Writing a question for the next reader. Only when the library has
+          opened the quiz to suggestions, and only to somebody taking part —
+          a question about a book you have not read is not much of a question. */}
+      {detail.joined && detail.quiz_open_submissions && (
+        <button onClick={onSuggest} style={{
+          background: 'transparent', border: 0, padding: '6px 0',
+          color: C.brandHi, fontSize: 12, fontWeight: 700,
+          cursor: 'pointer', fontFamily: 'inherit', textAlign: 'right',
+        }}>{t('mrb.ch.suggestQ')}</button>
       )}
     </div>
   );
@@ -603,7 +635,7 @@ function PastChallenges({ past, t }) {
                   padding: '3px 10px', fontWeight: 700,
                 }}>{organiser(pc, t)}</span>
                 <span style={{ color: C.dim }}>
-                  {fmtDate(pc.starts_at)} – {fmtDate(pc.ends_at)}
+                  {dateRange(pc)}
                 </span>
               </div>
 
@@ -668,18 +700,44 @@ function QuizModal({ quiz, t, say, onClose, onDone }) {
   const chosen = q ? answers[q.id] : undefined;
   const last = idx >= qs.length - 1;
 
-  const submit = async () => {
+  // The clock. The server is the one that decides whether time ran out — this
+  // is the reader's view of it, started from what the server said was left, so
+  // reloading the page does not hand out a fresh allowance.
+  const [left, setLeft] = useState(
+    typeof quiz.seconds_left === 'number' ? quiz.seconds_left : -1,
+  );
+  const timed = left >= 0 && !result;
+
+  const submit = useCallback(async (auto) => {
     setBusy(true);
     try {
       const res = await api.post(`/challenges/${quiz.challengeID}/quiz`, {
         edition_id: quiz.book.edition_id, answers,
       });
       setResult(res.data);
-    } catch { say(t('msg.opFailed')); }
-    finally { setBusy(false); }
-  };
+    } catch (e) {
+      const code = e.response?.data?.code;
+      say(code === 'TIME_UP' ? t('mrb.ch.timeUp')
+        : code === 'ALREADY_TAKEN' ? t('mrb.ch.alreadyTaken')
+          : t('msg.opFailed'));
+      if (auto) onClose();
+    } finally { setBusy(false); }
+  }, [answers, quiz, say, t, onClose]);
 
-  const retry = () => { setResult(null); setAnswers({}); setIdx(0); };
+  useEffect(() => {
+    if (!timed) return undefined;
+    if (left === 0) {
+      // Hand it in rather than losing what they answered.
+      submit(true);
+      return undefined;
+    }
+    const id = setTimeout(() => setLeft((n) => n - 1), 1000);
+    return () => clearTimeout(id);
+  }, [timed, left, submit]);
+
+  const clock = left >= 0
+    ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`
+    : null;
 
   return (
     <div onClick={onClose} style={{
@@ -698,11 +756,33 @@ function QuizModal({ quiz, t, say, onClose, onDone }) {
               textTransform: 'uppercase', color: C.brandHi,
             }}>{t('mrb.ch.quizEyebrow')}</div>
             <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700 }}>{quiz.book.title}</div>
+            {/* One go, and how long is left, said before they start rather
+                than discovered at the end. */}
+            <div style={{ fontSize: 12, color: C.mute, marginTop: 2 }}>
+              {[
+                quiz.pool_size > qs.length
+                  ? t('mrb.ch.drawnFrom', { n: qs.length, pool: quiz.pool_size })
+                  : '',
+                t('mrb.ch.oneTryOnly'),
+              ].filter(Boolean).join(' · ')}
+            </div>
           </div>
-          <button onClick={onClose} aria-label={t('common.close')} style={{
-            width: 36, height: 36, borderRadius: '50%', border: '1px solid ' + C.line,
-            background: '#fff', cursor: 'pointer', fontSize: 14, color: C.body, flexShrink: 0,
-          }}>✕</button>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            {clock && !result && (
+              // Under a minute turns coral. The clock is the server's, not the
+              // browser's — this only draws what it was told.
+              <span style={{
+                fontVariantNumeric: 'tabular-nums', fontWeight: 800, fontSize: 18,
+                color: left <= 60 ? C.coralFg : C.deep,
+                background: left <= 60 ? '#FFF1EE' : C.sky100,
+                borderRadius: 999, padding: '5px 12px',
+              }}>{clock}</span>
+            )}
+            <button onClick={onClose} aria-label={t('common.close')} style={{
+              width: 36, height: 36, borderRadius: '50%', border: '1px solid ' + C.line,
+              background: '#fff', cursor: 'pointer', fontSize: 14, color: C.body, flexShrink: 0,
+            }}>✕</button>
+          </span>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -736,14 +816,11 @@ function QuizModal({ quiz, t, say, onClose, onDone }) {
                 ? t('mrb.ch.quizPassedBody', { n: result.points_awarded })
                 : t('mrb.ch.quizFailedBody', { n: quiz.pass_mark, total: result.total })}
             </div>
-            <div style={{ fontSize: 12, color: C.mute }}>{t('mrb.ch.bestKept', { n: result.best })}</div>
+            {/* "Try again" used to be offered here. The quiz is one go now —
+                the server refuses a second submission — so the button was an
+                offer that could not be kept. */}
+            <div style={{ fontSize: 12, color: C.mute }}>{t('mrb.ch.oneTryOnly')}</div>
             <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-              {!result.passed && (
-                <button onClick={retry} style={{
-                  background: '#fff', color: C.deep, border: '1px solid ' + C.sky200, borderRadius: 10,
-                  padding: '10px 18px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                }}>{t('mrb.ch.tryAgain')}</button>
-              )}
               <button onClick={onDone} style={{
                 background: C.brand, color: '#fff', border: 0, borderRadius: 10, padding: '10px 18px',
                 fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
@@ -788,6 +865,138 @@ function QuizModal({ quiz, t, say, onClose, onDone }) {
               }}
             >{last ? t('mrb.ch.finish') : t('mrb.ch.next')}</button>
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------- a reader writing a question */
+
+// A reader proposing a quiz question for the next person to read the book.
+//
+// It goes nowhere near the quiz until the library approves it — which is said
+// on the form, because somebody who writes a question and then never sees it
+// asked would reasonably think it had been lost.
+function SuggestModal({ target, t, say, onClose }) {
+  const [prompt, setPrompt] = useState('');
+  const [opts, setOpts] = useState(['', '', '', '']);
+  const [answer, setAnswer] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const setOpt = (i) => (e) => setOpts(opts.map((o, j) => (j === i ? e.target.value : o)));
+  const ready = prompt.trim() !== '' && opts.every((o) => o.trim() !== '');
+
+  const send = async () => {
+    setBusy(true);
+    try {
+      await api.post(`/challenges/${target.challengeID}/suggest`, {
+        edition_id: target.book.edition_id,
+        prompt: prompt.trim(),
+        option_a: opts[0].trim(), option_b: opts[1].trim(),
+        option_c: opts[2].trim(), option_d: opts[3].trim(),
+        answer,
+      });
+      setSent(true);
+    } catch (e) {
+      const code = e.response?.data?.code;
+      say(code === 'SUBMISSIONS_CLOSED' ? t('mrb.ch.sugClosed') : t('msg.opFailed'));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', zIndex: 60,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        width: '100%', maxWidth: 560, background: '#fff', borderRadius: 20, padding: 28,
+        display: 'flex', flexDirection: 'column', gap: 16,
+        boxShadow: '0 24px 64px rgba(15,23,42,0.3)', maxHeight: '90vh', overflowY: 'auto',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+          <div>
+            <div style={{
+              fontSize: 12, fontWeight: 700, letterSpacing: '0.08em',
+              textTransform: 'uppercase', color: C.brandHi,
+            }}>{t('mrb.ch.sugEyebrow')}</div>
+            <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700 }}>{target.book.title}</div>
+          </div>
+          <button onClick={onClose} aria-label={t('common.close')} style={{
+            width: 36, height: 36, borderRadius: '50%', border: '1px solid ' + C.line,
+            background: '#fff', cursor: 'pointer', fontSize: 14, color: C.body, flexShrink: 0,
+          }}>✕</button>
+        </div>
+
+        {sent ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center', padding: '12px 0' }}>
+            <div style={{ fontSize: 44 }}>✓</div>
+            <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700 }}>{t('mrb.ch.sugThanks')}</div>
+            <div style={{ fontSize: 14, color: C.body, textAlign: 'center', lineHeight: 1.5 }}>
+              {t('mrb.ch.sugThanksBody')}
+            </div>
+            <button onClick={onClose} style={{
+              background: C.brand, color: '#fff', border: 0, borderRadius: 10,
+              padding: '10px 18px', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              fontFamily: 'inherit', marginTop: 6,
+            }}>{t('mrb.ch.backToChallenge')}</button>
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize: 13, color: C.body, lineHeight: 1.5 }}>{t('mrb.ch.sugIntro')}</div>
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.dim }}>{t('mrb.ch.sugPrompt')}</span>
+              <textarea
+                value={prompt} onChange={(e) => setPrompt(e.target.value)}
+                rows={2} placeholder={t('mrb.ch.sugPromptHint')}
+                style={{
+                  border: '1px solid ' + C.line, borderRadius: 12, padding: '10px 12px',
+                  fontSize: 14, fontFamily: 'inherit', resize: 'vertical', color: C.body,
+                }}
+              />
+            </label>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.dim }}>{t('mrb.ch.sugOptions')}</span>
+              {opts.map((o, i) => (
+                <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input type="radio" name="sug-answer" checked={answer === i}
+                    onChange={() => setAnswer(i)} aria-label={t('mrb.ch.sugCorrect')} />
+                  <span style={{
+                    width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+                    background: answer === i ? C.brand : C.sky100,
+                    color: answer === i ? '#fff' : C.deep,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 12, fontWeight: 800,
+                  }}>{LETTERS[i]}</span>
+                  <input
+                    value={o} onChange={setOpt(i)} placeholder={t('mrb.ch.sugOptionHint')}
+                    style={{
+                      flex: 1, minWidth: 0, border: '1px solid ' + C.line, borderRadius: 10,
+                      padding: '9px 11px', fontSize: 14, fontFamily: 'inherit', color: C.body,
+                    }}
+                  />
+                </label>
+              ))}
+              <span style={{ fontSize: 12, color: C.mute }}>{t('mrb.ch.sugCorrectNote')}</span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button onClick={onClose} style={{
+                background: '#fff', color: C.deep, border: '1px solid ' + C.sky200,
+                borderRadius: 10, padding: '10px 18px', fontSize: 14, fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}>{t('common.cancel')}</button>
+              <button onClick={send} disabled={busy || !ready} style={{
+                background: ready ? C.brand : C.sky200, color: '#fff', border: 0,
+                borderRadius: 10, padding: '10px 18px', fontSize: 14, fontWeight: 700,
+                cursor: ready ? 'pointer' : 'default', fontFamily: 'inherit',
+              }}>{t('mrb.ch.sugSend')}</button>
+            </div>
+          </>
         )}
       </div>
     </div>
