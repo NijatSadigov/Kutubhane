@@ -188,6 +188,12 @@ func Setup(app *fiber.App) {
 	api.Delete("/projects/:id", middleware.IsTeacher, handlers.DeleteProject)
 	api.Post("/projects/:id/updates", middleware.IsTeacher, handlers.AddProjectUpdate)
 	api.Put("/projects/:id/classrooms", middleware.IsTeacher, handlers.SetProjectClassrooms)
+	// The reading list and its quiz. A project with books runs as a Challenge,
+	// so these keep that challenge in step rather than growing a second copy
+	// of books, quizzes, sign-ups and standings.
+	api.Put("/projects/:id/books", middleware.IsTeacher, handlers.SetProjectBooks)
+	api.Post("/projects/:id/questions", middleware.IsTeacher, handlers.AddProjectQuestion)
+	api.Delete("/projects/:id/questions/:qid", middleware.IsTeacher, handlers.DeleteProjectQuestion)
 
 	// Notifications. Deliberately not role-guarded: the recipients span
 	// students, teachers, librarians and managers, and the scope is always the

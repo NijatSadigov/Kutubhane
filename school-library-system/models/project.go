@@ -50,6 +50,21 @@ type Project struct {
 	GoalTarget int    `json:"goal_target"`
 	GoalUnit   string `json:"goal_unit"`
 
+	// A project that has a reading list *runs as* a Challenge, rather than
+	// growing its own copy of books, quizzes, sign-ups and standings.
+	//
+	// That whole flow already exists and works for readers — join, mark read,
+	// answer the quiz, appear in the standings — at /app/challenges. Giving
+	// Project its own ChallengeBook and QuizQuestion would have been a second
+	// implementation of a tested one, and readers would have had two places to
+	// look. So attaching books to a project creates the challenge behind it and
+	// keeps the two in step; the project stays the staff's planning view of it.
+	//
+	// Nil is the normal case: a book drive or an author visit has no reading
+	// list, and should not appear on a reader's challenges page.
+	ChallengeID *uint     `json:"challenge_id" gorm:"index"`
+	Challenge   Challenge `json:"challenge,omitempty" gorm:"foreignKey:ChallengeID"`
+
 	CreatedBy uint      `json:"created_by"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

@@ -81,7 +81,7 @@ cd school-library-system && go test ./... && go run ./cmd/apiaudit -writes
 cd library-frontend && npm run build && npx eslint src/mrb src/staff src/i18n
 ```
 
-Last run: 23 Go tests, **249 API checks across 5 roles**, build clean,
+Last run: 23 Go tests, **253 API checks across 5 roles**, build clean,
 `src/mrb` + `src/staff` + `src/i18n` lint clean. (`npx eslint src` reports 12
 errors, all pre-existing in the manager/admin/student dashboards and shared
 components — down from ~20 since the librarian's dashboard was deleted.)
@@ -223,8 +223,24 @@ never stored — the textbook-ledger rule again — and the class-against-class
 standings are a group-by over it, so they cannot disagree with their own
 entries.
 
-The `Challenge` API is still unbuilt on the staff side; the challenge builder
-stays on the TODO list and is a separate job from this one.
+**A project with books runs as a Challenge.** The first cut shipped without a
+way to attach books or quizzes, which is the first thing the buyer tried to do.
+Attaching a title now creates the challenge behind the project, and readers see
+the campaign on their own Müsabiqələr page, join it, log the book and answer the
+quiz — a flow that already existed and was tested. Giving Project its own books,
+quizzes, sign-ups and standings would have been a second implementation of it,
+and readers would have had two places to look. A book drive attaches nothing and
+so appears to no reader, which is right.
+
+Questions are keyed on (challenge, edition), so a title taken off the list and
+put back keeps its questions; emptying the list does not delete the challenge,
+because readers may already have joined it. The answer index is `json:"-"` the
+whole way through and never reaches a browser — worth re-checking if you touch
+that path.
+
+**"Hədəf" is the school's own name**, so never use it as a label for anything
+else. The first cut of Layihələr labelled the goal field `Hədəf` and it read as
+if it were asking which school. It is `Məqsəd` / `Amaç` / `Goal` now.
 
 Two things worth knowing if you touch it. A project opens in a **panel on the
 list**, not at `/staff/projects/:id` — `locate()` derives the screen from the

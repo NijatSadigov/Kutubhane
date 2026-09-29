@@ -198,8 +198,11 @@ function ProjectCard({ project: p, on, onOpen, t }) {
       <span style={{ fontSize: 11, color: on ? '#BAE6FD' : ink.dim }}>
         {[
           t('staff.pr.nUpdates', { n: p.update_count }),
+          // Only when it has one: a book drive saying "0 books" would read as
+          // a broken reading list rather than a campaign that has none.
+          p.book_count > 0 ? t('staff.pr.nBooks', { n: p.book_count }) : '',
           p.branch_name || t('staff.pr.schoolWide'),
-        ].join(' · ')}
+        ].filter(Boolean).join(' · ')}
       </span>
     </button>
   );
@@ -335,6 +338,8 @@ function ProjectPanel({ projectId, t, say, onClose, onChanged }) {
         </div>
       )}
 
+      <ReadingList project={p} t={t} say={say} onChanged={refresh} />
+
       <div>
         <Label>{t('staff.pr.log')}</Label>
         {(p.updates || []).length === 0 ? (
@@ -366,6 +371,233 @@ function ProjectPanel({ projectId, t, say, onClose, onChanged }) {
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* --------------------------------------- the reading list, and its quiz */
+
+// Books and quiz questions on a project.
+//
+// A project that has books *runs as* a reading challenge: the moment the first
+// title is attached, readers see the campaign on their own Müsabiqələr page and
+// can join it, log the book and answer the quiz. That whole flow already
+// existed; this is the staff's way into it, which is what was missing.
+//
+// A book drive or an author visit simply never attaches a book, and then
+// nothing appears for readers — which is right, because there is nothing for
+// them to read.
+function ReadingList({ project: p, t, say, onChanged }) {
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [asking, setAsking] = useState(null); // edition_id a question is being written for
+
+  const books = p.books || [];
+  const ids = books.map((b) => b.edition_id);
+
+  const search = async () => {
+    if (!q.trim()) return;
+    setSearching(true);
+    try {
+      const r = await api.get('/catalog/search', { params: { q: q.trim() } });
+      setResults((r.data || []).slice(0, 8));
+    } catch { setResults([]); } finally { setSearching(false); }
+  };
+
+  const setBooks = async (next) => {
+    setBusy(true);
+    try {
+      await api.put(`/projects/${p.id}/books`, { edition_ids: next });
+      onChanged();
+    } catch (e) {
+      say(e.response?.data?.error || t('msg.opFailed'));
+    } finally { setBusy(false); }
+  };
+
+  const add = (editionId) => {
+    if (ids.includes(editionId)) return;
+    setBooks([...ids, editionId]);
+    setQ(''); setResults([]);
+  };
+
+  const removeBook = (editionId) => setBooks(ids.filter((i) => i !== editionId));
+
+  return (
+    <div style={{
+      border: '1px solid ' + shell.border, borderRadius: radius.card, padding: 12,
+      display: 'flex', flexDirection: 'column', gap: 10,
+    }}>
+      <Label>{t('staff.pr.reading')}</Label>
+      <span style={{ fontSize: 12, color: ink.dim, marginTop: -4 }}>
+        {t('staff.pr.readingNote')}
+      </span>
+
+      {books.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {books.map((b) => (
+            <div key={b.edition_id} style={{
+              border: '1px solid ' + shell.border, borderRadius: radius.control,
+              padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <strong style={{ flex: '1 1 160px', fontSize: 13 }}>
+                  {b.title}
+                  {b.author_name && (
+                    <span style={{ fontWeight: 400, color: ink.dim }}> · {b.author_name}</span>
+                  )}
+                </strong>
+                <span style={{ fontSize: 11, color: ink.dim }}>
+                  {t('staff.pr.nQuestions', { n: b.questions.length })}
+                </span>
+                <Btn kind="secondary" disabled={busy}
+                  onClick={() => setAsking(asking === b.edition_id ? null : b.edition_id)}
+                  style={{ padding: '4px 9px', fontSize: 12 }}>
+                  {t('staff.pr.addQuestion')}
+                </Btn>
+                <Btn kind="secondary" disabled={busy} onClick={() => removeBook(b.edition_id)}
+                  style={{ padding: '4px 9px', fontSize: 12 }}>✕</Btn>
+              </div>
+
+              {b.questions.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {b.questions.map((qq) => (
+                    <div key={qq.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      fontSize: 12, color: ink.body,
+                    }}>
+                      <span style={{ flex: 1 }}>· {qq.prompt}</span>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await api.delete(`/projects/${p.id}/questions/${qq.id}`);
+                            onChanged();
+                          } catch (e) { say(e.response?.data?.error || t('msg.opFailed')); }
+                        }}
+                        style={{
+                          border: 0, background: 'transparent', cursor: 'pointer',
+                          color: ink.muted, fontSize: 12, fontFamily: 'inherit',
+                        }}
+                      >✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {asking === b.edition_id && (
+                <QuestionForm
+                  projectId={p.id} editionId={b.edition_id} t={t} say={say}
+                  onDone={() => { setAsking(null); onChanged(); }}
+                  onCancel={() => setAsking(null)}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* The picker searches the shared catalogue, so a project's reading list
+          is made of real editions rather than retyped titles. */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <Input
+          value={q} onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); search(); } }}
+          placeholder={t('staff.pr.bookSearch')} style={{ flex: '1 1 200px', width: 'auto' }}
+        />
+        <Btn kind="secondary" onClick={search} disabled={searching || !q.trim()}>
+          {t('staff.pr.findBook')}
+        </Btn>
+      </div>
+
+      {results.length > 0 && (
+        <div style={{
+          border: '1px solid ' + shell.border, borderRadius: radius.control, overflow: 'hidden',
+        }}>
+          {results.map((r) => {
+            const already = ids.includes(r.edition_id);
+            return (
+              <button key={r.edition_id} disabled={already || busy}
+                onClick={() => add(r.edition_id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                  textAlign: 'left', padding: '8px 10px', border: 0,
+                  borderBottom: '1px solid ' + shell.rowLine,
+                  background: already ? shell.canvas : '#fff',
+                  cursor: already ? 'default' : 'pointer', font: 'inherit',
+                  color: already ? ink.muted : ink.text,
+                }}>
+                <span style={{ flex: 1, fontSize: 13 }}>
+                  <strong>{r.title}</strong>
+                  {r.author_name && <span style={{ color: ink.dim }}> · {r.author_name}</span>}
+                </span>
+                <span style={{ fontSize: 11, color: ink.dim }}>
+                  {already ? t('staff.pr.alreadyOn') : t('staff.pr.addBook')}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// One quiz question: the prompt, four answers, and which of them is right.
+// Four are required because that is what the reader app draws, and a question
+// with two empty options renders as two blank buttons.
+function QuestionForm({ projectId, editionId, t, say, onDone, onCancel }) {
+  const [prompt, setPrompt] = useState('');
+  const [opts, setOpts] = useState(['', '', '', '']);
+  const [answer, setAnswer] = useState(0);
+  const [busy, setBusy] = useState(false);
+
+  const setOpt = (i) => (e) => setOpts(opts.map((o, j) => (j === i ? e.target.value : o)));
+  const ready = prompt.trim() !== '' && opts.every((o) => o.trim() !== '');
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await api.post(`/projects/${projectId}/questions`, {
+        edition_id: editionId, prompt: prompt.trim(),
+        option_a: opts[0].trim(), option_b: opts[1].trim(),
+        option_c: opts[2].trim(), option_d: opts[3].trim(),
+        answer,
+      });
+      onDone();
+    } catch (e) {
+      say(e.response?.data?.error || t('msg.opFailed'));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{
+      background: shell.canvas, borderRadius: radius.control, padding: 10,
+      display: 'flex', flexDirection: 'column', gap: 8,
+    }}>
+      <Input value={prompt} onChange={(e) => setPrompt(e.target.value)}
+        placeholder={t('staff.pr.promptHint')} />
+      {opts.map((o, i) => (
+        <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* The radio is how the right answer is named, which is less
+              error-prone than typing an index nobody can see. */}
+          <input type="radio" name={`ans-${editionId}`} checked={answer === i}
+            onChange={() => setAnswer(i)} aria-label={t('staff.pr.correct')} />
+          <Input value={o} onChange={setOpt(i)}
+            placeholder={t('staff.pr.optionN', { n: String.fromCharCode(65 + i) })}
+            style={{ flex: 1, width: 'auto' }} />
+        </label>
+      ))}
+      <span style={{ fontSize: 11, color: ink.dim }}>{t('staff.pr.correctNote')}</span>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+        <Btn kind="secondary" onClick={onCancel} style={{ padding: '5px 10px', fontSize: 12 }}>
+          {t('common.cancel')}
+        </Btn>
+        <Btn onClick={save} disabled={busy || !ready} style={{ padding: '5px 10px', fontSize: 12 }}>
+          {t('staff.pr.saveQuestion')}
+        </Btn>
       </div>
     </div>
   );

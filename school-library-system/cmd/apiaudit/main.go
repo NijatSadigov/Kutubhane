@@ -389,6 +389,13 @@ func writeChecks() []check {
 		{role: "student", method: "POST", path: "/api/projects", want: denied, note: "a reader does not plan the school's projects"},
 		{role: "librarian", method: "POST", path: "/api/projects", want: []int{400}, note: "a project with no title is refused"},
 		{role: "student", method: "POST", path: "/api/projects/1/updates", want: denied, note: "a reader does not write the project log"},
+		// The reading list and its quiz. A project with books runs as a
+		// Challenge, so these are the staff's way into it — and a reader's
+		// way into it stays /challenges, never here.
+		{role: "student", method: "PUT", path: "/api/projects/1/books", want: denied, note: "a reader does not set the reading list"},
+		{role: "student", method: "POST", path: "/api/projects/1/questions", want: denied, note: "a reader does not write the quiz"},
+		{role: "student", method: "DELETE", path: "/api/projects/1/questions/1", want: denied, note: "a reader does not delete questions"},
+		{role: "librarian", method: "PUT", path: "/api/projects/99999/books", want: []int{404}, note: "an unknown project has no reading list"},
 		// The end-of-year collection. Same guard as the per-title path, and an
 		// empty body is refused rather than silently recording nothing — which
 		// also keeps these checks inert against a real database.

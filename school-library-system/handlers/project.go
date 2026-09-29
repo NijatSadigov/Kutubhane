@@ -31,6 +31,11 @@ type ProjectView struct {
 	UpdateCount int             `json:"update_count"`
 	BranchName  string          `json:"branch_name"`
 	Standings   []ClassStanding `json:"standings,omitempty"`
+
+	// The reading list, when the project runs as a challenge. BookCount is on
+	// the list view so a card can say "4 kitab" without loading every title.
+	BookCount int               `json:"book_count"`
+	Books     []ProjectBookView `json:"books,omitempty"`
 }
 
 // ClassStanding is one class's contribution — a group-by over the log rather
@@ -409,8 +414,18 @@ func projectViews(rows []models.Project, withStandings bool) []ProjectView {
 				v.Percent = 100
 			}
 		}
+		if p.ChallengeID != nil {
+			var n int64
+			database.DB.Model(&models.ChallengeBook{}).
+				Where("challenge_id = ?", *p.ChallengeID).Count(&n)
+			v.BookCount = int(n)
+		}
 		if withStandings {
 			v.Standings = classStandings(p.ID)
+			// The full reading list only on the detail view — a card needs the
+			// count, not every title and every question.
+			copy := p
+			v.Books = projectBooks(&copy)
 		}
 		out = append(out, v)
 	}

@@ -34,7 +34,7 @@ demo activity and takes `BASE` to choose which server.
 cd library-frontend && npm run build && npx eslint src/mrb src/staff
 ```
 
-Last run: 23 Go tests pass, **249 API checks across 5 roles**, 33/33
+Last run: 23 Go tests pass, **253 API checks across 5 roles**, 33/33
 loan-lifecycle checks pass, build and lint clean.
 
 The audit's count is deterministic — every `add()` in `cmd/apiaudit` is
@@ -237,6 +237,25 @@ with the reasoning:
       A started project is **cancelled, not deleted** — what the school tried
       is worth as much as what it finished. Only one that never began can be
       removed outright.
+
+      **Books and quizzes** (buyer, 2026-09-29, after the first cut shipped
+      without them). A project with a reading list *runs as* a `Challenge`:
+      attaching the first title creates the challenge behind it, and readers
+      see the campaign on their own Müsabiqələr page, join it, log the book and
+      answer the quiz. All of that already existed and was tested; giving
+      Project its own books, quizzes, sign-ups and standings would have been a
+      second implementation of it, and readers would have had two places to
+      look. A book drive attaches nothing and so appears to no reader, which is
+      right — there is nothing to read.
+
+      Questions are keyed on (challenge, edition), so a title taken off the
+      list and put back keeps the questions written for it. Emptying the list
+      does **not** delete the challenge: readers may have joined and logged
+      progress against it. The answer index stays `json:"-"` all the way
+      through, so it never reaches a browser.
+
+      **The word "Hədəf" is the school's own name**, so it is not used as a
+      label for anything else. The goal field is `Məqsəd` / `Amaç` / `Goal`.
 
 - [x] **Moving the school up a year** (buyer, 2026-09-29). 7-A becomes 8-A and
       the final grade graduates; alumni stay alumni and are never swept up
