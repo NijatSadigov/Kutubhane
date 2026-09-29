@@ -301,8 +301,13 @@ remove every easy path to a copy and make a deliberate one traceable:
 
 - the PDF used to sit under `/uploads` and was one guessed URL away from
   anybody at all, signed in or not. `app.Static` now serves `/uploads/covers`
-  only; the bytes go through `GET /api/ebook/:id`, which checks the book is
-  out to this reader or on their shelf;
+  only; the bytes go through `GET /api/ebook/:id`, which checks the book is on
+  this reader's shelf. **An e-book is not lent** — there is no copy to hand
+  over, no due date and no queue, so shelving one *is* how you take it out. An
+  earlier cut also admitted anyone holding the paper copy on loan; it was
+  removed because it implied e-books had loans, and a reader who borrowed the
+  paper book and then could not find the file would have had no way to
+  understand why;
 - the page fetches those bytes once and hands them straight to pdf.js. They
   never become an object URL, so there is no link to open in a new tab and no
   file to save;

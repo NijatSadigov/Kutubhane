@@ -190,8 +190,10 @@ with the reasoning:
       a link the reader can open or save, and **every page carries the
       reader's own name**, drawn onto the same canvas as the page.
 
-      Entitlement is the server's: the book must be out to that reader or on
-      their shelf. Staff may open it to check what they uploaded.
+      Entitlement is the server's, and **the shelf is the whole answer**: an
+      e-book is not lent, so putting it on your shelf is how you take it out.
+      Holding the paper copy on loan does not open the file, which is the
+      buyer's own rule. Staff may open one to check what they uploaded.
 
       New dependency: `pdfjs-dist`, imported on demand.
 

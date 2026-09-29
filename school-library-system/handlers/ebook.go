@@ -30,38 +30,38 @@ import (
 //     actually works. A leaked copy says who leaked it, and that changes
 //     behaviour in a way a disabled right-click never has.
 
-// canReadEbook reports whether this reader may open this book: they have it out
-// on loan, or it is on their shelf as owned. Staff of the branch may open it
-// too, because they have to be able to check what they uploaded.
+// canReadEbook reports whether this reader may open this book.
+//
+// **The shelf is the whole answer.** An e-book is not lent: there is no copy to
+// hand over, no due date and no queue, so a loan is not a thing one can have.
+// Putting the book on your shelf *is* how you take it out, and that is
+// deliberate rather than a gate left loose.
+//
+// An earlier version of this also admitted anyone holding the paper copy on
+// loan. It was removed: it worked, but it implied an e-book had loans, and a
+// reader who borrowed the physical book and then could not find the file would
+// have had no way to understand why.
+//
+// Staff may open one regardless, because they have to be able to check what
+// they uploaded.
 func canReadEbook(uid uint, book models.Book, role string) bool {
 	if role == "librarian" || role == "admin" || role == "manager" || role == "teacher" {
 		return true
 	}
 
-	// Out on loan to them right now.
-	var loans int64
-	database.DB.Model(&models.Loan{}).
-		Joins("JOIN book_copies ON book_copies.id = loans.book_copy_id").
-		Where("loans.student_id = ? AND book_copies.book_id = ? AND loans.return_date IS NULL",
-			uid, book.ID).Count(&loans)
-	if loans > 0 {
-		return true
+	// The shelf is keyed on the Work, so a reader who shelved one edition may
+	// read the school's copy of the same book.
+	if book.EditionID == nil {
+		return false
 	}
-
-	// Or on their shelf. The shelf is keyed on the Work, so a reader who
-	// shelved one edition may read the school's copy of the same book.
-	if book.EditionID != nil {
-		var ed models.Edition
-		if database.DB.First(&ed, *book.EditionID).Error == nil {
-			var shelved int64
-			database.DB.Model(&models.ShelfItem{}).
-				Where("user_id = ? AND work_id = ?", uid, ed.WorkID).Count(&shelved)
-			if shelved > 0 {
-				return true
-			}
-		}
+	var ed models.Edition
+	if database.DB.First(&ed, *book.EditionID).Error != nil {
+		return false
 	}
-	return false
+	var shelved int64
+	database.DB.Model(&models.ShelfItem{}).
+		Where("user_id = ? AND work_id = ?", uid, ed.WorkID).Count(&shelved)
+	return shelved > 0
 }
 
 // GetEbook streams the file to a reader who is entitled to it.
@@ -85,7 +85,7 @@ func GetEbook(c *fiber.Ctx) error {
 	}
 	if !canReadEbook(uid, book, role) {
 		return c.Status(403).JSON(fiber.Map{
-			"error": "Borrow this book or add it to your shelf to read it",
+			"error": "Add this book to your shelf to read it",
 			"code":  "NOT_YOURS"})
 	}
 
