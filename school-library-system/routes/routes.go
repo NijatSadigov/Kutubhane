@@ -188,6 +188,10 @@ func Setup(app *fiber.App) {
 	api.Delete("/projects/:id", middleware.IsTeacher, handlers.DeleteProject)
 	api.Post("/projects/:id/updates", middleware.IsTeacher, handlers.AddProjectUpdate)
 	api.Put("/projects/:id/classrooms", middleware.IsTeacher, handlers.SetProjectClassrooms)
+	// Who the project is for: the whole school, named branches, named classes,
+	// or partner schools. The handler enforces that a branch-scoped caller can
+	// only aim at their own branch.
+	api.Put("/projects/:id/audience", middleware.IsTeacher, handlers.SetProjectAudience)
 	// The reading list and its quiz. A project with books runs as a Challenge,
 	// so these keep that challenge in step rather than growing a second copy
 	// of books, quizzes, sign-ups and standings.

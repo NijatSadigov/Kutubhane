@@ -141,12 +141,31 @@ func GetSchoolBranches(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	var branches []models.Branch
-	database.DB.
+	q := database.DB.
 		Select(`branches.*, (SELECT count(*) FROM students
 		          WHERE students.branch_id = branches.id
 		            AND students.status = 'ACTIVE') as student_count`).
-		Where("school_id = ?", schoolID).Order("name").Find(&branches)
+		Where("school_id = ?", schoolID)
+
+	// ?scope=mine narrows to the caller's own branch, for a picker that must
+	// not offer a choice the endpoint behind it would refuse. Opt-in rather
+	// than the default, because the administration's own screens legitimately
+	// list every branch in the school.
+	//
+	// Only the roles that are genuinely confined to one branch are narrowed —
+	// the same test `projectScope` uses. getUserBranchID would have resolved a
+	// manager to one branch too, and narrowed the administration to a single
+	// choice they are entitled to make across the whole school.
+	if role, _ := c.Locals("role").(string); c.Query("scope") == "mine" &&
+		(role == "librarian" || role == "teacher") {
+		branchID, err := getUserBranchID(c)
+		if err == nil {
+			q = q.Where("branches.id = ?", branchID)
+		}
+	}
+
+	var branches []models.Branch
+	q.Order("name").Find(&branches)
 	return c.JSON(branches)
 }
 

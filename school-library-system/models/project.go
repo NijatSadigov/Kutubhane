@@ -34,6 +34,16 @@ type Project struct {
 	School   School `json:"school,omitempty" gorm:"foreignKey:SchoolID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	BranchID *uint  `json:"branch_id" gorm:"index"`
 
+	// Who the project is *for*, as opposed to BranchID above, which is where
+	// it came from. Provenance and audience are genuinely different questions
+	// — a branch can raise a campaign the whole school takes part in — so they
+	// are two fields rather than one overloaded one.
+	//
+	// SCHOOL is the default and needs no list. The other three read their
+	// membership from the join tables below, and an audience with an empty
+	// list is refused rather than silently meaning "everyone".
+	Audience string `json:"audience" gorm:"index;default:SCHOOL"`
+
 	Kind        string `json:"kind" gorm:"index;default:CAMPAIGN"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
@@ -69,8 +79,20 @@ type Project struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	Updates    []ProjectUpdate `json:"updates,omitempty" gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE;"`
-	Classrooms []Classroom     `json:"classrooms,omitempty" gorm:"many2many:project_classrooms;joinForeignKey:ProjectID;joinReferences:ClassroomID"`
+	Updates []ProjectUpdate `json:"updates,omitempty" gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE;"`
+
+	// The three audiences that need a list. Which one is read depends on
+	// Audience; the others are ignored rather than cleared, so a school that
+	// switches from CLASSES to BRANCHES and back does not have to pick its
+	// classes again.
+	Classrooms []Classroom `json:"classrooms,omitempty" gorm:"many2many:project_classrooms;joinForeignKey:ProjectID;joinReferences:ClassroomID"`
+	Branches   []Branch    `json:"branches,omitempty" gorm:"many2many:project_branches;joinForeignKey:ProjectID;joinReferences:BranchID"`
+	// Partner schools. Structurally here, and only a platform admin can set
+	// it, because deciding that two schools are partners is the alliance work
+	// in Phase 3 — until that exists there is nothing to check a school
+	// administrator's choice against, and letting them name another school
+	// would be a tenancy hole rather than a feature.
+	Schools []School `json:"schools,omitempty" gorm:"many2many:project_schools;joinForeignKey:ProjectID;joinReferences:SchoolID"`
 }
 
 // ProjectUpdate is one thing that happened: a note, and optionally the number
@@ -125,3 +147,16 @@ func ValidProjectStatus(s string) bool {
 // ProjectOpenStatuses is what a badge and the default filter mean by "still
 // needs someone".
 var ProjectOpenStatuses = []string{ProjectPlanned, ProjectActive}
+
+// Who a project is for.
+const (
+	AudienceSchool   = "SCHOOL"   // everyone in the school that owns it
+	AudienceBranches = "BRANCHES" // the named branches
+	AudienceClasses  = "CLASSES"  // the named classes
+	AudienceSchools  = "SCHOOLS"  // this school and the named partner schools
+)
+
+func ValidAudience(a string) bool {
+	return a == AudienceSchool || a == AudienceBranches ||
+		a == AudienceClasses || a == AudienceSchools
+}

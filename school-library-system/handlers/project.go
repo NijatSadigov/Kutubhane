@@ -71,7 +71,8 @@ func GetProjects(c *fiber.Ctx) error {
 		return err
 	}
 
-	q := database.DB.Preload("Classrooms").Where("school_id = ?", schoolID)
+	q := database.DB.Preload("Classrooms").Preload("Branches").Preload("Schools").
+		Where("school_id = ?", schoolID)
 	if branchID != 0 {
 		// A branch sees its own and the school's, not another branch's.
 		q = q.Where("branch_id IS NULL OR branch_id = ?", branchID)
@@ -105,7 +106,7 @@ func GetProject(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	database.DB.Preload("Classrooms").
+	database.DB.Preload("Classrooms").Preload("Branches").Preload("Schools").
 		Preload("Updates", func(db *gorm.DB) *gorm.DB { return db.Order("created_at desc") }).
 		Preload("Updates.Classroom").
 		First(p, p.ID)

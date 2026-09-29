@@ -81,7 +81,7 @@ cd school-library-system && go test ./... && go run ./cmd/apiaudit -writes
 cd library-frontend && npm run build && npx eslint src/mrb src/staff src/i18n
 ```
 
-Last run: 23 Go tests, **253 API checks across 5 roles**, build clean,
+Last run: 23 Go tests, **258 API checks across 5 roles**, build clean,
 `src/mrb` + `src/staff` + `src/i18n` lint clean. (`npx eslint src` reports 12
 errors, all pre-existing in the manager/admin/student dashboards and shared
 components — down from ~20 since the librarian's dashboard was deleted.)
@@ -237,6 +237,27 @@ put back keeps its questions; emptying the list does not delete the challenge,
 because readers may already have joined it. The answer index is `json:"-"` the
 whole way through and never reaches a browser — worth re-checking if you touch
 that path.
+
+**A project has a target group.** `Audience` is SCHOOL, BRANCHES, CLASSES or
+SCHOOLS, kept separate from `BranchID` because where a project came from and
+who it is for are different questions.
+
+The part worth knowing: **`ListChallenges` filtered on school alone and ignored
+`BranchID` entirely**, so a campaign aimed at one branch was shown to the whole
+school. It now resolves the project behind each challenge and checks the
+reader's branch and class against its audience. Staff keep seeing everything in
+their school — hiding a campaign from the librarian running it would be worse
+than useless. Without that fix the target group would have been a field nobody
+could feel, which is the "built vs wired up" trap below.
+
+Who may aim where follows the scope the role already runs. `?scope=mine` on
+`/branches` exists because the picker was offering a librarian Gəncə, which the
+endpoint then refused — a screen that shows a choice it cannot honour.
+
+**Partner schools are platform-admin only** and stop there: deciding two
+schools are partners is the Phase 3 alliance work, and without it there is
+nothing to check a school administrator's choice against. The endpoint answers
+`NO_ALLIANCES` and the screen says so.
 
 **"Hədəf" is the school's own name**, so never use it as a label for anything
 else. The first cut of Layihələr labelled the goal field `Hədəf` and it read as

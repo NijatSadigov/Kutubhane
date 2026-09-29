@@ -34,7 +34,7 @@ demo activity and takes `BASE` to choose which server.
 cd library-frontend && npm run build && npx eslint src/mrb src/staff
 ```
 
-Last run: 23 Go tests pass, **253 API checks across 5 roles**, 33/33
+Last run: 23 Go tests pass, **258 API checks across 5 roles**, 33/33
 loan-lifecycle checks pass, build and lint clean.
 
 The audit's count is deterministic — every `add()` in `cmd/apiaudit` is
@@ -256,6 +256,31 @@ with the reasoning:
 
       **The word "Hədəf" is the school's own name**, so it is not used as a
       label for anything else. The goal field is `Məqsəd` / `Amaç` / `Goal`.
+
+      **A target group** (buyer, 2026-09-29). `Audience` is one of SCHOOL,
+      BRANCHES, CLASSES or SCHOOLS, with a join table behind each of the last
+      three. It is a separate field from `BranchID`, because where a project
+      *came from* and who it is *for* are different questions — a branch can
+      raise a campaign the whole school runs.
+
+      **It changes what readers see.** `ListChallenges` filtered on school
+      alone and ignored `BranchID` entirely, so a campaign aimed at one branch
+      was shown to the whole school. It now resolves the project behind each
+      challenge and checks the reader's branch and class against its audience.
+      Verified: with the audience set to 4-A, the 4-A reader sees the campaign
+      and a 5-A reader and an unplaced reader do not. Without that fix the
+      target group would have been decorative.
+
+      Who may aim where follows the scope each role already runs: a librarian
+      at their own branch and its classes, the administration anywhere in the
+      school. `?scope=mine` on `/branches` exists so the picker cannot offer a
+      branch the endpoint would refuse — the librarian was being shown Gəncə.
+
+      **Partner schools are admin-only and go no further**, because deciding
+      that two schools are partners is the alliance work in Phase 3. Until it
+      exists there is nothing to check a school administrator's choice
+      against, so the endpoint refuses them with `NO_ALLIANCES` and the screen
+      says why rather than pretending.
 
 - [x] **Moving the school up a year** (buyer, 2026-09-29). 7-A becomes 8-A and
       the final grade graduates; alumni stay alumni and are never swept up

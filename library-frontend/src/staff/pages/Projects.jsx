@@ -13,9 +13,10 @@
 // one table the routes and the page title are built from, and a /:id would be
 // a route it cannot name.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
+import { AuthContext } from '../../context/AuthContext';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { fmtDate } from '../../i18n/dates';
 import { shell, ink, radius, font, pill } from '../theme';
@@ -143,6 +144,29 @@ export default function Projects() {
 
 /* ------------------------------------------------------------- the card */
 
+// Who a project is for, in as few words as a card has room for. Naming one or
+// two groups is more use than a count, so the names are listed until there are
+// too many and only then collapsed to a number.
+function audienceLabel(p, t) {
+  const names = (rows, key) => (rows || []).map((r) => r[key]).filter(Boolean);
+  switch (p.audience) {
+    case 'BRANCHES': {
+      const n = names(p.branches, 'name');
+      return n.length <= 2 ? n.join(', ') : t('staff.pr.audNBranches', { n: n.length });
+    }
+    case 'CLASSES': {
+      const n = names(p.classrooms, 'label');
+      return n.length <= 3 ? n.join(', ') : t('staff.pr.audNClasses', { n: n.length });
+    }
+    case 'SCHOOLS': {
+      const n = names(p.schools, 'name');
+      return n.length <= 2 ? n.join(', ') : t('staff.pr.audNSchools', { n: n.length });
+    }
+    default:
+      return t('staff.pr.schoolWide');
+  }
+}
+
 function ProjectCard({ project: p, on, onOpen, t }) {
   const hasGoal = p.goal_target > 0;
   return (
@@ -201,7 +225,9 @@ function ProjectCard({ project: p, on, onOpen, t }) {
           // Only when it has one: a book drive saying "0 books" would read as
           // a broken reading list rather than a campaign that has none.
           p.book_count > 0 ? t('staff.pr.nBooks', { n: p.book_count }) : '',
-          p.branch_name || t('staff.pr.schoolWide'),
+          // Who it is for, named rather than left to be guessed from the
+          // branch it came from — those are different questions.
+          audienceLabel(p, t),
         ].filter(Boolean).join(' · ')}
       </span>
     </button>
@@ -338,6 +364,8 @@ function ProjectPanel({ projectId, t, say, onClose, onChanged }) {
         </div>
       )}
 
+      <AudiencePicker project={p} t={t} say={say} onChanged={refresh} />
+
       <ReadingList project={p} t={t} say={say} onChanged={refresh} />
 
       <div>
@@ -371,6 +399,157 @@ function ProjectPanel({ projectId, t, say, onClose, onChanged }) {
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------- who the project is for */
+
+// The target group.
+//
+// Four audiences, and which of them a person may pick follows the scope they
+// already run: a librarian runs one branch, so the branch list they are shown
+// is their own and the classes are their own branch's. The endpoint enforces
+// the same thing rather than trusting the picker, because a screen that only
+// *shows* the right options is not a permission.
+//
+// Partner schools appear for a platform admin alone. Deciding that two schools
+// are partners is the alliance work in Phase 3; until that exists there is
+// nothing to check a school administrator's choice against, so the option says
+// so rather than pretending.
+function AudiencePicker({ project: p, t, say, onChanged }) {
+  const { user } = useContext(AuthContext);
+  const isAdmin = user?.role === 'admin';
+
+  const [audience, setAudience] = useState(p.audience || 'SCHOOL');
+  const [branches, setBranches] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [schools, setSchools] = useState([]);
+  const [pickedBranches, setPickedBranches] = useState(() => (p.branches || []).map((b) => b.id));
+  const [pickedRooms, setPickedRooms] = useState(() => (p.classrooms || []).map((r) => r.id));
+  const [pickedSchools, setPickedSchools] = useState(() => (p.schools || []).map((s) => s.id));
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    // `scope=mine` so a branch-scoped librarian is not offered a branch the
+    // endpoint would refuse. A manager or admin has no single branch and gets
+    // the whole school back, which is what they should be choosing from.
+    api.get('/branches', { params: { scope: 'mine' } })
+      .then((r) => { if (alive) setBranches(r.data || []); }).catch(() => {});
+    api.get('/classrooms').then((r) => { if (alive) setRooms(r.data || []); }).catch(() => {});
+    if (isAdmin) {
+      api.get('/admin/school').then((r) => { if (alive) setSchools(r.data || []); }).catch(() => {});
+    }
+    return () => { alive = false; };
+  }, [isAdmin]);
+
+  const toggle = (list, setList) => (id) => setList(
+    list.includes(id) ? list.filter((x) => x !== id) : [...list, id],
+  );
+
+  const OPTIONS = [
+    ['SCHOOL', t('staff.pr.aud.SCHOOL')],
+    ['BRANCHES', t('staff.pr.aud.BRANCHES')],
+    ['CLASSES', t('staff.pr.aud.CLASSES')],
+    ...(isAdmin ? [['SCHOOLS', t('staff.pr.aud.SCHOOLS')]] : []),
+  ];
+
+  // An audience that names nobody would silently mean "everyone", so it is
+  // refused here as well as at the endpoint.
+  const chosen = audience === 'BRANCHES' ? pickedBranches
+    : audience === 'CLASSES' ? pickedRooms
+      : audience === 'SCHOOLS' ? pickedSchools : null;
+  const ready = chosen === null || chosen.length > 0;
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await api.put(`/projects/${p.id}/audience`, {
+        audience,
+        branch_ids: pickedBranches,
+        classroom_ids: pickedRooms,
+        school_ids: pickedSchools,
+      });
+      say(t('staff.pr.audSaved'));
+      onChanged();
+    } catch (e) {
+      say(e.response?.data?.error || t('msg.opFailed'));
+    } finally { setBusy(false); }
+  };
+
+  const list = audience === 'BRANCHES'
+    ? branches.map((b) => [b.id, b.name])
+    : audience === 'CLASSES'
+      ? rooms.map((r) => [r.id, r.label])
+      : audience === 'SCHOOLS'
+        ? schools.map((s) => [s.id, s.name])
+        : [];
+  const picked = audience === 'BRANCHES' ? pickedBranches
+    : audience === 'CLASSES' ? pickedRooms : pickedSchools;
+  const setPicked = audience === 'BRANCHES' ? setPickedBranches
+    : audience === 'CLASSES' ? setPickedRooms : setPickedSchools;
+
+  return (
+    <div style={{
+      border: '1px solid ' + shell.border, borderRadius: radius.card, padding: 12,
+      display: 'flex', flexDirection: 'column', gap: 8,
+    }}>
+      <Label>{t('staff.pr.audience')}</Label>
+      <span style={{ fontSize: 12, color: ink.dim, marginTop: -4 }}>
+        {t('staff.pr.audienceNote')}
+      </span>
+
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {OPTIONS.map(([v, label]) => {
+          const on = audience === v;
+          return (
+            <button key={v} onClick={() => setAudience(v)} style={{
+              background: on ? '#082F49' : '#fff', color: on ? '#fff' : ink.body,
+              border: '1px solid ' + (on ? '#082F49' : shell.control),
+              borderRadius: radius.control, padding: '7px 13px',
+              fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font.ui,
+            }}>{label}</button>
+          );
+        })}
+      </div>
+
+      {audience !== 'SCHOOL' && (
+        <>
+          {list.length === 0 ? (
+            <span style={{ fontSize: 12, color: ink.dim }}>{t('staff.pr.audNothing')}</span>
+          ) : (
+            <div style={{
+              display: 'grid', gap: 4,
+              gridTemplateColumns: 'repeat(auto-fill, minmax(150px,1fr))',
+            }}>
+              {list.map(([id, label]) => (
+                <label key={id} style={{
+                  display: 'flex', alignItems: 'center', gap: 7, fontSize: 13,
+                }}>
+                  <input type="checkbox" checked={picked.includes(id)}
+                    onChange={() => toggle(picked, setPicked)(id)} />
+                  {label}
+                </label>
+              ))}
+            </div>
+          )}
+          {!ready && (
+            <span style={{ fontSize: 12, color: '#B4232A' }}>{t('staff.pr.audEmpty')}</span>
+          )}
+        </>
+      )}
+
+      {audience === 'SCHOOLS' && (
+        <span style={{ fontSize: 12, color: '#92400E' }}>{t('staff.pr.audAllianceNote')}</span>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Btn onClick={save} disabled={busy || !ready}
+          style={{ padding: '5px 11px', fontSize: 12 }}>
+          {t('staff.pr.audSave')}
+        </Btn>
       </div>
     </div>
   );

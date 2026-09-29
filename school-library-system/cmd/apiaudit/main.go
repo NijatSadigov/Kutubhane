@@ -307,6 +307,10 @@ func readChecks() []check {
 	add("librarian", "/api/projects?status=NONSENSE", []int{400}, "bad status filter")
 	add("librarian", "/api/projects?kind=NONSENSE", []int{400}, "bad kind filter")
 	add("librarian", "/api/projects/99999", []int{404}, "unknown project")
+	// The audience picker must not offer a branch the endpoint would refuse.
+	add("librarian", "/api/branches?scope=mine", ok, "a librarian's own branch only")
+	add("manager", "/api/branches?scope=mine", ok, "the administration keeps the school")
+	add("teacher", "/api/branches?scope=mine", ok, "a teacher's own branch only")
 
 	// --- promoting the school a year ---
 	// The preview changes nothing, so it is safe to call here; the write is in
@@ -396,6 +400,10 @@ func writeChecks() []check {
 		{role: "student", method: "POST", path: "/api/projects/1/questions", want: denied, note: "a reader does not write the quiz"},
 		{role: "student", method: "DELETE", path: "/api/projects/1/questions/1", want: denied, note: "a reader does not delete questions"},
 		{role: "librarian", method: "PUT", path: "/api/projects/99999/books", want: []int{404}, note: "an unknown project has no reading list"},
+		// The target group. A body-less PUT fails the audience check before it
+		// can write anything, which keeps these inert.
+		{role: "student", method: "PUT", path: "/api/projects/1/audience", want: denied, note: "a reader does not choose who a project is for"},
+		{role: "librarian", method: "PUT", path: "/api/projects/99999/audience", want: []int{404}, note: "an unknown project has no audience"},
 		// The end-of-year collection. Same guard as the per-title path, and an
 		// empty body is refused rather than silently recording nothing — which
 		// also keeps these checks inert against a real database.

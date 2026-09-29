@@ -43,6 +43,26 @@ func ListChallenges(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Could not load challenges"})
 	}
 
+	// A campaign is only shown to the people it is for. Staff have no reader
+	// group, so they keep seeing everything in their school — they are the
+	// ones running these, and hiding a campaign from its own librarian would
+	// be worse than useless.
+	g, isReader := groupOf(uid)
+	if isReader {
+		ids := make([]uint, 0, len(list))
+		for _, ch := range list {
+			ids = append(ids, ch.ID)
+		}
+		byChallenge := projectsByChallenge(ids)
+		kept := list[:0]
+		for _, ch := range list {
+			if visibleChallenge(ch, byChallenge, g) {
+				kept = append(kept, ch)
+			}
+		}
+		list = kept
+	}
+
 	out := make([]fiber.Map, 0, len(list))
 	for _, ch := range list {
 		out = append(out, challengeSummary(ch, uid))
