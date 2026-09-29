@@ -81,12 +81,26 @@ export default function Projects() {
     <>
       <PageIntro>{t('staff.pr.sub')}</PageIntro>
 
-      <KpiRow>
-        <Kpi label={t('staff.pr.kpiAll')} value={totals.all} />
-        <Kpi label={t('staff.pr.kpiRunning')} value={totals.running} />
-        <Kpi label={t('staff.pr.kpiPlanned')} value={totals.planned} />
-        <Kpi label={t('staff.pr.kpiDone')} value={totals.done} />
-      </KpiRow>
+      {/* The KPIs are the filter. Somebody looking for last year's campaigns
+          looks at the "finished" number first, so it is the thing that takes
+          them there rather than a chip further down they have to notice. */}
+      <div style={{ cursor: 'pointer' }}>
+        <KpiRow>
+          <span onClick={() => { setStatus('all'); setOpen(null); }}>
+            <Kpi label={t('staff.pr.kpiAll')} value={totals.all} note={t('staff.pr.kpiTap')} />
+          </span>
+          <span onClick={() => { setStatus('ACTIVE'); setOpen(null); }}>
+            <Kpi label={t('staff.pr.kpiRunning')} value={totals.running} />
+          </span>
+          <span onClick={() => { setStatus('PLANNED'); setOpen(null); }}>
+            <Kpi label={t('staff.pr.kpiPlanned')} value={totals.planned} />
+          </span>
+          <span onClick={() => { setStatus('DONE'); setOpen(null); }}>
+            <Kpi label={t('staff.pr.kpiDone')} value={totals.done}
+              note={totals.done > 0 ? t('staff.pr.kpiSeeOld') : ''} />
+          </span>
+        </KpiRow>
+      </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <Input value={q} onChange={(e) => setQ(e.target.value)}
@@ -703,6 +717,16 @@ function ReadingList({ project: p, t, say, onChanged }) {
         {t('staff.pr.readingNote')}
       </span>
 
+      {/* How the quiz is sat, and what readers have proposed for it. Both only
+          mean anything once there is a book to ask about, so they appear with
+          the list rather than before it. */}
+      {books.length > 0 && (
+        <>
+          <QuizSettings project={p} t={t} say={say} onChanged={onChanged} />
+          <Suggestions project={p} t={t} say={say} onChanged={onChanged} />
+        </>
+      )}
+
       {books.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {books.map((b) => (
@@ -781,6 +805,205 @@ function ReadingList({ project: p, t, say, onChanged }) {
             style={{ padding: '5px 10px', fontSize: 12 }}>{t('common.cancel')}</Btn>
           <Btn onClick={() => setBooks(draft.map((b) => b.edition_id))} disabled={busy}
             style={{ padding: '5px 10px', fontSize: 12 }}>{t('staff.pr.saveBooks')}</Btn>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------- how the quiz is sat */
+
+// The three rules that make copying an answer off the person next to you not
+// worth the trouble: a clock, a random draw out of a bigger pool, and one go.
+//
+// One go is not a setting — it is how the quiz works — so it is stated here
+// rather than offered as a switch somebody could turn off by accident.
+function QuizSettings({ project: p, t, say, onChanged }) {
+  const ch = p.quiz || {};
+  const [seconds, setSeconds] = useState(String(ch.seconds ?? 0));
+  const [draw, setDraw] = useState(String(ch.draw ?? 0));
+  const [open, setOpen] = useState(!!ch.open_submissions);
+  const [busy, setBusy] = useState(false);
+
+  // How many questions exist, so "ask 4 of 10" can say what the 10 is.
+  const pool = (p.books || []).reduce((n, b) => n + b.questions.length, 0);
+  const n = Number(draw) || 0;
+  const tooMany = n > pool && pool > 0;
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await api.put(`/projects/${p.id}/quiz-settings`, {
+        quiz_seconds: Number(seconds) || 0,
+        quiz_draw: n,
+        quiz_open_submissions: open,
+      });
+      say(t('staff.pr.quizSaved'));
+      onChanged();
+    } catch (e) {
+      say(e.response?.data?.error || t('msg.opFailed'));
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div style={{
+      border: '1px solid ' + shell.border, borderRadius: radius.card,
+      padding: 12, display: 'flex', flexDirection: 'column', gap: 8,
+      background: shell.canvas,
+    }}>
+      <Label>{t('staff.pr.quizRules')}</Label>
+
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <Label>{t('staff.pr.secondsPerQ')}</Label>
+          <Input type="number" min={0} max={3600} value={seconds}
+            onChange={(e) => setSeconds(e.target.value)} style={{ width: 110 }} />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <Label>{t('staff.pr.drawCount')}</Label>
+          <Input type="number" min={0} value={draw}
+            onChange={(e) => setDraw(e.target.value)} style={{ width: 110 }} />
+        </label>
+        <span style={{ flex: 1 }} />
+        <Btn onClick={save} disabled={busy || tooMany}
+          style={{ padding: '5px 11px', fontSize: 12 }}>{t('staff.pr.quizSave')}</Btn>
+      </div>
+
+      {/* Both settings say themselves back, because "30" and "4" on their own
+          mean nothing without the sentence around them. */}
+      <span style={{ fontSize: 12, color: ink.body }}>
+        {Number(seconds) > 0 ? t('staff.pr.secondsReads', { n: seconds }) : t('staff.pr.noTimeLimit')}
+      </span>
+      <span style={{ fontSize: 12, color: tooMany ? '#B4232A' : ink.body }}>
+        {tooMany
+          ? t('staff.pr.drawTooMany', { pool })
+          : n > 0
+            ? t('staff.pr.drawReads', { n, pool })
+            : t('staff.pr.drawAll', { pool })}
+      </span>
+      <span style={{ fontSize: 12, color: ink.dim }}>{t('staff.pr.oneTry')}</span>
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+        <input type="checkbox" checked={open} onChange={(e) => setOpen(e.target.checked)} />
+        {t('staff.pr.openSubmissions')}
+      </label>
+      <span style={{ fontSize: 12, color: ink.dim, marginTop: -4 }}>
+        {t('staff.pr.openSubmissionsNote')}
+      </span>
+    </div>
+  );
+}
+
+/* ------------------------------------ what readers have proposed */
+
+// Questions readers have written, and the library deciding which are asked.
+//
+// Nothing here is live until it is approved, so this is a queue rather than a
+// list of things already happening. Approving one puts it at the end of the
+// book's questions, so a reader part-way through a campaign does not find the
+// order shifting under them.
+function Suggestions({ project: p, t, say, onChanged }) {
+  const [rows, setRows] = useState([]);
+  const [status, setStatus] = useState('PENDING');
+  const [busy, setBusy] = useState(false);
+  const [key, setKey] = useState(0);
+
+  useEffect(() => {
+    let alive = true;
+    api.get(`/projects/${p.id}/suggestions`, { params: { status } })
+      .then((r) => { if (alive) setRows(r.data || []); })
+      .catch(() => { if (alive) setRows([]); });
+    return () => { alive = false; };
+  }, [p.id, status, key]);
+
+  const review = async (id, approve, answer) => {
+    setBusy(true);
+    try {
+      await api.put(`/projects/${p.id}/suggestions/${id}`, { approve, answer });
+      say(approve ? t('staff.pr.sugApproved') : t('staff.pr.sugRejected'));
+      setKey((k) => k + 1);
+      onChanged();
+    } catch (e) {
+      say(e.response?.data?.error || t('msg.opFailed'));
+    } finally { setBusy(false); }
+  };
+
+  const OPTS = ['PENDING', 'APPROVED', 'REJECTED'];
+
+  return (
+    <div style={{
+      border: '1px solid ' + shell.border, borderRadius: radius.card,
+      padding: 12, display: 'flex', flexDirection: 'column', gap: 8,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <Label>{t('staff.pr.suggestions')}</Label>
+        <span style={{ flex: 1 }} />
+        <div style={{ display: 'flex', gap: 4 }}>
+          {OPTS.map((s) => {
+            const on = status === s;
+            return (
+              <button key={s} onClick={() => setStatus(s)} style={{
+                background: on ? '#082F49' : '#fff', color: on ? '#fff' : ink.body,
+                border: '1px solid ' + (on ? '#082F49' : shell.control),
+                borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700,
+                cursor: 'pointer', fontFamily: font.ui,
+              }}>{t('staff.pr.sug.' + s)}</button>
+            );
+          })}
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <span style={{ fontSize: 12, color: ink.dim }}>{t('staff.pr.sugNone')}</span>
+      ) : rows.map((q) => (
+        <SuggestionRow key={q.id} q={q} busy={busy} review={review} t={t} />
+      ))}
+    </div>
+  );
+}
+
+// One suggestion, with the four answers and which one the reader marked. The
+// library can change that before approving — a good question with the wrong
+// answer marked is worth keeping rather than refusing.
+function SuggestionRow({ q, busy, review, t }) {
+  const [answer, setAnswer] = useState(q.answer);
+  const opts = [q.option_a, q.option_b, q.option_c, q.option_d];
+  const pending = q.status === 'PENDING';
+
+  return (
+    <div style={{
+      border: '1px solid ' + shell.border, borderRadius: radius.control,
+      padding: '9px 11px', display: 'flex', flexDirection: 'column', gap: 6,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+        <strong style={{ fontSize: 13, flex: '1 1 200px' }}>{q.prompt}</strong>
+        <span style={{ fontSize: 11, color: ink.dim }}>
+          {[q.by_name, q.book_title].filter(Boolean).join(' · ')}
+        </span>
+      </div>
+
+      <div style={{
+        display: 'grid', gap: 3,
+        gridTemplateColumns: 'repeat(auto-fill, minmax(160px,1fr))',
+      }}>
+        {opts.map((o, i) => (
+          <label key={i} style={{
+            display: 'flex', alignItems: 'center', gap: 6, fontSize: 12,
+            color: i === answer ? '#15803D' : ink.body, fontWeight: i === answer ? 700 : 400,
+          }}>
+            <input type="radio" name={`sug-${q.id}`} checked={answer === i}
+              disabled={!pending} onChange={() => setAnswer(i)} />
+            {String.fromCharCode(65 + i)}. {o}
+          </label>
+        ))}
+      </div>
+
+      {pending && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+          <Btn kind="secondary" disabled={busy} onClick={() => review(q.id, false)}
+            style={{ padding: '4px 9px', fontSize: 12 }}>{t('staff.pr.sugReject')}</Btn>
+          <Btn disabled={busy} onClick={() => review(q.id, true, answer)}
+            style={{ padding: '4px 9px', fontSize: 12 }}>{t('staff.pr.sugApprove')}</Btn>
         </div>
       )}
     </div>

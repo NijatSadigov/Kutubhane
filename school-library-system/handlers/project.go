@@ -37,6 +37,17 @@ type ProjectView struct {
 	// the list view so a card can say "4 kitab" without loading every title.
 	BookCount int               `json:"book_count"`
 	Books     []ProjectBookView `json:"books,omitempty"`
+	// How the quiz behind this project is sat. Absent when it has no books.
+	Quiz *QuizRules `json:"quiz,omitempty"`
+}
+
+// QuizRules is the library's setup of the quiz, flattened out of the challenge
+// so the screen never has to know a challenge is what is underneath.
+type QuizRules struct {
+	Seconds         int  `json:"seconds"`
+	Draw            int  `json:"draw"`
+	OpenSubmissions bool `json:"open_submissions"`
+	Pending         int  `json:"pending"`
 }
 
 // ClassStanding is one class's contribution — a group-by over the log rather
@@ -306,6 +317,19 @@ func DeleteProject(c *fiber.Ctx) error {
 	if err := database.DB.Select(clause.Associations).Delete(p).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Could not delete the project"})
 	}
+
+	// The challenge behind it goes too. Only a project that never started can
+	// be deleted at all, so nobody has been reading against it — and leaving
+	// it would put a campaign on every reader's Müsabiqələr page that no
+	// screen can reach or take down again.
+	if p.ChallengeID != nil {
+		database.DB.Where("challenge_id = ?", *p.ChallengeID).Delete(&models.ChallengeBook{})
+		database.DB.Where("challenge_id = ?", *p.ChallengeID).Delete(&models.QuizQuestion{})
+		database.DB.Where("challenge_id = ?", *p.ChallengeID).Delete(&models.ChallengeParticipant{})
+		database.DB.Where("challenge_id = ?", *p.ChallengeID).Delete(&models.ChallengeProgress{})
+		database.DB.Where("challenge_id = ?", *p.ChallengeID).Delete(&models.QuizSession{})
+		database.DB.Delete(&models.Challenge{}, *p.ChallengeID)
+	}
 	return c.JSON(fiber.Map{"deleted": true})
 }
 
@@ -459,6 +483,18 @@ func projectViews(rows []models.Project, withStandings bool) []ProjectView {
 			database.DB.Model(&models.ChallengeBook{}).
 				Where("challenge_id = ?", *p.ChallengeID).Count(&n)
 			v.BookCount = int(n)
+
+			var ch models.Challenge
+			if database.DB.First(&ch, *p.ChallengeID).Error == nil {
+				var pending int64
+				database.DB.Model(&models.QuizQuestion{}).
+					Where("challenge_id = ? AND status = ?", ch.ID, models.QuestionPending).
+					Count(&pending)
+				v.Quiz = &QuizRules{
+					Seconds: ch.QuizSeconds, Draw: ch.QuizDraw,
+					OpenSubmissions: ch.QuizOpenSubmissions, Pending: int(pending),
+				}
+			}
 		}
 		if withStandings {
 			v.Standings = classStandings(p.ID)

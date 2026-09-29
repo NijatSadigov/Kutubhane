@@ -213,8 +213,12 @@ func projectBooks(p *models.Project) []ProjectBookView {
 		return []ProjectBookView{}
 	}
 
+	// Only the questions that are actually asked. A reader's suggestion lives
+	// in the review queue until it is approved, and showing it here would make
+	// the library's own list look longer than the quiz really is.
 	var questions []models.QuizQuestion
-	database.DB.Where("challenge_id = ?", *p.ChallengeID).
+	database.DB.
+		Where("challenge_id = ? AND status = ?", *p.ChallengeID, models.QuestionApproved).
 		Order("edition_id, sort").Find(&questions)
 	byEdition := map[uint][]models.QuizQuestion{}
 	for _, q := range questions {

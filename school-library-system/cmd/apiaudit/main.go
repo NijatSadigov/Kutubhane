@@ -307,6 +307,8 @@ func readChecks() []check {
 	add("librarian", "/api/projects?status=NONSENSE", []int{400}, "bad status filter")
 	add("librarian", "/api/projects?kind=NONSENSE", []int{400}, "bad kind filter")
 	add("librarian", "/api/projects/99999", []int{404}, "unknown project")
+	add("librarian", "/api/projects/99999/suggestions", []int{404}, "unknown project has no suggestions")
+	add("student", "/api/projects/1/suggestions", denied, "a reader does not read the review queue")
 	// The audience picker must not offer a branch the endpoint would refuse.
 	add("librarian", "/api/branches?scope=mine", ok, "a librarian's own branch only")
 	add("manager", "/api/branches?scope=mine", ok, "the administration keeps the school")
@@ -404,6 +406,11 @@ func writeChecks() []check {
 		// can write anything, which keeps these inert.
 		{role: "student", method: "PUT", path: "/api/projects/1/audience", want: denied, note: "a reader does not choose who a project is for"},
 		{role: "librarian", method: "PUT", path: "/api/projects/99999/audience", want: []int{404}, note: "an unknown project has no audience"},
+		// The quiz rules and the reader-suggestion queue. A reader may propose
+		// a question but must never set the rules or judge a suggestion.
+		{role: "student", method: "PUT", path: "/api/projects/1/quiz-settings", want: denied, note: "a reader does not set the quiz rules"},
+		{role: "student", method: "PUT", path: "/api/projects/1/suggestions/1", want: denied, note: "a reader does not approve their own question"},
+		{role: "librarian", method: "PUT", path: "/api/projects/99999/quiz-settings", want: []int{404}, note: "an unknown project has no quiz"},
 		// The end-of-year collection. Same guard as the per-title path, and an
 		// empty body is refused rather than silently recording nothing — which
 		// also keeps these checks inert against a real database.

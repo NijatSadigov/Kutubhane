@@ -34,7 +34,7 @@ demo activity and takes `BASE` to choose which server.
 cd library-frontend && npm run build && npx eslint src/mrb src/staff
 ```
 
-Last run: 23 Go tests pass, **258 API checks across 5 roles**, 33/33
+Last run: 23 Go tests pass, **263 API checks across 5 roles**, 33/33
 loan-lifecycle checks pass, build and lint clean.
 
 The audit's count is deterministic — every `add()` in `cmd/apiaudit` is
@@ -273,6 +273,28 @@ with the reasoning:
       The book picker shows covers and opens on the branch's own shelf rather
       than an empty search box — a librarian recognises a cover long before
       they recall a spelling.
+
+      **Quiz rules, enforced on the server** (buyer, 2026-09-29). A time limit
+      per question, a random draw out of a bigger pool, one attempt, and
+      readers proposing questions the library approves.
+
+      The draw is **deterministic per reader**, seeded on (challenge, edition,
+      user): a fresh shuffle each fetch would let somebody reload until they
+      had seen the whole pool, and would change the paper under a reader who
+      simply refreshed. `QuizSession` records when the paper went out, which is
+      what makes both the clock and the single attempt real rather than
+      client-side suggestions.
+
+      Only APPROVED questions are asked. A reader's suggestion is inert until a
+      librarian approves it, and approving appends it so the order does not
+      shift under readers mid-campaign. The library can correct which answer is
+      right before approving — a good question with the wrong answer marked is
+      worth keeping.
+
+      Still to do on the reader's side: the screen for **writing** a suggestion.
+      The endpoint (`POST /challenges/:id/suggest`) and the whole review queue
+      exist and are exercised, but the reader app has no form for it yet, so
+      today a suggestion can only arrive through the API.
 
       **A target group** (buyer, 2026-09-29). `Audience` is one of SCHOOL,
       BRANCHES, CLASSES or SCHOOLS, with a join table behind each of the last

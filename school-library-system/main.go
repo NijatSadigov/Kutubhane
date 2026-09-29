@@ -57,6 +57,7 @@ func main() {
 		&models.ChallengeProgress{},
 		&models.QuizQuestion{},
 		&models.QuizAttempt{},
+		&models.QuizSession{},
 		&models.Review{},
 		&models.ReviewVote{},
 		&models.ReviewReply{},

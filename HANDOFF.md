@@ -81,7 +81,7 @@ cd school-library-system && go test ./... && go run ./cmd/apiaudit -writes
 cd library-frontend && npm run build && npx eslint src/mrb src/staff src/i18n
 ```
 
-Last run: 23 Go tests, **258 API checks across 5 roles**, build clean,
+Last run: 23 Go tests, **263 API checks across 5 roles**, build clean,
 `src/mrb` + `src/staff` + `src/i18n` lint clean. (`npx eslint src` reports 12
 errors, all pre-existing in the manager/admin/student dashboards and shared
 components — down from ~20 since the librarian's dashboard was deleted.)
@@ -258,6 +258,32 @@ endpoint then refused — a screen that shows a choice it cannot honour.
 schools are partners is the Phase 3 alliance work, and without it there is
 nothing to check a school administrator's choice against. The endpoint answers
 `NO_ALLIANCES` and the screen says so.
+
+**The quiz has rules, and they are enforced on the server.** Seconds per
+question, how many of the pool each reader is asked, one attempt, and readers
+proposing questions the library approves.
+
+Three things worth knowing before touching `handlers/quiz_rules.go`:
+
+- **The draw is deterministic per reader**, seeded on (challenge, edition,
+  user). A fresh random draw each fetch would let a reader reload until they
+  had seen the whole pool, and would change the paper under somebody who simply
+  refreshed. The same reader always gets the same questions; different readers
+  usually get different ones.
+- **`QuizSession` is why the clock and the single attempt are real.** Without a
+  row saying when the paper went out, both are client-side suggestions. Opening
+  the quiz again returns the same questions with the clock still running.
+- **Only APPROVED questions are ever asked.** A reader's suggestion is inert
+  until a librarian approves it, and approving puts it at the end of the book's
+  list so the order does not shift under readers mid-campaign.
+
+Two bugs this turned up, both in existing code:
+
+- **A challenge with no end date could never be joined.** `time.Now().After(ch.EndsAt)`
+  is true for the zero time, so a project created without dates made a campaign
+  that told every reader it had finished before it began.
+- **Deleting a project orphaned its challenge**, leaving a campaign on every
+  reader's Müsabiqələr page that no screen could reach or take down.
 
 **A reading project *is* a Müsabiqə.** The kind was labelled "Oxu kampaniyası"
 while readers call the same thing Müsabiqələr, which made two names for one

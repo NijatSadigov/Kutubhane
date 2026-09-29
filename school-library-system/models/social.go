@@ -157,6 +157,18 @@ type Challenge struct {
 	CreatedBy uint      `json:"created_by"`
 	CreatedAt time.Time `json:"created_at"`
 
+	// How the quiz is run. All three exist to make copying an answer off the
+	// person next to you not worth the trouble.
+	//
+	// QuizSeconds is per question, 0 for no limit. QuizDraw is how many
+	// questions each reader is asked out of the pool, 0 for all of them — ten
+	// written, four asked, and two readers rarely get the same four.
+	// QuizOpenSubmissions lets readers propose questions of their own, which
+	// the library approves before anybody is asked them.
+	QuizSeconds         int  `json:"quiz_seconds" gorm:"default:0"`
+	QuizDraw            int  `json:"quiz_draw" gorm:"default:0"`
+	QuizOpenSubmissions bool `json:"quiz_open_submissions" gorm:"default:false"`
+
 	Books []ChallengeBook `json:"books,omitempty" gorm:"foreignKey:ChallengeID;constraint:OnDelete:CASCADE;"`
 }
 
@@ -206,6 +218,44 @@ type QuizQuestion struct {
 	// Answer is the index of the correct option, 0–3. Never sent to students.
 	Answer int `json:"-"`
 	Sort   int `json:"sort"`
+
+	// A question written by a reader starts PENDING and is asked of nobody
+	// until the library approves it. The library's own questions are APPROVED
+	// on creation, which is why that is the default — an existing quiz keeps
+	// working without a migration touching its rows.
+	Status      string `json:"status" gorm:"index;default:APPROVED"`
+	SubmittedBy *uint  `json:"submitted_by" gorm:"index"`
+	// Kept so a reader can be told why, and so the same question is not
+	// re-proposed and re-refused for ever.
+	ReviewNote string `json:"review_note"`
+}
+
+// Quiz question states. A reader's suggestion is PENDING until the library
+// looks at it; REJECTED is kept rather than deleted so the reader can see what
+// happened to it.
+const (
+	QuestionApproved = "APPROVED"
+	QuestionPending  = "PENDING"
+	QuestionRejected = "REJECTED"
+)
+
+// QuizSession is one reader sitting one book's quiz.
+//
+// It exists because a time limit and a single attempt are only real if the
+// server knows when the paper was handed out. Without it both are client-side
+// suggestions, which is no use at all for the thing they are for.
+//
+// One row per reader per book: fetching the quiz again returns the same
+// questions and the same clock, so reloading the page is not a way to buy more
+// time or to see a different draw.
+type QuizSession struct {
+	ID          uint `json:"id" gorm:"primaryKey"`
+	ChallengeID uint `json:"challenge_id" gorm:"index:idx_quiz_session,unique,priority:1"`
+	UserID      uint `json:"user_id" gorm:"index:idx_quiz_session,unique,priority:2"`
+	EditionID   uint `json:"edition_id" gorm:"index:idx_quiz_session,unique,priority:3"`
+
+	IssuedAt    time.Time  `json:"issued_at"`
+	SubmittedAt *time.Time `json:"submitted_at"`
 }
 
 // QuizAttempt records a try. Every attempt is kept so a teacher can see effort,

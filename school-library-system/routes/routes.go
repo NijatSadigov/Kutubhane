@@ -198,6 +198,14 @@ func Setup(app *fiber.App) {
 	api.Put("/projects/:id/books", middleware.IsTeacher, handlers.SetProjectBooks)
 	api.Post("/projects/:id/questions", middleware.IsTeacher, handlers.AddProjectQuestion)
 	api.Delete("/projects/:id/questions/:qid", middleware.IsTeacher, handlers.DeleteProjectQuestion)
+	// How the quiz is sat — the time limit, how many of the pool each reader
+	// is asked, and whether readers may propose questions — and the library's
+	// review of what they propose.
+	api.Put("/projects/:id/quiz-settings", middleware.IsTeacher, handlers.SetQuizSettings)
+	api.Get("/projects/:id/suggestions", middleware.IsTeacher, handlers.GetSuggestedQuestions)
+	api.Put("/projects/:id/suggestions/:qid", middleware.IsTeacher, handlers.ReviewSuggestedQuestion)
+	// A reader proposing a question for a challenge they are taking part in.
+	api.Post("/challenges/:id/suggest", handlers.SuggestQuizQuestion)
 
 	// Notifications. Deliberately not role-guarded: the recipients span
 	// students, teachers, librarians and managers, and the scope is always the

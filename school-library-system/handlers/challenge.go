@@ -267,7 +267,10 @@ func JoinChallenge(c *fiber.Ctx) error {
 	if ch.SchoolID != schoolID {
 		return c.Status(403).JSON(fiber.Map{"error": "Not your school's challenge"})
 	}
-	if time.Now().After(ch.EndsAt) {
+	// A zero end date means "no end", not "ended in year one". A project
+	// created without dates made a challenge whose EndsAt was the zero time,
+	// so every reader was told it had finished before it began.
+	if !ch.EndsAt.IsZero() && time.Now().After(ch.EndsAt) {
 		return c.Status(400).JSON(fiber.Map{"error": "This challenge has finished", "code": "FINISHED"})
 	}
 
@@ -322,15 +325,35 @@ func GetQuiz(c *fiber.Ctx) error {
 		return err
 	}
 
-	var qs []models.QuizQuestion
-	database.DB.Where("challenge_id = ? AND edition_id = ?", challengeID, editionID).
-		Order("sort asc, id asc").Find(&qs)
-	if len(qs) == 0 {
+	var ch models.Challenge
+	if err := database.DB.First(&ch, challengeID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Challenge not found"})
+	}
+
+	// Only approved questions are ever asked, and only this reader's draw of
+	// them. The pool never leaves the server.
+	pool := approvedQuestions(uint(challengeID), uint(editionID))
+	if len(pool) == 0 {
 		return c.Status(404).JSON(fiber.Map{"error": "No quiz for this book", "code": "NO_QUIZ"})
+	}
+	qs := drawFor(pool, ch.QuizDraw, uint(challengeID), uint(editionID), uid)
+
+	// One go per book. Saying so before they start is kinder than letting
+	// somebody answer ten questions and then refusing to record them.
+	session := openSession(uint(challengeID), uid, uint(editionID))
+	if session.SubmittedAt != nil {
+		return c.Status(409).JSON(fiber.Map{
+			"error": "You have already taken this quiz", "code": "ALREADY_TAKEN"})
 	}
 
 	// Answer is json:"-" on the model, so it cannot leak by accident here.
-	return c.JSON(fiber.Map{"questions": qs, "pass_mark": quizPassMark, "total": len(qs)})
+	return c.JSON(fiber.Map{
+		"questions": qs, "pass_mark": quizPassMark, "total": len(qs),
+		"pool_size":    len(pool),
+		"seconds":      ch.QuizSeconds,
+		"seconds_left": secondsLeft(session, ch.QuizSeconds, len(qs)),
+		"single_try":   true,
+	})
 }
 
 // SubmitQuiz marks an attempt. Every attempt is recorded; the best score is
@@ -352,10 +375,36 @@ func SubmitQuiz(c *fiber.Ctx) error {
 		return err
 	}
 
-	var qs []models.QuizQuestion
-	database.DB.Where("challenge_id = ? AND edition_id = ?", challengeID, req.EditionID).Find(&qs)
-	if len(qs) == 0 {
+	var ch models.Challenge
+	if err := database.DB.First(&ch, challengeID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Challenge not found"})
+	}
+
+	pool := approvedQuestions(uint(challengeID), req.EditionID)
+	if len(pool) == 0 {
 		return c.Status(404).JSON(fiber.Map{"error": "No quiz for this book", "code": "NO_QUIZ"})
+	}
+	// Marked against the same draw the reader was given, worked out the same
+	// way rather than taken from the request — otherwise the answers decide
+	// which questions were asked.
+	qs := drawFor(pool, ch.QuizDraw, uint(challengeID), req.EditionID, uid)
+
+	session := openSession(uint(challengeID), uid, req.EditionID)
+	if session.SubmittedAt != nil {
+		return c.Status(409).JSON(fiber.Map{
+			"error": "You have already taken this quiz", "code": "ALREADY_TAKEN"})
+	}
+	// The clock is checked here, not just drawn in the browser. A grace window
+	// covers the seconds the answers spend in transit.
+	if ch.QuizSeconds > 0 {
+		allowed := ch.QuizSeconds*len(qs) + quizGraceSeconds
+		if int(time.Since(session.IssuedAt).Seconds()) > allowed {
+			now := time.Now()
+			session.SubmittedAt = &now
+			database.DB.Save(&session)
+			return c.Status(409).JSON(fiber.Map{
+				"error": "Time is up", "code": "TIME_UP"})
+		}
 	}
 
 	score := 0
@@ -373,6 +422,12 @@ func SubmitQuiz(c *fiber.Ctx) error {
 		ChallengeID: uint(challengeID), UserID: uid, EditionID: req.EditionID,
 		Score: score, Total: len(qs), Passed: passed, CreatedAt: time.Now(),
 	})
+
+	// Close the paper. This is what makes it one go: the attempt row is still
+	// written for the teacher's view, but the session will not open again.
+	now := time.Now()
+	session.SubmittedAt = &now
+	database.DB.Save(&session)
 
 	p := upsertProgress(uint(challengeID), uid, req.EditionID)
 	if score > p.QuizBest {
