@@ -34,7 +34,7 @@ demo activity and takes `BASE` to choose which server.
 cd library-frontend && npm run build && npx eslint src/mrb src/staff
 ```
 
-Last run: 23 Go tests pass, **224 API checks across 5 roles**, 33/33
+Last run: 23 Go tests pass, **227 API checks across 5 roles**, 33/33
 loan-lifecycle checks pass, build and lint clean.
 
 The audit's count is deterministic — every `add()` in `cmd/apiaudit` is
@@ -60,9 +60,11 @@ with the reasoning:
       `UserID`, three producers, one bell in each shell. See `HANDOFF.md` for
       the shape and the one decision that drove it
 
-- [ ] **End-of-year "return the whole set".** Collecting a class set is one
-      dialog per title today — eight presses for 4-A. An hour's work that a
-      teacher feels immediately
+- [x] **End-of-year "return the whole set".** Done 2026-09-29.
+      `POST /textbook-movements/bulk` takes every title at once and every row
+      is prefilled with a full return, so a teacher corrects only the copies
+      that did not come back. 4-A went from eight open-fill-submit cycles to
+      one dialog
 
 - [ ] **Drop `Book`'s duplicated columns.** `title`, `isbn`, `language`,
       `cefr_level`, `publication_year`, `edition`, `page_count`, `cover_url`
@@ -201,6 +203,24 @@ with the reasoning:
       dashboard does
 
 ## Done
+
+- [x] **End-of-year "return the whole set".** `POST /textbook-movements/bulk`
+      collects every title a class still holds in one **atomic** write. Every
+      line validates before anything is written and the writes share a
+      transaction, because a half-applied collection is worse than none — the
+      teacher cannot tell from the screen which half landed.
+
+      Each row is prefilled with a full return, since that is what nearly
+      always happened; the teacher corrects only the exceptions. The three
+      numbers may add up to *less* than what is outstanding — that is a child
+      who was away, and the remainder simply stays out.
+
+      A line that writes a copy off still needs a note naming the child, the
+      same rule the single-title dialog enforces: collecting in bulk is not a
+      way around the accountability the per-title path insists on. The note
+      rides on the LOST and DAMAGED rows **only** — putting it on the RETURN
+      as well made the ledger read as though that one child handed back the
+      other thirty-eight.
 
 - [x] **Notifications**, and with them the three features that were each
       incomplete for the one missing reason. One `Notification` table keyed on

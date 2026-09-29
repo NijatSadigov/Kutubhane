@@ -359,6 +359,12 @@ func writeChecks() []check {
 		{role: "manager", method: "POST", path: "/api/desk/overdue/remind", want: denied, note: "a school administrator does not run a branch's desk"},
 		{role: "librarian", method: "POST", path: "/api/desk/overdue/remind", want: []int{400}, note: "a reminder naming no loans is refused"},
 		{role: "", method: "POST", path: "/api/notifications/seen", want: []int{401}, note: "marking read needs a session"},
+		// The end-of-year collection. Same guard as the per-title path, and an
+		// empty body is refused rather than silently recording nothing — which
+		// also keeps these checks inert against a real database.
+		{role: "student", method: "POST", path: "/api/textbook-movements/bulk", want: denied, note: "a reader does not collect a class set"},
+		{role: "", method: "POST", path: "/api/textbook-movements/bulk", want: []int{401}, note: "collecting a set needs a session"},
+		{role: "teacher", method: "POST", path: "/api/textbook-movements/bulk", want: []int{400}, note: "an empty collection is refused"},
 	}
 }
 

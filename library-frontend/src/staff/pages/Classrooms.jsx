@@ -30,6 +30,7 @@ export default function Classrooms() {
   const [held, setHeld] = useState([]);
   const [roster, setRoster] = useState([]);
   const [moving, setMoving] = useState(null);
+  const [returningSet, setReturningSet] = useState(false);
   const [toast, setToast] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -64,6 +65,10 @@ export default function Classrooms() {
     returned: a.returned + h.returned,
     lost: a.lost + h.lost + h.damaged,
   }), { out: 0, issued: 0, returned: 0, lost: 0 }), [held]);
+
+  // Only titles the class is still holding can come back, so they are the only
+  // ones the end-of-year dialog offers.
+  const stillOut = useMemo(() => held.filter((h) => h.outstanding > 0), [held]);
 
   return (
     <>
@@ -111,6 +116,24 @@ export default function Classrooms() {
               noteColor={totals.lost > 0 ? '#B4232A' : undefined}
               note={totals.lost > 0 ? t('staff.tb.writtenOff') : ''} />
           </KpiRow>
+
+          {/* The end of the year. Doing this a title at a time is eight
+              open-fill-submit cycles for 4-A, and the answer is nearly always
+              "all of them" — so the set comes back in one action and the
+              teacher adjusts only the exceptions. */}
+          {stillOut.length > 0 && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+              background: '#fff', border: '1px solid ' + shell.border,
+              borderRadius: radius.card, padding: '10px 14px',
+            }}>
+              <span style={{ fontWeight: 700 }}>
+                {t('staff.cls.setSummary', { titles: stillOut.length, copies: totals.out })}
+              </span>
+              <span style={{ flex: 1 }} />
+              <Btn onClick={() => setReturningSet(true)}>{t('staff.cls.returnSet')}</Btn>
+            </div>
+          )}
 
           <ScrollTable
             min={880} columns={COLS}
@@ -179,6 +202,14 @@ export default function Classrooms() {
           holding={moving} classroomId={roomId} roster={roster} t={t} say={say}
           onClose={() => setMoving(null)}
           onDone={() => { setMoving(null); reload(); }}
+        />
+      )}
+
+      {returningSet && (
+        <ReturnSetDialog
+          holdings={stillOut} classroomId={roomId} roster={roster} t={t} say={say}
+          onClose={() => setReturningSet(false)}
+          onDone={() => { setReturningSet(false); reload(); }}
         />
       )}
 
@@ -265,6 +296,160 @@ function MovementDialog({ holding, classroomId, roster, t, say, onClose, onDone 
       </label>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <Btn kind="secondary" onClick={onClose}>{t('common.cancel')}</Btn>
+        <Btn onClick={submit} disabled={busy || !ready}>{t('staff.cls.confirm')}</Btn>
+      </div>
+    </Dialog>
+  );
+}
+
+/* ------------------------------------- collecting the whole set at year end */
+
+// The end-of-year collection: every title the class still holds, on one form.
+//
+// Each row is prefilled with a full return, because that is what nearly always
+// happened — the teacher's job here is to correct the two copies that did not
+// come back, not to retype the twenty-three that did. A row only asks for a
+// name once something is written off, which is the same rule the single-title
+// dialog enforces: collecting in bulk must not become a way around saying
+// whose book went missing.
+//
+// The three numbers on a row may add up to *less* than what is outstanding.
+// That is a child who was away on the day, and the remainder simply stays out.
+function ReturnSetDialog({ holdings, classroomId, roster, t, say, onClose, onDone }) {
+  const [lines, setLines] = useState(() => holdings.map((h) => ({
+    textbook_id: h.textbook_id,
+    title: h.title,
+    outstanding: h.outstanding,
+    returned: String(h.outstanding),
+    lost: '0',
+    damaged: '0',
+    note: '',
+  })));
+  const [busy, setBusy] = useState(false);
+
+  const set = (id, field, value) => setLines((prev) => prev.map((l) => (
+    l.textbook_id === id ? { ...l, [field]: value } : l
+  )));
+
+  // One row's arithmetic, used for both its own error line and the footer.
+  const readRow = (l) => {
+    const returned = Number(l.returned) || 0;
+    const lost = Number(l.lost) || 0;
+    const damaged = Number(l.damaged) || 0;
+    const total = returned + lost + damaged;
+    const writeOff = lost + damaged;
+    return {
+      returned, lost, damaged, total, writeOff,
+      tooMany: total > l.outstanding,
+      negative: returned < 0 || lost < 0 || damaged < 0,
+      needsNote: writeOff > 0 && !l.note.trim(),
+    };
+  };
+
+  const rows = lines.map((l) => ({ line: l, calc: readRow(l) }));
+  const blocked = rows.some(({ calc }) => calc.tooMany || calc.negative || calc.needsNote);
+  const touched = rows.filter(({ calc }) => calc.total > 0);
+  const ready = !blocked && touched.length > 0;
+
+  const totalCopies = touched.reduce((n, { calc }) => n + calc.total, 0);
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      const r = await api.post('/textbook-movements/bulk', {
+        classroom_id: classroomId,
+        lines: touched.map(({ line, calc }) => ({
+          textbook_id: line.textbook_id,
+          returned: calc.returned,
+          lost: calc.lost,
+          damaged: calc.damaged,
+          note: line.note.trim(),
+        })),
+      });
+      say(t('staff.cls.setRecorded', { titles: r.data?.titles ?? touched.length }));
+      onDone();
+    } catch (e) {
+      // The endpoint names the title it stopped on, which is more use than a
+      // generic failure when eight of them are on screen.
+      const d = e.response?.data;
+      say(d?.title ? `${d.title}: ${d.error}` : (d?.error || t('msg.opFailed')));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog title={t('staff.cls.returnSetTitle')} onClose={onClose} t={t} wide>
+      <div style={{ fontSize: 13, color: ink.body, marginTop: -8 }}>
+        {t('staff.cls.returnSetIntro')}
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {rows.map(({ line: l, calc }) => (
+          <div key={l.textbook_id} style={{
+            border: '1px solid ' + shell.border, borderRadius: radius.card,
+            padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8,
+            background: calc.total === 0 ? shell.canvas : '#fff',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+              <strong style={{ fontSize: 13 }}>{l.title}</strong>
+              <span style={{ fontSize: 11, color: ink.dim }}>
+                {t('staff.cls.stillOut', { n: l.outstanding })}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {[
+                ['returned', t('staff.cls.colReturned')],
+                ['lost', t('staff.cls.colLost')],
+                ['damaged', t('staff.cls.colDamaged')],
+              ].map(([field, label]) => (
+                <label key={field} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <Label>{label}</Label>
+                  <Input
+                    type="number" min={0} max={l.outstanding} value={l[field]}
+                    onChange={(e) => set(l.textbook_id, field, e.target.value)}
+                    style={{ width: 92 }}
+                  />
+                </label>
+              ))}
+            </div>
+
+            {calc.writeOff > 0 && (
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <Label>{t('staff.cls.whichStudent')}</Label>
+                <Input
+                  value={l.note} list="roster-names"
+                  placeholder={t('staff.cls.whichStudentHint')}
+                  onChange={(e) => set(l.textbook_id, 'note', e.target.value)}
+                />
+              </label>
+            )}
+
+            {calc.tooMany && (
+              <span style={{ fontSize: 12, color: '#B4232A' }}>
+                {t('staff.cls.tooMany', { n: l.outstanding })}
+              </span>
+            )}
+            {calc.needsNote && (
+              <span style={{ fontSize: 12, color: '#B4232A' }}>{t('staff.cls.noteNeeded')}</span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <datalist id="roster-names">
+        {roster.map((s) => <option key={s.user_id} value={s.name} />)}
+      </datalist>
+
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+        borderTop: '1px solid ' + shell.border, paddingTop: 12,
+      }}>
+        <span style={{ fontSize: 13, color: ink.body }}>
+          {t('staff.cls.setFooter', { titles: touched.length, copies: totalCopies })}
+        </span>
+        <span style={{ flex: 1 }} />
         <Btn kind="secondary" onClick={onClose}>{t('common.cancel')}</Btn>
         <Btn onClick={submit} disabled={busy || !ready}>{t('staff.cls.confirm')}</Btn>
       </div>

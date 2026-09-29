@@ -337,6 +337,9 @@ func Setup(app *fiber.App) {
 	// What a class holds, and the ledger behind it.
 	api.Get("/classroom-holdings", middleware.IsTeacher, handlers.GetClassroomHoldings)
 	api.Post("/textbook-movements", middleware.IsTeacher, handlers.RecordTextbookMovement)
+	// The end of the year: a whole class set in one atomic write, rather than
+	// one dialog per title.
+	api.Post("/textbook-movements/bulk", middleware.IsTeacher, handlers.BulkTextbookMovements)
 	api.Get("/textbook-movements", middleware.IsLibrarian, handlers.GetTextbookMovements)
 
 	// The support queue. IsManager admits a manager and an admin; the handlers

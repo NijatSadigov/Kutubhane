@@ -81,7 +81,7 @@ cd school-library-system && go test ./... && go run ./cmd/apiaudit -writes
 cd library-frontend && npm run build && npx eslint src/mrb src/staff src/i18n
 ```
 
-Last run: 23 Go tests, **224 API checks across 5 roles**, build clean,
+Last run: 23 Go tests, **227 API checks across 5 roles**, build clean,
 `src/mrb` + `src/staff` + `src/i18n` lint clean. (`npx eslint src` reports 12
 errors, all pre-existing in the manager/admin/student dashboards and shared
 components — down from ~20 since the librarian's dashboard was deleted.)
@@ -175,7 +175,23 @@ defines. Polling rather than sockets, following the lazy-sweep idiom this
 codebase already uses: on mount, on navigation, and every 60s while the tab is
 visible.
 
-### Two bugs this turned up, both the shapes this file warns about
+**End-of-year "return the whole set"** — `POST /textbook-movements/bulk`. Every
+title a class still holds on one form, each row prefilled with a full return,
+so the teacher corrects only the copies that did not come back. 4-A went from
+eight open-fill-submit cycles to one dialog.
+
+It is **atomic**: every line validates before anything is written, and the
+writes share a transaction. A half-applied collection is worse than none,
+because the teacher cannot tell from the screen which half landed. Verified by
+sending a good line and a bad one together and confirming the ledger did not
+move.
+
+A line that writes a copy off still needs a note naming the child — bulk is not
+a way around what the per-title dialog insists on. The note rides on the LOST
+and DAMAGED rows only; putting it on the RETURN as well made the ledger read as
+though one child had handed back the other thirty-eight.
+
+### Three bugs this turned up, all the shapes this file warns about
 
 - **The manager's notification called a ticket theirs.** One i18n key serves
   both ends of the thread, and it read "Müraciət**inizə** yeni cavab" — *your*
@@ -187,6 +203,15 @@ visible.
   I nearly took the blame for it — hiding the bell with `display:none` and
   re-measuring showed the height was identical either way. **Pre-existing, not
   the bell.** Worth checking that way before "fixing" a layout.
+- **The bulk collection wrote the write-off note onto the plain RETURN row**,
+  so the ledger read as though one child had returned the other thirty-eight.
+  Only visible by reading the rows back out of the database after a successful
+  submit — the screen looked right, because the totals were right.
+
+A fourth thing, not a bug but the same lesson: **a manager receives
+notifications but lands on `/manager`**, the old dashboard, which had no bell.
+Built, but not wired up where the person actually is — exactly lesson 2 below.
+The old dashboard has the bell now; it goes when that screen does.
 
 ## What the 2026-09-28 session did
 

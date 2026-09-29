@@ -689,6 +689,144 @@ func RecordTextbookMovement(c *fiber.Ctx) error {
 	return c.JSON(m)
 }
 
+// BulkTextbookMovements collects a whole class set in one go — the end of the
+// year, when 4-A hands back eight titles at once.
+//
+// Doing that a title at a time meant eight open-fill-submit cycles for a
+// number that is nearly always "all of them". Here each line carries the three
+// outcomes side by side, so a teacher adjusts only the exceptions: the two
+// copies that did not come back out of twenty-five.
+//
+// Two rules make it trustworthy. It is **atomic** — every line is validated
+// before anything is written, and the writes share a transaction, because a
+// half-applied collection is worse than none: the teacher cannot tell from the
+// screen which half landed. And a line that writes off a copy still needs a
+// note naming the child, exactly as the single-title dialog does; collecting in
+// bulk is not a way around the accountability the per-title path insists on.
+func BulkTextbookMovements(c *fiber.Ctx) error {
+	uid, err := currentUserID(c)
+	if err != nil {
+		return err
+	}
+
+	var req struct {
+		ClassroomID uint `json:"classroom_id"`
+		Lines       []struct {
+			TextbookID uint   `json:"textbook_id"`
+			Returned   int    `json:"returned"`
+			Lost       int    `json:"lost"`
+			Damaged    int    `json:"damaged"`
+			Note       string `json:"note"`
+		} `json:"lines"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid Input"})
+	}
+	if len(req.Lines) == 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "Nothing to record"})
+	}
+	if !teachesClassroom(c, req.ClassroomID) {
+		return c.Status(403).JSON(fiber.Map{"error": "You do not teach that class"})
+	}
+
+	var room models.Classroom
+	if err := database.DB.First(&room, req.ClassroomID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Classroom not found"})
+	}
+
+	// Validate every line first, so a mistake on the last title does not leave
+	// the first seven recorded.
+	type plan struct {
+		textbook models.Textbook
+		returned int
+		lost     int
+		damaged  int
+		note     string
+	}
+	planned := make([]plan, 0, len(req.Lines))
+	seen := map[uint]bool{}
+
+	for _, l := range req.Lines {
+		if l.Returned < 0 || l.Lost < 0 || l.Damaged < 0 {
+			return c.Status(400).JSON(fiber.Map{"error": "A quantity cannot be negative"})
+		}
+		total := l.Returned + l.Lost + l.Damaged
+		if total == 0 {
+			continue // a title nothing happened to is not an error, just nothing
+		}
+		if seen[l.TextbookID] {
+			return c.Status(400).JSON(fiber.Map{
+				"error": "The same title appears twice", "code": "DUPLICATE_LINE"})
+		}
+		seen[l.TextbookID] = true
+
+		var tb models.Textbook
+		if err := database.DB.Where("id = ? AND branch_id = ?", l.TextbookID, room.BranchID).
+			First(&tb).Error; err != nil {
+			return c.Status(404).JSON(fiber.Map{"error": "Textbook not found"})
+		}
+
+		held := outstandingFor(room.ID, tb.ID)
+		if total > held {
+			return c.Status(400).JSON(fiber.Map{
+				"error": "That is more than the class is holding", "code": "TOO_MANY",
+				"textbook_id": tb.ID, "title": tb.Title, "held": held})
+		}
+
+		note := strings.TrimSpace(l.Note)
+		if l.Lost+l.Damaged > 0 && note == "" {
+			return c.Status(400).JSON(fiber.Map{
+				"error": "A write-off needs a note naming the student", "code": "NOTE_REQUIRED",
+				"textbook_id": tb.ID, "title": tb.Title})
+		}
+
+		planned = append(planned, plan{textbook: tb, returned: l.Returned,
+			lost: l.Lost, damaged: l.Damaged, note: note})
+	}
+
+	if len(planned) == 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "Nothing to record"})
+	}
+
+	recorded := 0
+	err = database.DB.Transaction(func(tx *gorm.DB) error {
+		for _, p := range planned {
+			// The note names the child a write-off belongs to, so it rides on
+			// the LOST and DAMAGED rows only. Putting it on the RETURN as well
+			// would make the ledger read as though that child handed back the
+			// other thirty-eight.
+			for _, pair := range []struct {
+				kind string
+				qty  int
+				note string
+			}{
+				{models.MoveReturn, p.returned, ""},
+				{models.MoveLost, p.lost, p.note},
+				{models.MoveDamaged, p.damaged, p.note},
+			} {
+				if pair.qty < 1 {
+					continue
+				}
+				m := models.TextbookMovement{
+					BranchID: room.BranchID, ClassroomID: room.ID, TextbookID: p.textbook.ID,
+					AcademicYearID: room.AcademicYearID, Kind: pair.kind, Qty: pair.qty,
+					Note: pair.note, RecordedBy: uid,
+				}
+				if err := tx.Create(&m).Error; err != nil {
+					return err
+				}
+				recorded++
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Could not record it"})
+	}
+
+	return c.JSON(fiber.Map{"recorded": recorded, "titles": len(planned)})
+}
+
 func outstandingFor(classroomID, textbookID uint) int {
 	type row struct {
 		Kind  string
