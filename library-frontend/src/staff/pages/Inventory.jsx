@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api, { assetUrl } from '../../api/axios';
 import { useTranslation } from '../../i18n/LanguageContext';
+import { genreLabel } from '../../i18n/genres';
 import { shell, ink, radius, font, pill } from '../theme';
 import { Kpi, KpiRow, Pill, Btn, Input, Spine, Mono } from '../components/StaffShell';
 import { EditTitle, EditCopy, BulkUpload } from './InventoryDialogs';
@@ -160,7 +161,7 @@ export default function Inventory() {
                   <span style={{
                     color: ink.body, overflow: 'hidden',
                     textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>{b.genre?.name || '—'}</span>
+                  }}>{b.genre?.name ? genreLabel(b.genre.name, t) : '—'}</span>
                   <span style={{ fontWeight: 700 }}>{copies.length}</span>
 
                   <span style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

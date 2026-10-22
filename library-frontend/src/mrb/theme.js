@@ -77,6 +77,10 @@ export function genreColors(name) {
   return FALLBACK_GENRE_COLORS[h % FALLBACK_GENRE_COLORS.length];
 }
 
+// A genre's display name lives in i18n/genres.js — genreColors() here keeps
+// taking the STORED name, never the translated label, so a genre does not
+// change colour when the reader switches language.
+
 // [bg, text]
 export const CEFR_COLORS = {
   A2: ['#DCFCE7', '#166534'],

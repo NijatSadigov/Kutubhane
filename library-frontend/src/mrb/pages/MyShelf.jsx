@@ -17,6 +17,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { fmtDate, fmtDayMonth, fmtMonthYear, fmtNum } from '../../i18n/dates';
 import { coverColors, genreColors } from '../theme';
+import { genreLabel } from '../../i18n/genres';
 import { Toast } from '../components/primitives';
 import { ProfileDialog } from '../components/AccountMenu';
 import { useSchoolLabel } from '../useSchoolLabel';
@@ -845,7 +846,7 @@ function GenreMix({ mix, done, t }) {
                 <span style={{
                   width: 10, height: 10, borderRadius: 3, background: genreColors(g.name)[0], flexShrink: 0,
                 }} />
-                <span style={{ flex: 1, color: C.slate }}>{g.name}</span>
+                <span style={{ flex: 1, color: C.slate }}>{genreLabel(g.name, t)}</span>
                 <span style={{ color: C.dim, fontSize: 12 }}>{t('mrb.nBooks', { n: g.books })}</span>
                 <strong style={{ width: 40, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                   {g.pct}%

@@ -28,9 +28,20 @@ export const LanguageProvider = ({ children }) => {
 
     // t(key, vars?) — falls back to Turkish then the raw key, and does simple
     // {placeholder} interpolation from an optional vars object.
+    // `{n|book|books}` picks the singular when that variable is exactly 1, so
+    // one row reads "1 book" rather than "1 books". It is per placeholder, not
+    // per string, because several strings carry two counts at once
+    // ("{n} readers · {d} days left").
+    //
+    // Only English needs it here: Azerbaijani and Turkish do not pluralise a
+    // noun after a numeral, so their strings keep the single form and are left
+    // exactly as they are.
     const t = useCallback((key, vars) => {
         let str = translations[lang]?.[key] ?? translations[DEFAULT_LANG]?.[key] ?? key;
         if (vars) {
+            str = str.replace(/\{(\w+)\|([^|{}]*)\|([^|{}]*)\}/g, (whole, k, one, many) => (
+                k in vars ? (Number(vars[k]) === 1 ? one : many) : whole
+            ));
             for (const [k, v] of Object.entries(vars)) {
                 str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
             }

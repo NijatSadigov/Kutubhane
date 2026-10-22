@@ -18,6 +18,7 @@ import axios from 'axios';
 import { API_ORIGIN, assetUrl } from '../../api/axios';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { coverColors, genreColors } from '../theme';
+import { genreLabel } from '../../i18n/genres';
 import { Wordmark } from '../components/primitives';
 import SiteHeader, { GuestTail } from '../components/SiteHeader';
 import { fmtDate, fmtNum } from '../../i18n/dates';
@@ -184,7 +185,7 @@ export default function Landing() {
                         fontSize: 12, fontWeight: 600, color: gFg,
                       }}>
                         <span style={{ width: 8, height: 8, borderRadius: 2, background: gDot }} />
-                        {b.genre}
+                        {genreLabel(b.genre, t)}
                       </div>
                     )}
                   </button>

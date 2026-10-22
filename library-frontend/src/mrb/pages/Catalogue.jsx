@@ -17,6 +17,7 @@ import api, { assetUrl } from '../../api/axios';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { fmtDate } from '../../i18n/dates';
 import { coverColors, genreColors, cefrColors } from '../theme';
+import { genreLabel } from '../../i18n/genres';
 import { useSchoolLabel } from '../useSchoolLabel';
 import { useReaderApi } from '../guest';
 import { Toast } from '../components/primitives';
@@ -286,7 +287,7 @@ export default function Catalogue() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                   }}>{on ? '✓' : ''}</span>
                   <span style={{ width: 8, height: 8, borderRadius: 2, background: dot, flexShrink: 0 }} />
-                  <span style={{ flex: 1 }}>{name}</span>
+                  <span style={{ flex: 1 }}>{genreLabel(name, t)}</span>
                   <span style={{ fontSize: 12, color: C.mute }}>{n}</span>
                 </button>
               );
@@ -581,7 +582,7 @@ function BookCard({ book, onOpen, say, t, reload, guest }) {
           display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: gFg,
         }}>
           <span style={{ width: 8, height: 8, borderRadius: 2, background: gDot, flexShrink: 0 }} />
-          {book.genre}
+          {genreLabel(book.genre, t)}
         </div>
       )}
 

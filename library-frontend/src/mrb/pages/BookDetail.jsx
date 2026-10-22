@@ -14,6 +14,7 @@ import api, { assetUrl } from '../../api/axios';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { fmtDate } from '../../i18n/dates';
 import { coverColors, genreColors, cefrColors } from '../theme';
+import { genreLabel } from '../../i18n/genres';
 import { Toast } from '../components/primitives';
 import ReserveDialog from '../components/ReserveDialog';
 import Reviews from '../components/Reviews';
@@ -112,7 +113,7 @@ export default function BookDetail() {
     ['ISBN', book.isbn],
     [t('mrb.spec.pages'), book.pages || null],
     ['CEFR', book.cefr],
-    [t('mrb.spec.genre'), book.genre],
+    [t('mrb.spec.genre'), genreLabel(book.genre, t)],
     [t('th.publisher'), book.publisher],
     [t('mrb.spec.published'), book.year || null],
     [t('mrb.spec.language'), book.language],
@@ -134,7 +135,7 @@ export default function BookDetail() {
           background: 'none', border: 0, padding: 0, color: C.deep, fontSize: 13,
           cursor: 'pointer', fontFamily: 'inherit',
         }}>{t('mrb.nav.catalogue')}</button>
-        {book.genre && <><span>/</span><span>{book.genre}</span></>}
+        {book.genre && <><span>/</span><span>{genreLabel(book.genre, t)}</span></>}
         <span>/</span>
         <span style={{ color: C.ink, fontWeight: 600 }}>{book.title}</span>
       </nav>
@@ -211,7 +212,7 @@ export default function BookDetail() {
                   borderRadius: 999, padding: '4px 12px', fontSize: 12, fontWeight: 700,
                 }}>
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: gDot }} />
-                  {book.genre}
+                  {genreLabel(book.genre, t)}
                 </span>
               )}
             </div>
