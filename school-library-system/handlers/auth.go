@@ -40,14 +40,22 @@ func Register(c *fiber.Ctx) error {
 
 	// Students register via a token (invite link), which resolves their branch.
 	if input.Role == "student" && input.Token != "" {
-		branchID, err := resolveRegistrationToken(input.Token)
+		tok, err := resolveRegistrationToken(input.Token)
 		if err != nil {
 			if fe, ok := err.(*fiber.Error); ok {
 				return c.Status(fe.Code).JSON(fiber.Map{"error": fe.Message})
 			}
 			return c.Status(400).JSON(fiber.Map{"error": "Invalid registration token"})
 		}
-		input.BranchID = branchID
+		input.BranchID = tok.BranchID
+		// The class comes from the link, overriding anything the client sent.
+		// A child cannot put themselves in another class by editing the
+		// request, and thirty children cannot spell one class three ways.
+		// A link with no class leaves the pair empty for staff to set.
+		if tok.Grade > 0 {
+			input.Grade = tok.Grade
+			input.ClassGroup = tok.ClassGroup
+		}
 	} else if input.Role == "student" && input.BranchID == 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "A registration link or token is required"})
 	}

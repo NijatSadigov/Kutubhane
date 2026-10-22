@@ -21,6 +21,10 @@ export default function MemberInvites() {
   const [tokens, setTokens] = useState([]);
   const [label, setLabel] = useState('');
   const [days, setDays] = useState('30');
+  // The class this link enrols into. Empty grade = a branch-wide link that
+  // sets no class, which staff then have to fix per reader.
+  const [grade, setGrade] = useState('');
+  const [group, setGroup] = useState('');
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState('');
 
@@ -34,8 +38,13 @@ export default function MemberInvites() {
   const create = async () => {
     setBusy(true);
     try {
-      await api.post('/registration-tokens', { label: label.trim(), days: Number(days) || 30 });
+      await api.post('/registration-tokens', {
+        label: label.trim(), days: Number(days) || 30,
+        grade: Number(grade) || 0, class_group: group.trim(),
+      });
       setLabel('');
+      setGrade('');
+      setGroup('');
       say(t('staff.mem.inviteCreated'));
       load();
     } catch { say(t('msg.opFailed')); }
@@ -69,6 +78,22 @@ export default function MemberInvites() {
               placeholder={t('staff.mem.inviteLabelHint')} />
           </label>
           <label style={{
+            width: 96, display: 'flex', flexDirection: 'column', gap: 4,
+            fontSize: 12, fontWeight: 600, color: ink.strong,
+          }}>
+            {t('staff.mem.inviteGrade')}
+            <Input type="number" min={0} max={12} value={grade}
+              onChange={(e) => setGrade(e.target.value)} placeholder="7" />
+          </label>
+          <label style={{
+            width: 96, display: 'flex', flexDirection: 'column', gap: 4,
+            fontSize: 12, fontWeight: 600, color: ink.strong,
+          }}>
+            {t('staff.mem.inviteGroup')}
+            <Input value={group} maxLength={4}
+              onChange={(e) => setGroup(e.target.value)} placeholder="A" />
+          </label>
+          <label style={{
             width: 120, display: 'flex', flexDirection: 'column', gap: 4,
             fontSize: 12, fontWeight: 600, color: ink.strong,
           }}>
@@ -98,6 +123,13 @@ export default function MemberInvites() {
                 <span style={{ flex: 1, minWidth: 0, color: ink.dim }}>
                   {tok.label || t('staff.mem.untitled')}
                 </span>
+                {/* The class the link enrols into: the thing that stops thirty
+                    readers spelling one class three different ways. */}
+                <Pill colors={pill(tok.grade ? 'active' : 'neutral')}>
+                  {tok.grade
+                    ? tok.grade + (tok.class_group ? '-' + tok.class_group : '')
+                    : t('staff.mem.inviteNoClass')}
+                </Pill>
                 <span style={{ color: ink.dim, fontSize: 12 }}>
                   {t('staff.mem.usedN', { n: tok.use_count || 0 })} · {fmtDate(tok.expires_at)}
                 </span>

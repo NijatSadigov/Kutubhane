@@ -290,14 +290,23 @@ type ReadingLog struct {
 // RegistrationToken is a branch-scoped invite that students use to self-register
 // instead of typing a branch id. It carries an expiry and can be revoked — much
 // like an API token.
+//
+// It also carries the class the link is for. The sign-up form deliberately does
+// not ask a child for their class: thirty children typing it produce "7A",
+// "7-A" and "7 A", and the class-against-class standings then group by three
+// different strings. One link per class instead, so the class is right by
+// construction. Grade 0 with an empty ClassGroup means the link does not set a
+// class, which is what a general "anyone at this branch" link wants.
 type RegistrationToken struct {
-	ID        uint      `json:"id" gorm:"primaryKey"`
-	BranchID  uint      `json:"branch_id"`
-	Branch    Branch    `json:"branch" gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	Token     string    `json:"token" gorm:"uniqueIndex"`
-	Label     string    `json:"label"` // optional note, e.g. "7-A sınıfı 2024"
-	ExpiresAt time.Time `json:"expires_at"`
-	Revoked   bool      `json:"revoked" gorm:"default:false"`
-	UseCount  int       `json:"use_count" gorm:"default:0"`
-	CreatedAt time.Time `json:"created_at"`
+	ID         uint      `json:"id" gorm:"primaryKey"`
+	BranchID   uint      `json:"branch_id"`
+	Branch     Branch    `json:"branch" gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Token      string    `json:"token" gorm:"uniqueIndex"`
+	Label      string    `json:"label"` // optional note, e.g. "7-A sınıfı 2024"
+	Grade      int       `json:"grade"`
+	ClassGroup string    `json:"class_group"`
+	ExpiresAt  time.Time `json:"expires_at"`
+	Revoked    bool      `json:"revoked" gorm:"default:false"`
+	UseCount   int       `json:"use_count" gorm:"default:0"`
+	CreatedAt  time.Time `json:"created_at"`
 }

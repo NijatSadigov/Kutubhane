@@ -4,6 +4,7 @@ import (
 	"school-library-system/database"
 	"school-library-system/models"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -430,4 +431,53 @@ func SetStudentLimit(c *fiber.Ctx) error {
 		database.DB.Model(&models.Student{}).Where("user_id = ?", sid).Update("loan_limit", v)
 	}
 	return c.JSON(fiber.Map{"user_id": stu.UserID, "limit": req.Limit})
+}
+
+// SetStudentClass moves a reader into a class, or clears the pair with grade 0.
+//
+// The invite link normally sets this at sign-up and is the path that should be
+// used, because it cannot be typed wrong. This exists for the cases the link
+// cannot cover: a reader who joined through a branch-wide link, one who changed
+// class mid-year, or a link that was made for the wrong class. Without it a
+// wrong class was permanent — nothing in the product could set the pair after
+// registration, which is how a whole cohort ends up outside the class
+// standings.
+func SetStudentClass(c *fiber.Ctx) error {
+	branchID, err := getUserBranchID(c)
+	if err != nil {
+		return c.Status(401).JSON(fiber.Map{"error": err.Error()})
+	}
+	sid, _ := strconv.Atoi(c.Params("id"))
+
+	var stu models.Student
+	if err := database.DB.First(&stu, "user_id = ?", uint(sid)).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Student not found"})
+	}
+	if stu.BranchID != branchID {
+		return c.Status(403).JSON(fiber.Map{"error": "Student not in your branch"})
+	}
+
+	type Req struct {
+		Grade      int    `json:"grade"`
+		ClassGroup string `json:"class_group"`
+	}
+	var req Req
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid Input"})
+	}
+	if req.Grade < 0 || req.Grade > 12 {
+		return c.Status(400).JSON(fiber.Map{"error": "Grade must be between 0 and 12"})
+	}
+	// Upper-cased and trimmed on the way in, so "a", " A" and "A" are one
+	// class rather than three in the standings.
+	group := strings.ToUpper(strings.TrimSpace(req.ClassGroup))
+	if req.Grade == 0 {
+		group = ""
+	}
+
+	if err := database.DB.Model(&models.Student{}).Where("user_id = ?", sid).
+		Updates(map[string]any{"grade": req.Grade, "class_group": group}).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Could not update the class"})
+	}
+	return c.JSON(fiber.Map{"user_id": stu.UserID, "grade": req.Grade, "class_group": group})
 }

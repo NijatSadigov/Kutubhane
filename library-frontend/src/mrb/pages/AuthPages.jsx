@@ -288,6 +288,15 @@ export function Register() {
         padding: '11px 14px', marginBottom: 18, fontSize: 13, color: brand.deep,
       }}>
         {t('mrb.auth.joiningBranch', { branch: branch.branch_name || branch.name || branch.label || '—' })}
+        {/* The class comes from the link, not from a field the child fills in.
+            Showing it is how they notice they clicked the wrong class's link. */}
+        {branch.grade > 0 && (
+          <div style={{ marginTop: 4, fontWeight: 700 }}>
+            {t('mrb.auth.joiningClass', {
+              cls: branch.grade + (branch.class_group ? '-' + branch.class_group : ''),
+            })}
+          </div>
+        )}
       </div>
 
       {done ? (

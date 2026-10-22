@@ -260,10 +260,14 @@ function ReaderPanel({ student, t, say, reload, onClose }) {
   const [stats, setStats] = useState(null);
   const [holds, setHolds] = useState(null);
   const [limit, setLimit] = useState(student.borrow_limit ? String(student.borrow_limit) : '');
+  const [grade, setGrade] = useState(student.grade ? String(student.grade) : '');
+  const [group, setGroup] = useState(student.class_group || '');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     setLimit(student.borrow_limit ? String(student.borrow_limit) : '');
+    setGrade(student.grade ? String(student.grade) : '');
+    setGroup(student.class_group || '');
     api.get(`/student/${student.user_id}/stats`).then((r) => setStats(r.data)).catch(() => setStats(null));
     api.get(`/student/${student.user_id}/holds`).then((r) => setHolds(r.data)).catch(() => setHolds(null));
   }, [student]);
@@ -275,6 +279,22 @@ function ReaderPanel({ student, t, say, reload, onClose }) {
         limit: limit.trim() === '' ? null : Number(limit),
       });
       say(t('staff.mem.limitSaved'));
+      reload();
+    } catch { say(t('msg.opFailed')); }
+    finally { setBusy(false); }
+  };
+
+  // The invite link normally sets the class at sign-up and cannot be typed
+  // wrong. This is for the cases it cannot cover: a reader who joined through
+  // a branch-wide link, one who moved class mid-year, or a link made for the
+  // wrong class.
+  const saveClass = async () => {
+    setBusy(true);
+    try {
+      await api.put(`/student/${student.user_id}/class`, {
+        grade: Number(grade) || 0, class_group: group.trim(),
+      });
+      say(t('staff.mem.classSaved'));
       reload();
     } catch { say(t('msg.opFailed')); }
     finally { setBusy(false); }
@@ -332,6 +352,32 @@ function ReaderPanel({ student, t, say, reload, onClose }) {
               </div>
             );
           })}
+        </div>
+
+        {/* The class. Everything that groups readers — the class standings, the
+            class cards, the class beside a name on the desk — reads this pair,
+            and until now nothing in the product could set it after sign-up. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
+            textTransform: 'uppercase', color: ink.dim,
+          }}>{t('staff.mem.class')}</div>
+          <div style={{ fontSize: 12, color: ink.dim }}>{t('staff.mem.classHint')}</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Input
+              type="number" min={0} max={12} value={grade}
+              onChange={(e) => setGrade(e.target.value)}
+              placeholder={t('staff.mem.inviteGrade')}
+              style={{ width: 90 }}
+            />
+            <Input
+              value={group} maxLength={4}
+              onChange={(e) => setGroup(e.target.value)}
+              placeholder={t('staff.mem.inviteGroup')}
+              style={{ width: 90 }}
+            />
+            <Btn onClick={saveClass} disabled={busy}>{t('common.save')}</Btn>
+          </div>
         </div>
 
         {/* The borrow limit: a branch default, with an optional per-student

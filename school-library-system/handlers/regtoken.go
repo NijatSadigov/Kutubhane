@@ -3,6 +3,7 @@ package handlers
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"strings"
 	"time"
 
 	"school-library-system/database"
@@ -29,6 +30,10 @@ func CreateRegistrationToken(c *fiber.Ctx) error {
 		Label   string `json:"label"`
 		Days    int    `json:"days"`     // validity in days (used if expires_at empty)
 		Expires string `json:"expires_at"` // optional explicit YYYY-MM-DD
+		// The class this link enrols into. Left at 0/"" the link sets no class,
+		// which is what a general branch-wide invite wants.
+		Grade      int    `json:"grade"`
+		ClassGroup string `json:"class_group"`
 	}
 	var req Req
 	if err := c.BodyParser(&req); err != nil {
@@ -45,11 +50,18 @@ func CreateRegistrationToken(c *fiber.Ctx) error {
 		expires = time.Now().AddDate(0, 0, req.Days)
 	}
 
+	if req.Grade < 0 || req.Grade > 12 {
+		return c.Status(400).JSON(fiber.Map{"error": "Grade must be between 0 and 12"})
+	}
+	req.ClassGroup = strings.ToUpper(strings.TrimSpace(req.ClassGroup))
+
 	tok := models.RegistrationToken{
-		BranchID:  branchID,
-		Token:     generateToken(),
-		Label:     req.Label,
-		ExpiresAt: expires,
+		BranchID:   branchID,
+		Token:      generateToken(),
+		Label:      req.Label,
+		Grade:      req.Grade,
+		ClassGroup: req.ClassGroup,
+		ExpiresAt:  expires,
 	}
 	if err := database.DB.Create(&tok).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Could not create token"})
@@ -96,22 +108,29 @@ func ValidateRegistrationToken(c *fiber.Ctx) error {
 	if time.Now().After(tok.ExpiresAt) {
 		return c.Status(400).JSON(fiber.Map{"valid": false, "error": "Token expired"})
 	}
-	return c.JSON(fiber.Map{"valid": true, "branch_id": tok.BranchID, "branch_name": tok.Branch.Name})
+	// grade and class_group go back so the sign-up page can show the child
+	// which class they are joining — they cannot change it, but they should be
+	// able to see they clicked the right link.
+	return c.JSON(fiber.Map{
+		"valid": true, "branch_id": tok.BranchID, "branch_name": tok.Branch.Name,
+		"grade": tok.Grade, "class_group": tok.ClassGroup,
+	})
 }
 
-// resolveRegistrationToken validates a token and returns its branch id. Shared
-// by the Register handler.
-func resolveRegistrationToken(token string) (uint, error) {
+// resolveRegistrationToken validates a token and returns it. Shared by the
+// Register handler, which takes the branch AND the class from it: the class is
+// the link's, never the child's to type.
+func resolveRegistrationToken(token string) (models.RegistrationToken, error) {
 	var tok models.RegistrationToken
 	if err := database.DB.Where("token = ?", token).First(&tok).Error; err != nil {
-		return 0, fiber.NewError(400, "Invalid registration token")
+		return tok, fiber.NewError(400, "Invalid registration token")
 	}
 	if tok.Revoked {
-		return 0, fiber.NewError(400, "This registration link has been revoked")
+		return tok, fiber.NewError(400, "This registration link has been revoked")
 	}
 	if time.Now().After(tok.ExpiresAt) {
-		return 0, fiber.NewError(400, "This registration link has expired")
+		return tok, fiber.NewError(400, "This registration link has expired")
 	}
 	database.DB.Model(&models.RegistrationToken{}).Where("id = ?", tok.ID).UpdateColumn("use_count", tok.UseCount+1)
-	return tok.BranchID, nil
+	return tok, nil
 }

@@ -140,6 +140,7 @@ func Setup(app *fiber.App) {
 	api.Get("/loan-limit", middleware.IsLibrarian, handlers.GetLoanLimit)
 	api.Put("/loan-limit", middleware.IsLibrarian, handlers.SetLoanLimit)
 	api.Put("/student/:id/limit", middleware.IsLibrarian, handlers.SetStudentLimit)
+	api.Put("/student/:id/class", middleware.IsLibrarian, handlers.SetStudentClass)
 
 	// Loan Operations
 	api.Post("/loan", middleware.IsLibrarian, handlers.CreateLoan)
