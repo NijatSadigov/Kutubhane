@@ -84,6 +84,18 @@ export const DOMAINS = [
     ],
   },
   {
+    // What a reader reports goes here. Teachers are in — the design calls this
+    // a teacher screen, and until it existed a teacher could not moderate
+    // anything at all. The endpoints admit the same four roles, so nothing
+    // here 403s.
+    key: 'moderation',
+    labelKey: 'staff.dom.moderation',
+    roles: WITH_TEACHERS,
+    screens: [
+      { path: '', labelKey: 'staff.nav.modQueue', roles: WITH_TEACHERS },
+    ],
+  },
+  {
     key: 'members',
     labelKey: 'staff.dom.members',
     roles: BRANCH_DESK,

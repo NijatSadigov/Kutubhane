@@ -19,6 +19,7 @@ import Loans from './pages/Loans';
 import Inventory from './pages/Inventory';
 import Members from './pages/Members';
 import Analytics from './pages/Analytics';
+import Moderation from './pages/Moderation';
 import MemberInvites from './pages/MemberInvites';
 import { SettingsLists, SettingsStatuses, SettingsLimits } from './pages/SettingsScreens';
 import { MyTickets, NewTicket, TicketInbox } from './pages/Support';
@@ -45,6 +46,11 @@ export default function StaffApp() {
             sits at the domain root the way Üzvlər and Layihələr do. */}
         <Route path="analytics">
           <Route index element={<Analytics />} />
+        </Route>
+
+        {/* Moderasiya — the other end of a reader's report. */}
+        <Route path="moderation">
+          <Route index element={<Moderation />} />
         </Route>
 
 

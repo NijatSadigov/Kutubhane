@@ -82,6 +82,13 @@ func Setup(app *fiber.App) {
 	api.Post("/reviews/:id/vote", handlers.VoteReview)
 	api.Post("/reviews/:id/replies", handlers.ReplyToReview)
 	api.Post("/reviews/:id/report", handlers.ReportReview)
+
+	// The other end of that report. IsTeacher admits a teacher, a librarian,
+	// the administration and a platform admin — a teacher moderating is what
+	// the design asks for, and until now a teacher could not moderate at all.
+	api.Get("/moderation/reports", middleware.IsTeacher, handlers.GetModerationReports)
+	api.Put("/moderation/reports/:id", middleware.IsTeacher, handlers.ResolveModerationReport)
+	api.Put("/moderation/reviews/:id/unhide", middleware.IsTeacher, handlers.UnhideReview)
 	api.Get("/community/reviews", handlers.GetRecentReviews)
 	api.Get("/community/top-reviewer", handlers.GetTopReviewer)
 
