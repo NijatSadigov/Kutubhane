@@ -35,6 +35,18 @@ const LIBRARY_SIDE = ['librarian', 'manager', 'admin'];
 
 export const DOMAINS = [
   {
+    // First in the list, so it is where a school administrator lands: it is
+    // the one screen that answers their actual question, and they cannot
+    // reach the branch-scoped domains below it anyway. A librarian does not
+    // have this domain, so `library` is still the first thing they see.
+    key: 'analytics',
+    labelKey: 'staff.dom.analytics',
+    roles: ADMIN_SIDE,
+    screens: [
+      { path: '', labelKey: 'staff.nav.analytics', roles: ADMIN_SIDE },
+    ],
+  },
+  {
     key: 'library',
     labelKey: 'staff.dom.library',
     roles: BRANCH_DESK,

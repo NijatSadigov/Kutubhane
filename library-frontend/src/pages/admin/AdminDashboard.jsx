@@ -1,8 +1,8 @@
 import { useEffect, useState, useContext } from 'react';
 import api from '../../api/axios';
 import { AuthContext } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { LogOut, Plus, School, MapPin, Users, Trash2, Edit2, User as UserIcon } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { LogOut, Plus, School, MapPin, Users, Trash2, Edit2, User as UserIcon, BarChart3 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 import ProfileModal from '../ProfileModal';
@@ -189,6 +189,12 @@ const AdminDashboard = () => {
                             <School className="text-blue-600" /> {t('role.admin')}
                         </h1>
                         <div className="flex items-center gap-5">
+                            {/* A platform admin lands here, and the console's
+                                analytics screen is otherwise unreachable
+                                without typing the URL. */}
+                            <Link to="/staff/analytics" className="flex items-center gap-2 text-blue-700 hover:text-blue-900 transition-colors text-sm font-semibold">
+                                <BarChart3 size={18} /> {t('staff.dom.analytics')}
+                            </Link>
                             <LanguageSwitcher />
                             <button onClick={() => setIsProfileOpen(true)} className="flex items-center gap-2 text-gray-500 hover:text-blue-600 transition-colors text-sm font-medium">
                                 <UserIcon size={18} /> {t('nav.profile')}

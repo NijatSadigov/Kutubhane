@@ -309,6 +309,10 @@ func Setup(app *fiber.App) {
 	// MANAGER ROUTES (school-scoped; every handler enforces the caller's own school)
 	// ===========================
 
+	// School analytics. IsManager admits a school administrator and a platform
+	// admin; the school comes from the caller's identity, never the query.
+	api.Get("/analytics/school", middleware.IsManager, handlers.GetSchoolAnalytics)
+
 	api.Get("/manager/school", middleware.IsManager, handlers.GetMySchool)
 	api.Put("/manager/school", middleware.IsManager, handlers.ManagerUpdateSchool)
 	api.Get("/manager/students", middleware.IsManager, handlers.ManagerGetStudents)

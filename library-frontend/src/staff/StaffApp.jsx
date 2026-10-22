@@ -18,6 +18,7 @@ import Reservations from './pages/Reservations';
 import Loans from './pages/Loans';
 import Inventory from './pages/Inventory';
 import Members from './pages/Members';
+import Analytics from './pages/Analytics';
 import MemberInvites from './pages/MemberInvites';
 import { SettingsLists, SettingsStatuses, SettingsLimits } from './pages/SettingsScreens';
 import { MyTickets, NewTicket, TicketInbox } from './pages/Support';
@@ -39,6 +40,13 @@ export default function StaffApp() {
       <OnlyIfVisible>
       <Routes>
         <Route index element={<StaffLanding />} />
+
+        {/* Analitika — the school administrator's screen. One screen, so it
+            sits at the domain root the way Üzvlər and Layihələr do. */}
+        <Route path="analytics">
+          <Route index element={<Analytics />} />
+        </Route>
+
 
         {/* Kitabxana — the daily circulation work, plus the catalogue. */}
         <Route path="library">

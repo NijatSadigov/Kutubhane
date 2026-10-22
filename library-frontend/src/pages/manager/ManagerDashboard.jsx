@@ -1,8 +1,8 @@
 import { useEffect, useState, useContext } from 'react';
 import api from '../../api/axios';
 import { AuthContext } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { LogOut, Plus, School, MapPin, Users, Trash2, Edit2, User as UserIcon, GraduationCap, BookOpen } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { LogOut, Plus, School, MapPin, Users, Trash2, Edit2, User as UserIcon, GraduationCap, BookOpen, BarChart3 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 import ProfileModal from '../ProfileModal';
@@ -166,6 +166,14 @@ const ManagerDashboard = () => {
                             <School className="text-sky-600" /> {t('role.manager')}
                         </h1>
                         <div className="flex items-center gap-5">
+                            {/* The console now has a screen built for this role
+                                — school analytics — and a manager lands here,
+                                not there. Without this link it would exist and
+                                nobody would find it, which is the mistake this
+                                file's own comment above describes. */}
+                            <Link to="/staff/analytics" className="flex items-center gap-2 text-sky-700 hover:text-sky-900 transition-colors text-sm font-semibold">
+                                <BarChart3 size={18} /> {t('staff.dom.analytics')}
+                            </Link>
                             <LanguageSwitcher />
                             <NotificationBell role="manager" palette={BELL} />
                             <button onClick={() => setIsProfileOpen(true)} className="flex items-center gap-2 text-gray-500 hover:text-sky-600 transition-colors text-sm font-medium">
