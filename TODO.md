@@ -177,11 +177,10 @@ with the reasoning:
       Kitabxana ayarları is built on it. A manager and an admin keep the
       "Köhnə panel" link; a librarian no longer has one
 
-- [ ] **The three screens the teacher role unblocked.** The role itself now
-      exists (branch-scoped like a librarian, lands on `/staff/textbooks`), so
-      what is left is the design's own teacher screens: the class dashboard,
-      the moderation queue, and the "teacher" line under an overdue student.
-      Challenges are still authored by librarians
+- [ ] **The teacher screens still missing.** The moderation queue is done
+      (2026-09-30). What is left of the design's teacher screens is the class
+      dashboard and the "teacher" line under an overdue student. Challenges are
+      still authored by librarians
 
 - [ ] **Staff Console — teacher and admin sections** (the librarian side is done
       and live at `/staff`)
@@ -189,10 +188,8 @@ with the reasoning:
         streak/challenge flags, student side panel
   - [ ] Teacher — Challenge builder UI (the API already exists:
         `POST /challenges`, `/challenges/:id/questions`)
-  - [ ] Teacher — Moderation queue (the `ReviewReport` model already exists;
-        needs the staff endpoints and the Keep / Tag / Hide / Hide-and-warn actions)
-  - [ ] Admin — Analytics: KPIs, weekly active, pages by branch and grade,
-        genre mix, most borrowed
+  - [x] Teacher — Moderation queue. Done 2026-09-30 at `/staff/moderation`
+  - [x] Admin — Analytics. Done 2026-09-30 at `/staff/analytics`
   - [ ] Admin — Branches & users: role tabs, search, suspend, invite, CSV import
   - [ ] Admin — Alliances & data sharing (blocked on Phase 3 tenancy)
 
@@ -206,8 +203,8 @@ with the reasoning:
   - [ ] Librarian — Catalogue & inventory: availability bars, expandable copies, add title
   - [ ] Teacher — Class dashboard: class switch, KPIs, 8-week chart, roster
   - [ ] Teacher — Challenge builder (backend already exists)
-  - [ ] Teacher — Moderation queue (needs review reports)
-  - [ ] Admin — Analytics: KPIs, pages by branch and grade, genre mix
+  - [x] Teacher — Moderation queue — done
+  - [x] Admin — Analytics — done
   - [ ] Admin — Branches & users: role tabs, suspend, invite, CSV import
   - [ ] Admin — Alliances & data sharing (needs Phase 3 tenancy)
 - [ ] **Carry the parity gaps into the Staff Console** (see the table in `ROADMAP.md`)
@@ -330,6 +327,27 @@ with the reasoning:
 - [x] **`role.admin` was Azerbaijani in the English block**, so the English
       console read "İdarəçi mode". A scan for Azerbaijani or Turkish letters in
       English values found this and nothing else; it is "Administrator" now.
+
+- [x] **The moderation queue.** Done 2026-09-30, `/staff/moderation`, found by
+      checking whether the grant deck's claim that "reviews are moderated by
+      teachers and librarians" was actually true. It was not: `ReportReview`
+      wrote `ReviewReport` rows that **no handler anywhere read**, so
+      `Resolved`, `Resolution` and `ResolvedBy` were never set and
+      `Review.Hidden` carried the comment "set by a moderator" while nothing
+      set it. Reports had been quietly piling up in the demo database.
+
+      Everything underneath already worked — `Hidden` and `Spoiler` exist and
+      `hidden = false` is filtered at all eight places a review reaches a
+      reader. Only the screen a person touches was missing.
+
+      Guarded by `IsTeacher`, so a teacher can moderate; before this they could
+      not, because `DeleteReview` admits staff only. **Scope is school-wide for
+      every role, because moderation scope must match visibility scope** — a
+      review is shown across the school, so a branch-scoped queue would let a
+      teacher see a harmful review on their own feed and be unable to act.
+
+      A hidden review is never deleted and can be put back. Every open report
+      on one review closes together.
 
 ## Known issues
 

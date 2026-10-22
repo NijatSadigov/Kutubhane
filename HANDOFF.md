@@ -138,7 +138,27 @@ was exercised without touching real data.
 
 ---
 
-## Session record — 2026-09-30, four commits
+## Session record — 2026-09-30, six commits
+
+`e26f2e6` … `b83ad5f`. The i18n display fixes, the class on the invite link,
+the analytics screen, and the moderation queue.
+
+**Two lessons from this session, both the same shape.**
+
+The class gap and the moderation gap were each found by asking what a *person*
+does, not by reading a feature list. "How do a hundred students actually get
+accounts?" turned up a `Grade` field that existed end to end and no caller ever
+filled. "Is the deck's claim that reviews are moderated actually true?" turned
+up a report table nothing read. In both cases the mechanism was complete and
+the one screen or field a human touches was missing, and in both cases the demo
+data hid it — seeded students had classes, and nobody had looked at the reports
+piling up.
+
+**Check a claim before it ships.** The moderation queue exists because a
+child-safety sentence in the grant deck was checked against the code and did
+not hold. It holds now.
+
+## Session record — 2026-09-30, the first four commits
 
 `e26f2e6` … and the docs commit you are reading. In order:
 
