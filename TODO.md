@@ -66,10 +66,80 @@ with the reasoning:
       that did not come back. 4-A went from eight open-fill-submit cycles to
       one dialog
 
-- [ ] **A grant presentation.** Goals, motivation, what is built, what it can
-      do — with screenshots taken from the running product rather than mocked.
-      Everything needed to shoot them is in `HANDOFF.md`: the logins, the two
-      servers, and which screens are worth showing. Nothing to build first
+- [x] **A grant presentation.** Done 2026-09-29. 22 slides in Azerbaijani,
+      published as a Slides artifact. Audience: international donor first, a
+      state education body second; the ask slide is deliberately easy to swap
+      because the funding body is not chosen yet.
+
+      **The deck argues reading motivation, not library management** (buyer,
+      2026-09-29). The first cut led with "school library management system"
+      and that is the wrong pitch: donors fund children reading, not a software
+      category. The library system now appears in the middle, as the engine —
+      with the argument that a school adopts it for its own daily pain
+      (textbooks, circulation, overdue books) and the children get a reading
+      platform as a result, so uptake does not depend on the school caring
+      about reading initiatives in the abstract.
+
+      The six motivation mechanisms it claims are all real and worth not
+      breaking: the point split (`PointsRead` 10 / `PointsQuiz` 15 /
+      `PointsReview` 5 in `models/social.go` — proof deliberately outscores
+      self-report), the six independent badge metrics including `LANGS` and
+      `EARLYRET`, the branch league scored **per student** so a weak reader
+      contributes rather than being exposed, `ReadingGoal` being visible to
+      nobody but its owner, the streak derived from diary timestamps, and CEFR
+      levels. `rollar` (the five-roles table) was cut as the most
+      enterprise-software slide in a reading deck; its content folded into the
+      credibility slide.
+
+      **The body is organised as the three features the buyer named** — the
+      reading journal, the activities that support reading, and library
+      management — one section each, 25 slides. Two corrections worth keeping:
+      a motivation thesis is not a substitute for showing what the thing does,
+      and **no code metrics belong in a grant deck.** Lines of code, route
+      counts and test counts were all cut: a foundation officer does not care
+      and it reads like a CV. The credibility slide now says "every screen in
+      this deck works today", which is the same claim in the language the
+      reader actually uses. The technical detail lives in that slide's
+      speaker notes for anyone who asks.
+
+      **There are two decks, Azerbaijani and English**, same 25 slides and
+      same design. The English one is not a translation of the pictures: the
+      whole screenshot set was re-shot with `SHOT_LANG=en`, because an English
+      deck carrying Azerbaijani screenshots looks half-finished. `en` was
+      checked for coverage first — 1,387 keys in each of `az`, `tr` and `en`,
+      none missing, so nothing falls back to Turkish.
+
+      Slide ids differ between the decks and map one to one:
+      `xulase`/`overview`, `niye`/`approach`, `uc-funksiya`/`three-features`,
+      `oxucu-ref`/`journal`, `gundelik-tarixce`/`journal-history`,
+      `oxucu-kataloq`/`catalogue`, `ekitab`/`ebook`,
+      `oxucu-musabiqe`/`challenges`, `mexanizm`/`quiz-rules`,
+      `layiheler`/`projects`, `oxucu-kesf`/`league`, `masa`/`desk`,
+      `kataloq-inventar`/`inventory`, `uzvler`/`members`, `derslik`/`textbooks`,
+      `idareetme-diger`/`library-rest`, `status`/`ready`, `ferq`/`design`,
+      `tehlukesizlik`/`safeguarding`, `tesir`/`impact`,
+      `yol-xeritesi`/`roadmap`, `davamliliq`/`sustainability`, `teleb`/`ask`.
+      `cover` and `problem` share a name. **Change one deck, change the other.**
+
+      Eighteen screenshots were shot from the running product with a
+      `puppeteer-core` harness driving real Chrome through the **login form**,
+      one role at a time — a token injected into storage would have skipped
+      exactly the redirects that broke the first run. The harness reads
+      something back off each page after the shot (heading, node count) so an
+      empty screen cannot pass as a populated one; it is in the session
+      scratchpad and is worth recreating if the deck needs re-shooting.
+
+      Two things the deck deliberately does **not** claim: the demo counts are
+      never shown as adoption, and the impact slide defines indicators to be
+      measured rather than results achieved. There are no users yet, and a
+      donor who discovers a seeded usage chart is finished with the applicant.
+      The credibility slide leans on the engineering evidence instead, which
+      is verifiable.
+
+      Still to fill in before it is sent: contact details, the demo URL, and
+      the funding body's own terminology. The budget breakdown is a proposal,
+      not a quote. An English twin is cheap — same layout, swapped strings,
+      screenshots re-shot from the app's `en` locale.
 
 - [ ] **Drop `Book`'s duplicated columns.** `title`, `isbn`, `language`,
       `cefr_level`, `publication_year`, `edition`, `page_count`, `cover_url`
@@ -197,7 +267,95 @@ with the reasoning:
 
       New dependency: `pdfjs-dist`, imported on demand.
 
+- [x] **A reader's class comes from the invite link.** Done 2026-09-30, and it
+      was a first-week blocker rather than a nicety: the sign-up form posted
+      only `{name, email, password, role, token}`, so **every self-registered
+      reader landed with no grade and no class group** — and nothing in the
+      product could set the pair afterwards. `RegisterInput` has had `Grade`
+      and `ClassGroup` all along; no caller ever filled them. Invisible in demo
+      data because the seeded readers were given classes directly.
+
+      That silently emptied the class-against-class standings, Üzvlər's
+      Siniflər cards, and the class beside a name on the desk, on challenge
+      leaderboards and under reviews — i.e. the feature the grant deck leads
+      on. Exactly the "built, but not wired up where the person actually is"
+      shape in `HANDOFF.md`.
+
+      **The class is the link's, not the child's to type.** `RegistrationToken`
+      carries `Grade` and `ClassGroup`, one link per class, and `Register`
+      takes the pair from the token, overriding anything the client sends —
+      verified by registering with `grade: 11, classGroup: "Z"` in the body and
+      reading 6-B back out of Postgres. The alternative, asking the child, gives
+      you "7A", "7-A" and "7 A" in one class. The group is trimmed and
+      upper-cased on both write paths so " a " and "A" are one class.
+
+      `PUT /student/:id/class` (IsLibrarian, branch-scoped) is the correction
+      path for the cases a link cannot cover — a branch-wide link, a mid-year
+      move, or a link made for the wrong class. Grade 0 clears the pair. A
+      librarian from another branch gets 403.
+
+- [x] **Analitika — the school administrator's screen.** Done 2026-09-30.
+      `/staff/analytics`, guarded by `IsManager` (which admits a school
+      administrator and a platform admin). The first domain in `nav.js`, so it
+      is where a manager's rail starts; a librarian does not have the domain,
+      so they still land on `library`.
+
+      Headline figures, per branch, per class, an eight-week circulation
+      trend, most-borrowed titles and the textbook ledger. All derived —
+      `GET /analytics/school?days=30|90|365`, nothing stored, no form for
+      anyone to fill in.
+
+      **Every figure is period-scoped, pages included.** The first cut showed
+      period loans beside all-time pages in the same row, so 4-A read "2 books
+      / 150 pages" under a "last 90 days" heading: one row, two time bases.
+      `pagesAdvanced()` is now the single definition used by the headline, the
+      branch table and the class table — the furthest page reached in a book
+      by the end of the period, less where the reader already was when it
+      began, never below zero. The invariant to check after touching it: **the
+      class breakdown must sum to the headline.** It does, at both 30 and 365
+      days (619 and 801).
+
+      The class table is sorted by the *lowest* share of active readers,
+      because the question a head teacher asks is which class needs attention.
+      Readers with no class appear as their own row rather than being hidden —
+      they sit outside every class standing until someone fixes them.
+
+      **Both old dashboards now link to it.** `homePathFor()` still sends a
+      manager to `/manager` and an admin to `/admin`, and neither of those
+      screens linked to `/staff` at all, so the screen would have existed and
+      nobody would have found it — the mistake `ManagerDashboard.jsx`'s own
+      comment describes. Retiring those dashboards is still open; until then
+      the link is the wiring.
+
+- [x] **`role.admin` was Azerbaijani in the English block**, so the English
+      console read "İdarəçi mode". A scan for Azerbaijani or Turkish letters in
+      English values found this and nothing else; it is "Administrator" now.
+
 ## Known issues
+
+- [ ] **A loan overdue by less than a day reports "0 gün gecikib".**
+      `deskRow()` in `handlers/desk.go` counts a loan as overdue the instant
+      `now.After(DueDate)`, but computes the number with
+      `int(now.Sub(DueDate).Hours() / 24)`, which truncates. So the desk shows
+      `overdue: 1` while `days_overdue` is `0`, and the reminder the librarian
+      sends tells the reader their book is "0 days late — please return it".
+      Found 2026-09-29 by sending a real reminder and opening the bell as the
+      reader who got it. Decide which the product means — past the due date, or
+      a full day past it — and make the count, the `overdue_14_plus` threshold
+      and the notification string agree
+
+- [ ] **The reader's "Orta sürət" can exceed their lifetime pages.**
+      `GetShelfSummary` in `handlers/shelf.go` divides pages covered by the
+      wall-clock gap between a book's first and last diary entry. Log a week's
+      reading in one sitting — the normal way anyone catches up — and the rate
+      explodes. Observed 2026-09-29 on `nicat@stu.com`: **394 səhifə/gün**
+      printed next to **360** total pages read. The `GREATEST(…, 0.5)` floor
+      caps the worst case at 2× a single burst but does not change the shape.
+      Prefer pages per *distinct calendar day with an entry*, which is how
+      `BadgeStreak` already counts, or drop the stat. Whatever replaces it,
+      the average must not be able to exceed the total. The demo data was
+      reshaped so it currently reads 48.3 — re-seed a burst-logged book to
+      reproduce
 
 - [ ] **Azerbaijani month and weekday names are hand-tabulated** in
       `src/i18n/dates.js` because Chrome's `Intl` reports `az` as supported and

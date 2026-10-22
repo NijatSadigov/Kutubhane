@@ -138,6 +138,36 @@ was exercised without touching real data.
 
 ---
 
+## Session record — 2026-09-30, four commits
+
+`e26f2e6` … and the docs commit you are reading. In order:
+
+| | |
+|---|---|
+| `e26f2e6` | "1 book", and a genre an English reader can read |
+| `d764ce6` | A reader's class comes from the invite link, not from the child |
+| `1650d11` | Analitika — the screen a school administrator never had |
+
+**Two bug fixes were started in separate sessions and never reached this
+branch.** Both are still in `TODO.md` under "Known issues" and both are
+user-visible:
+
+- a loan overdue by **less than a day** reports `days_overdue: 0`, so the
+  reminder tells a reader their book is "0 gün gecikib" — `handlers/desk.go`;
+- a reader's **"Orta sürət" can exceed their lifetime pages** (394 pages/day
+  against 360 read) — `handlers/shelf.go`.
+
+Neither file is touched by the three commits above, so whoever picks them up
+has a clean run at them. The demo data was reshaped so the second one does not
+show (48.3 pages/day, a live 7-day streak); the bug is hidden, not fixed.
+
+**The thing worth carrying forward from this session**: the class gap was
+found by asking "how do a hundred students actually get accounts?" rather than
+by reading the feature list. The field existed end to end on the server and no
+caller ever filled it. Before the first real cohort arrives, the useful
+question about any feature is which path a real user walks to reach it — that
+is also how the analytics screen came to need a link from the old dashboards.
+
 ## Session record — 2026-09-29, twelve commits
 
 `ee1471b` … `a0e4d7f`, all pushed. In order:
@@ -519,6 +549,24 @@ and look.**
 - **`Intl` lies about Azerbaijani.** Chrome reports `az` as supported and then
   formats it `"M09 27, Sun"`. Month and weekday names are tabulated by hand in
   `src/i18n/dates.js`. Do not "simplify" that file back to `Intl`.
+- **English strings with a count need `{n|one|many}`** (2026-09-30). `t()` does
+  per-placeholder plurals, so a new English string writes `'{n} {n|book|books}'`
+  and reads "1 book" rather than "1 books". It is per placeholder, not per
+  string, because several strings carry two counts at once
+  (`'{n} {n|reader|readers} · {d} {d|day|days} left'`). **Azerbaijani and
+  Turkish need nothing** — neither pluralises a noun after a numeral, so their
+  strings keep one form. 47 English strings were fixed; a new one that forgets
+  the token is only visible at n = 1.
+- **A genre's display name is not its stored name.** `genres.name` is free text
+  a librarian types in the school's own language, so "Roman" used to sit on an
+  English page, where it reads as ancient Rome rather than "novel".
+  `src/i18n/genres.js` maps a normalised slug to a `genre.*` label and **falls
+  back to the stored name**, so a genre a librarian invents still shows as
+  typed. Two rules when touching it: `genreColors()` takes the STORED name (or
+  a genre changes colour with the language), and filters and queries send the
+  STORED name too — only rendered text goes through `genreLabel()`. The
+  Azerbaijani labels are identical to what the database holds, so the school's
+  own language is unchanged.
 - **`gofmt -w .` reformats the whole repo**, which is not gofmt-clean. Format
   only the files you touched. As of 2026-09-29 exactly **two** files are
   non-gofmt — `handlers/admin.go` and `handlers/regtoken.go` — not the four
@@ -541,6 +589,43 @@ stages, 31 reviews, 2 challenges with 17 participants, badges, diaries, notes.
 Two things were written during testing and are fine to keep or clear: student
 `nicat@stu.com` has a 2026 reading goal of 40 books, and a demo `bio` on their
 profile so the banner shows its fourth row.
+
+**Written 2026-09-29 while shooting the grant deck**, all through the product's
+own endpoints rather than straight into Postgres, and all fine to keep — the
+demo reads better for them:
+
+- **Diacritics fixed.** The school was stored `Hadaf`, its branches `Nesimi`
+  and `Gence`, and `nicat@stu.com` was `Niat Sadigov`. They are `Hədəf`,
+  `Nəsimi`, `Gəncə` and `Nicat Sadıqov` now. Applied from a file with
+  `psql -f` and `PGCLIENTENCODING=UTF8`, per the UTF-8 trap above.
+- **An e-book exists.** `uploads/ebooks` was empty, so no screenshot of the
+  reader was possible. A four-page public-domain PDF (Austen, *Pride and
+  Prejudice*) was rendered with headless Chrome, uploaded through
+  `POST /upload/ebook` and attached to book 8 — which was already on
+  `nicat@stu.com`'s shelf, so the entitlement check passes for that reader.
+- **The desk has a day's work on it.** Four loans issued and two checked in, so
+  `issued_today` is 4 rather than 0 and the desk does not photograph as idle.
+- **Loan 12 is genuinely overdue.** Its due date was moved back four days and
+  `POST /desk/overdue/remind` re-sent, so the one notification in the database
+  belongs to `elvin@stu.com` and reads "4 gün gecikib".
+
+That last one came out of a real bug — see `TODO.md`, "Known issues": a loan
+overdue by **less than 24 hours** is counted as overdue but reports
+`days_overdue: 0`, so the reminder told a reader their book was "0 gün
+gecikib". Found only by opening the bell as the reader who received it.
+
+- **The reading diary was rewritten** for `nicat@stu.com`. It had been seeded
+  in two bursts minutes apart, with pages out of order and repeated
+  (2, 2, 328, 239). It is now a plausible week — one entry a day, pages
+  ascending, ending today — which gives the profile a live 7-day streak and a
+  believable 48.3 pages/day instead of **394**. One note was keyboard mash
+  ("sjfsiev verg") and is now a sentence; the new entries have notes too.
+
+  That 394 was the second real bug of the session, also in `TODO.md`:
+  reading speed is pages covered divided by the elapsed time between a book's
+  first and last diary entry, so a reader who logs a week's reading in one
+  sitting gets an average **higher than their lifetime total**, printed on
+  their own profile. Reshaping the demo data hides it; it is not fixed.
 
 Known data problems, both pre-existing: nearly every ISBN is 12 digits
 (truncated — matching handles it, the book form should validate), and the
