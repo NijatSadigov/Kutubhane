@@ -177,15 +177,16 @@ with the reasoning:
       Kitabxana ayarları is built on it. A manager and an admin keep the
       "Köhnə panel" link; a librarian no longer has one
 
-- [ ] **The teacher screens still missing.** The moderation queue is done
-      (2026-09-30). What is left of the design's teacher screens is the class
-      dashboard and the "teacher" line under an overdue student. Challenges are
-      still authored by librarians
+- [ ] **The teacher screens still missing.** The moderation queue and the
+      class dashboard are done. What is left is the "teacher" line under an
+      overdue student, and a per-pupil side panel on the class dashboard.
+      Challenges are still authored by librarians
 
 - [ ] **Staff Console — teacher and admin sections** (the librarian side is done
       and live at `/staff`)
-  - [ ] Teacher — Class dashboard: class switch, KPIs, 8-week chart, roster with
-        streak/challenge flags, student side panel
+  - [x] Teacher — Class dashboard. Done 2026-10-25 at `/staff/class-reading`
+        (class switch, KPIs, 8-week chart, roster). A per-pupil side panel is
+        the one piece of the design not built
   - [ ] Teacher — Challenge builder UI (the API already exists:
         `POST /challenges`, `/challenges/:id/questions`)
   - [x] Teacher — Moderation queue. Done 2026-09-30 at `/staff/moderation`
@@ -201,7 +202,7 @@ with the reasoning:
   - [ ] Librarian — Circulation desk: check out, check in, today's log, KPIs
   - [ ] Librarian — Holds & overdue: hold queue, bulk remind, mark lost
   - [ ] Librarian — Catalogue & inventory: availability bars, expandable copies, add title
-  - [ ] Teacher — Class dashboard: class switch, KPIs, 8-week chart, roster
+  - [x] Teacher — Class dashboard — done
   - [ ] Teacher — Challenge builder (backend already exists)
   - [x] Teacher — Moderation queue — done
   - [x] Admin — Analytics — done
@@ -378,6 +379,22 @@ with the reasoning:
       denominator drawn from the same rows. The average can no longer exceed
       the total, structurally: `max − min ≤ max`, and the denominator is at
       least one.
+
+- [ ] **A reader's class is recorded twice, and the two drift.**
+      `students.grade` + `class_group` is the free-text pair every *reading*
+      feature groups on — the standings, Üzvlər's class cards, the class beside
+      a name on the desk, and now the class dashboard. `students.classroom_id`
+      is the **dərslik** roster, set by the administration through
+      `SetClassroomStudents`. They already disagree: **11 demo readers have a
+      grade and a letter but no `classroom_id`**, including one in 4-A.
+
+      The invite link sets the pair, not the classroom, so a self-registered
+      reader is in the class standings but not on the textbook roster. That is
+      arguably right — a classroom roster is a deliberate administrative act —
+      but nothing anywhere says so, and the next person to build a class screen
+      has a coin to flip. Either reconcile them at sign-up (a link naming a
+      class that already exists as a `Classroom` could set both) or write down
+      which is authoritative for what
 
 ## Known issues
 

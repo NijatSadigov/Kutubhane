@@ -361,6 +361,12 @@ func Setup(app *fiber.App) {
 	api.Post("/subjects", middleware.IsManager, handlers.CreateSubject)
 	api.Delete("/subjects/:id", middleware.IsManager, handlers.DeleteSubject)
 
+	// The teacher's class dashboard: how the children they take are reading.
+	// Which classes comes from the dərslik link; which children from the
+	// grade/class_group pair every reading feature groups on.
+	api.Get("/teacher/classes", middleware.IsTeacher, handlers.GetTeacherClasses)
+	api.Get("/teacher/class", middleware.IsTeacher, handlers.GetTeacherClassDashboard)
+
 	api.Get("/classrooms", middleware.IsTeacher, handlers.GetClassrooms)
 	api.Post("/classrooms", middleware.IsManager, handlers.CreateClassroom)
 	api.Put("/classrooms/:id/teachers", middleware.IsManager, handlers.SetClassroomTeachers)

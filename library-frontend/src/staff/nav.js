@@ -32,6 +32,10 @@ const ADMIN_SIDE = ['manager', 'admin'];
 // supplies, and the school administration sets up the classes behind both.
 const TEACHER_SIDE = ['teacher'];
 const LIBRARY_SIDE = ['librarian', 'manager', 'admin'];
+// Who looks at one class's reading. Branch-scoped roles only: a school
+// administrator has the analytics screen, which answers the same question
+// across every class at once rather than one at a time.
+const CLASS_VIEW = ['teacher', 'librarian', 'admin'];
 
 export const DOMAINS = [
   {
@@ -56,6 +60,17 @@ export const DOMAINS = [
       { path: 'reservations', labelKey: 'staff.nav.reservations', badge: 'holds_pending', roles: BRANCH_DESK },
       { path: 'loans', labelKey: 'staff.nav.loans', roles: BRANCH_DESK },
       { path: 'requests', labelKey: 'staff.nav.requests', badge: 'requests_pending', roles: BRANCH_DESK },
+    ],
+  },
+  {
+    // How one class is reading. Sits beside the dərslik domain rather than
+    // inside it: "Siniflərim" there is the textbooks a class holds, and the
+    // two answer different questions about the same children.
+    key: 'class-reading',
+    labelKey: 'staff.dom.classReading',
+    roles: CLASS_VIEW,
+    screens: [
+      { path: '', labelKey: 'staff.nav.classReading', roles: CLASS_VIEW },
     ],
   },
   {

@@ -20,6 +20,7 @@ import Inventory from './pages/Inventory';
 import Members from './pages/Members';
 import Analytics from './pages/Analytics';
 import Moderation from './pages/Moderation';
+import ClassReading from './pages/ClassReading';
 import MemberInvites from './pages/MemberInvites';
 import { SettingsLists, SettingsStatuses, SettingsLimits } from './pages/SettingsScreens';
 import { MyTickets, NewTicket, TicketInbox } from './pages/Support';
@@ -51,6 +52,11 @@ export default function StaffApp() {
         {/* Moderasiya — the other end of a reader's report. */}
         <Route path="moderation">
           <Route index element={<Moderation />} />
+        </Route>
+
+        {/* Sinif oxusu — one class's reading, for the teacher who takes it. */}
+        <Route path="class-reading">
+          <Route index element={<ClassReading />} />
         </Route>
 
 
