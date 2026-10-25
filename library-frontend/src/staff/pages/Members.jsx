@@ -18,7 +18,7 @@ import { useTranslation } from '../../i18n/LanguageContext';
 import { shell, ink, radius, font, pill, overdueColors } from '../theme';
 import { Kpi, KpiRow, Pill, Btn, Input, Avatar, Mono, Alert } from '../components/StaffShell';
 import { Dialog } from './InventoryDialogs';
-import { fmtDate } from '../../i18n/dates';
+import { fmtDate, daysOverdue } from '../../i18n/dates';
 
 const COLS = 'minmax(0,1.8fr) 90px 90px 110px 120px';
 
@@ -197,7 +197,7 @@ export default function Members() {
               const open = (s.loans || []).filter((l) => !l.return_date);
               const worst = open.reduce((n, l) => {
                 if (!l.due_date) return n;
-                const d = Math.floor((new Date() - new Date(l.due_date)) / 86400000);
+                const d = daysOverdue(l.due_date);
                 return d > n ? d : n;
               }, 0);
               const on = selected?.user_id === s.user_id;
@@ -333,8 +333,7 @@ function ReaderPanel({ student, t, say, reload, onClose }) {
           {open.length === 0 ? (
             <div style={{ fontSize: 13, color: ink.dim }}>{t('staff.mem.noLoans')}</div>
           ) : open.map((l) => {
-            const late = l.due_date
-              ? Math.floor((new Date() - new Date(l.due_date)) / 86400000) : 0;
+            const late = daysOverdue(l.due_date);
             return (
               <div key={l.id} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -510,7 +509,7 @@ function ClassCards({ classes, openClass, setOpenClass, selected, setSelected, t
             const openLoans = (s.loans || []).filter((l) => !l.return_date);
             const worst = openLoans.reduce((n, l) => {
               if (!l.due_date) return n;
-              const d = Math.floor((new Date() - new Date(l.due_date)) / 86400000);
+              const d = daysOverdue(l.due_date);
               return d > n ? d : n;
             }, 0);
             const on = selected?.user_id === s.user_id;

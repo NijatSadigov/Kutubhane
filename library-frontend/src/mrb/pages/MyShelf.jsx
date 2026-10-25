@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import api, { assetUrl } from '../../api/axios';
 import { AuthContext } from '../../context/AuthContext';
 import { useTranslation } from '../../i18n/LanguageContext';
-import { fmtDate, fmtDayMonth, fmtMonthYear, fmtNum } from '../../i18n/dates';
+import { fmtDate, fmtDayMonth, fmtMonthYear, fmtNum, daysUntil } from '../../i18n/dates';
 import { coverColors, genreColors } from '../theme';
 import { genreLabel } from '../../i18n/genres';
 import { Toast } from '../components/primitives';
@@ -488,7 +488,7 @@ function LoanCard({ loan, t, nav, say, reload }) {
   const pct = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
 
   const due = loan.due_date ? new Date(loan.due_date) : null;
-  const daysLeft = due ? Math.ceil((due - new Date()) / 86400000) : null;
+  const daysLeft = daysUntil(loan.due_date);
   const dueTone = daysLeft == null ? { bg: C.surface, fg: C.body, border: C.line }
     : daysLeft < 0 ? { bg: C.coralBg, fg: C.coralFg, border: C.coralBorder }
     : daysLeft <= 3 ? { bg: C.warnBg, fg: C.warnFg, border: C.warnBorder }

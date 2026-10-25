@@ -351,15 +351,42 @@ func GetShelfSummary(c *fiber.Ctx) error {
 	}
 	m := readerMetrics(uid)
 
-	// Average reading speed in pages per day, across books with at least two
-	// diary entries so there is an interval to measure.
-	var speed struct{ Pages, Days float64 }
+	// Average reading speed: pages reached, over the number of distinct days
+	// the reader actually wrote in the diary.
+	//
+	// It used to divide by the wall-clock gap between a book's first and last
+	// entry, which is only meaningful if a reader logs as they read. Anyone
+	// catching up — reading all week and logging on Sunday — collapsed the
+	// interval and the rate exploded: 326 pages across a 20-hour window read
+	// as 394 pages/day, printed on the profile beside a lifetime total of 360.
+	// An average above the total is visibly wrong to the reader it belongs to.
+	//
+	// Counting days the reader logged on cannot do that: the numerator is the
+	// pages those days covered, so the result is bounded by the total and
+	// stays a plausible number. It is also the same notion of a "day" that
+	// BadgeStreak and streakFromLogs already use.
+	var speed struct {
+		Pages float64
+		Days  float64
+	}
+	// Both halves are restricted to the same rows — books with at least two
+	// entries, so there is an advance to measure. Counting every logging day
+	// in the denominator while the numerator ignored single-entry books would
+	// quietly understate the rate.
 	database.DB.Raw(`
-		SELECT COALESCE(SUM(pages),0) AS pages, COALESCE(SUM(days),0) AS days FROM (
-			SELECT MAX(page) - MIN(page) AS pages,
-			       GREATEST(EXTRACT(EPOCH FROM (MAX(created_at) - MIN(created_at))) / 86400.0, 0.5) AS days
-			FROM reading_logs WHERE student_id = ? GROUP BY loan_id HAVING COUNT(*) > 1
-		) t`, uid).Scan(&speed)
+		WITH measurable AS (
+			SELECT loan_id FROM reading_logs
+			WHERE student_id = ? GROUP BY loan_id HAVING COUNT(*) > 1
+		)
+		SELECT
+			(SELECT COALESCE(SUM(mx - mn), 0) FROM (
+				SELECT MAX(page) AS mx, MIN(page) AS mn FROM reading_logs
+				WHERE student_id = ? AND loan_id IN (SELECT loan_id FROM measurable)
+				GROUP BY loan_id
+			) p) AS pages,
+			(SELECT COUNT(DISTINCT created_at::date) FROM reading_logs
+			 WHERE student_id = ? AND loan_id IN (SELECT loan_id FROM measurable)
+			) AS days`, uid, uid, uid).Scan(&speed)
 	pagesPerDay := 0.0
 	if speed.Days > 0 {
 		pagesPerDay = speed.Pages / speed.Days

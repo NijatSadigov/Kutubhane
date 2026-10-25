@@ -18,7 +18,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../../api/axios';
 import { useTranslation } from '../../i18n/LanguageContext';
-import { fmtDate } from '../../i18n/dates';
+import { fmtDate, daysOverdue } from '../../i18n/dates';
 import { shell, ink, radius, font, overdueColors, scrollRowStyle } from '../theme';
 import { Pill, Btn, Mono } from '../components/StaffShell';
 import { ScrollTable } from '../components/StaffTable';
@@ -113,8 +113,7 @@ export default function Loans() {
           empty={loans.length === 0 ? t('staff.holds.noLoans') : null}
         >
           {loans.map((l) => {
-            const late = l.due_date
-              ? Math.floor((new Date() - new Date(l.due_date)) / 86400000) : 0;
+            const late = daysOverdue(l.due_date);
             return (
               <div key={l.id} style={scrollRowStyle(ALL_COLS)}>
                 <span style={{ minWidth: 0 }}>

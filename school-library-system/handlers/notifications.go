@@ -178,12 +178,16 @@ func RemindOverdue(c *fiber.Ctx) error {
 	now := time.Now()
 	sent := 0
 	for _, l := range loans {
-		if l.ReturnDate != nil || !now.After(l.DueDate) {
+		// Whole calendar days, the same count the desk shows — see
+		// overdueDays(). Comparing instants here is what sent a reader the
+		// message "0 gün gecikib".
+		late := overdueDays(l.DueDate, now)
+		if l.ReturnDate != nil || late == 0 {
 			continue // returned, or not actually late
 		}
 		notify(l.StudentID, models.NotifyLoanOverdue, models.NotifySubjectLoan, l.ID, map[string]any{
 			"title": l.BookCopy.Book.Title,
-			"days":  int(now.Sub(l.DueDate).Hours() / 24),
+			"days":  late,
 		})
 		sent++
 	}

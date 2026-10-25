@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import api, { assetUrl } from '../../api/axios';
 import { useTranslation } from '../../i18n/LanguageContext';
-import { fmtDate, fmtDayMonth, fmtTime } from '../../i18n/dates';
+import { fmtDate, fmtDayMonth, fmtTime, daysOverdue } from '../../i18n/dates';
 import { shell, ink, radius, font, danger, overdueColors, pill } from '../theme';
 import {
   Kpi, KpiRow, Pill, Btn, Alert, Label, Input, Chip, Spine, Avatar, Mono,
@@ -289,8 +289,7 @@ function CheckOut({ t, say, reload }) {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {activeLoans.map((l) => {
-                    const late = l.due_date
-                      ? Math.floor((new Date() - new Date(l.due_date)) / 86400000) : 0;
+                    const late = daysOverdue(l.due_date);
                     return (
                       <div key={l.id} style={{
                         display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 12,
@@ -475,8 +474,7 @@ function CheckIn({ t, say, reload }) {
       || (l.book_copy?.book?.title || '').toLowerCase().includes(term))
     : loans).slice(0, 8);
 
-  const lateDays = (l) => (l?.due_date
-    ? Math.floor((new Date() - new Date(l.due_date)) / 86400000) : 0);
+  const lateDays = (l) => daysOverdue(l?.due_date);
 
   const confirm = async () => {
     if (!chosen) return;

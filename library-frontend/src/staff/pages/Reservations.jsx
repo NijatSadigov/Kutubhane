@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import api, { assetUrl } from '../../api/axios';
 import { useTranslation } from '../../i18n/LanguageContext';
-import { fmtDate } from '../../i18n/dates';
+import { fmtDate, daysUntil } from '../../i18n/dates';
 import { shell, ink, danger, pill, radius, font, scrollRowStyle } from '../theme';
 import { Pill, Btn, Spine, Label } from '../components/StaffShell';
 import { ScrollTable } from '../components/StaffTable';
@@ -94,7 +94,7 @@ export default function Reservations() {
         {open.map((r) => {
           const code = r.status?.code;
           const deadline = r.pickup_deadline ? new Date(r.pickup_deadline) : null;
-          const daysLeft = deadline ? Math.ceil((deadline - new Date()) / 86400000) : null;
+          const daysLeft = daysUntil(deadline);
           return (
             <div key={r.id} style={scrollRowStyle(HOLD_COLS)}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>

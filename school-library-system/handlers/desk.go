@@ -61,7 +61,10 @@ func GetDeskSummary(c *fiber.Ctx) error {
 	// --- overdue ---
 	var overdueLoans []models.Loan
 	branchLoans(branchID).
-		Where("loans.return_date IS NULL AND loans.due_date < ?", now).
+		// Compared as dates, to match overdueDays(): a book due today is not
+		// overdue, whatever the clock says. Comparing the instant put books
+		// on this list that the row below then reported as nought days late.
+		Where("loans.return_date IS NULL AND loans.due_date::date < CURRENT_DATE").
 		Order("loans.due_date asc").
 		Find(&overdueLoans)
 
@@ -122,6 +125,35 @@ func GetDeskSummary(c *fiber.Ctx) error {
 	})
 }
 
+// overdueDays counts whole calendar days past the due date, which is what
+// "late" means to a reader: a book due on the 13th is not late on the 13th
+// whatever the clock says, and is one day late on the 14th.
+//
+// A due date is a date in every sense that matters — a child is told to bring
+// the book back on a day — but it is not stored as one. CreateLoan's AddDate
+// keeps the time of checkout, while a librarian typing a date gets midnight.
+// Comparing instants therefore made a loan overdue the moment the clock passed
+// its checkout time, while the day count truncated to zero: the desk listed a
+// book as late and the reminder told the reader it was "0 gün gecikib" —
+// self-contradictory, and the first thing a late reader saw.
+//
+// Comparing calendar days makes the predicate and the count agree by
+// construction: a loan is overdue exactly when this returns more than zero.
+// Every caller — the desk list, the KPI, the 14-day threshold and the reminder
+// — now goes through here, so they cannot drift apart again.
+func overdueDays(due, now time.Time) int {
+	loc := now.Location()
+	d := due.In(loc)
+	dueDay := time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, loc)
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	if !today.After(dueDay) {
+		return 0
+	}
+	// Rounded rather than truncated so a daylight-saving change cannot shave a
+	// day off the count.
+	return int(today.Sub(dueDay).Hours()/24 + 0.5)
+}
+
 func deskRow(l models.Loan, action string, now time.Time) DeskRow {
 	grade := ""
 	if l.Student.Grade > 0 {
@@ -131,8 +163,8 @@ func deskRow(l models.Loan, action string, now time.Time) DeskRow {
 		}
 	}
 	days := 0
-	if l.ReturnDate == nil && now.After(l.DueDate) {
-		days = int(now.Sub(l.DueDate).Hours() / 24)
+	if l.ReturnDate == nil {
+		days = overdueDays(l.DueDate, now)
 	}
 	return DeskRow{
 		LoanID: l.ID, StudentID: l.StudentID, StudentName: l.Student.Name, StudentGrade: grade,

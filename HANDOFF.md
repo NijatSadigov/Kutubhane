@@ -81,7 +81,7 @@ cd school-library-system && go test ./... && go run ./cmd/apiaudit -writes
 cd library-frontend && npm run build && npx eslint src/mrb src/staff src/i18n
 ```
 
-Last run: 23 Go tests, **267 API checks across 5 roles**, build clean,
+Last run: 25 Go tests, **267 API checks across 5 roles**, build clean,
 `src/mrb` + `src/staff` + `src/i18n` lint clean. (`npx eslint src` reports 12
 errors, all pre-existing in the manager/admin/student dashboards and shared
 components — down from ~20 since the librarian's dashboard was deleted.)

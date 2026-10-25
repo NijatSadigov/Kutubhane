@@ -34,7 +34,7 @@ demo activity and takes `BASE` to choose which server.
 cd library-frontend && npm run build && npx eslint src/mrb src/staff
 ```
 
-Last run: 23 Go tests pass, **267 API checks across 5 roles**, 33/33
+Last run: 25 Go tests pass, **267 API checks across 5 roles**, 33/33
 loan-lifecycle checks pass, build and lint clean.
 
 The audit's count is deterministic — every `add()` in `cmd/apiaudit` is
@@ -349,31 +349,37 @@ with the reasoning:
       A hidden review is never deleted and can be put back. Every open report
       on one review closes together.
 
+- [x] **Both overdue bugs, and the day arithmetic behind them.** Done
+      2026-10-25. The two were one bug wearing two hats: everywhere in the
+      system, "how late is this?" subtracted two *instants* when a due date
+      means a *date*.
+
+      A book due at 13:59 became "overdue" at 14:00 while the day count
+      truncated to zero, so the desk listed it as late and the reminder told
+      the reader "0 gün gecikib". `overdueDays()` in `handlers/desk.go` is now
+      the one definition — whole calendar days — and the desk's SQL filter
+      compares `due_date::date < CURRENT_DATE` to match it, so **the predicate
+      and the count cannot disagree**: a loan is overdue exactly when the count
+      is above zero. `handlers/desk_test.go` pins the boundary, including an
+      hourly sweep across a fortnight asserting that pair never breaks.
+
+      The same arithmetic was copy-pasted into **nine** places in the frontend,
+      five of them computing days overdue with the identical truncation, so
+      the staff screens could show "0 days overdue" too. `daysUntil()` and
+      `daysOverdue()` in `src/i18n/dates.js` replace all nine and mirror the Go
+      helper.
+
+      And the reader's **"Orta sürət"**: it divided pages by the wall-clock gap
+      between a book's first and last diary entry, which only means anything if
+      a reader logs as they read. Anyone catching up collapsed the interval —
+      326 pages across twenty hours read as **394 pages/day**, printed beside a
+      lifetime total of 360. It is pages over *distinct days the reader logged
+      on* now, the same notion of a day `BadgeStreak` uses, with numerator and
+      denominator drawn from the same rows. The average can no longer exceed
+      the total, structurally: `max − min ≤ max`, and the denominator is at
+      least one.
+
 ## Known issues
-
-- [ ] **A loan overdue by less than a day reports "0 gün gecikib".**
-      `deskRow()` in `handlers/desk.go` counts a loan as overdue the instant
-      `now.After(DueDate)`, but computes the number with
-      `int(now.Sub(DueDate).Hours() / 24)`, which truncates. So the desk shows
-      `overdue: 1` while `days_overdue` is `0`, and the reminder the librarian
-      sends tells the reader their book is "0 days late — please return it".
-      Found 2026-09-29 by sending a real reminder and opening the bell as the
-      reader who got it. Decide which the product means — past the due date, or
-      a full day past it — and make the count, the `overdue_14_plus` threshold
-      and the notification string agree
-
-- [ ] **The reader's "Orta sürət" can exceed their lifetime pages.**
-      `GetShelfSummary` in `handlers/shelf.go` divides pages covered by the
-      wall-clock gap between a book's first and last diary entry. Log a week's
-      reading in one sitting — the normal way anyone catches up — and the rate
-      explodes. Observed 2026-09-29 on `nicat@stu.com`: **394 səhifə/gün**
-      printed next to **360** total pages read. The `GREATEST(…, 0.5)` floor
-      caps the worst case at 2× a single burst but does not change the shape.
-      Prefer pages per *distinct calendar day with an entry*, which is how
-      `BadgeStreak` already counts, or drop the stat. Whatever replaces it,
-      the average must not be able to exceed the total. The demo data was
-      reshaped so it currently reads 48.3 — re-seed a burst-logged book to
-      reproduce
 
 - [ ] **Azerbaijani month and weekday names are hand-tabulated** in
       `src/i18n/dates.js` because Chrome's `Intl` reports `az` as supported and

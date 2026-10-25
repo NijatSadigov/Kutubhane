@@ -6,7 +6,7 @@ import { useState } from 'react';
 import api, { assetUrl } from '../../api/axios';
 import { brand, slate, danger, warning, radius, font } from '../theme';
 import { BookCover, Button, Card } from './primitives';
-import { fmtDate } from '../../i18n/dates';
+import { fmtDate, daysUntil } from '../../i18n/dates';
 
 // The status word, from the fixed code rather than ReservationStatus.Name —
 // those rows are seeded in Turkish, so printing the name showed an Azerbaijani
@@ -44,7 +44,7 @@ export function ReservationsTab({ items, t, say, reload }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {items.map((r) => {
         const deadline = r.pickup_deadline ? new Date(r.pickup_deadline) : null;
-        const daysLeft = deadline ? Math.ceil((deadline - new Date()) / 86400000) : null;
+        const daysLeft = daysUntil(deadline);
         return (
           <Card key={r.id} padding={16}>
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>

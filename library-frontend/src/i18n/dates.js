@@ -110,3 +110,34 @@ export function fmtNum(n) {
   return new Intl.NumberFormat(current === 'az' ? 'tr-TR' : (INTL_LOCALE[current] || 'en-GB'))
     .format(Number(n));
 }
+
+// Whole calendar days, which is what a due date means to the person reading it:
+// a book due on the 13th is not late on the 13th whatever the clock says, and
+// is one day late on the 14th.
+//
+// Every screen used to subtract two instants and divide by 86400000, so a book
+// due at 13:59 flipped to "late" at 14:00 and the day count truncated to 0 —
+// the staff screens could show "0 days overdue" for the same reason the
+// reminder once told a reader their book was "0 gün gecikib". These mirror
+// overdueDays() in handlers/desk.go so the server and the screen agree.
+function startOfDay(value) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+// Days from today until `value`: negative once it is in the past, 0 today.
+export function daysUntil(value) {
+  if (!value) return null;
+  const then = startOfDay(value);
+  if (!then) return null;
+  // Rounded, not truncated, so a daylight-saving change cannot shave a day off.
+  return Math.round((then - startOfDay(new Date())) / 86400000);
+}
+
+// Whole days past a due date; 0 when it is not yet overdue.
+export function daysOverdue(due) {
+  const n = daysUntil(due);
+  return n == null || n >= 0 ? 0 : -n;
+}
