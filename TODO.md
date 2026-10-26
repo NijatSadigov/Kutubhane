@@ -53,6 +53,53 @@ staff console at `/staff`.
 Nothing here is blocking; pick by what the buyer will feel. A suggested order,
 with the reasoning:
 
+- [x] **Anyone could make themselves a platform admin.** Fixed 2026-10-26.
+      `POST /api/register` is public and took `role` from the request body, so
+
+          curl -X POST .../api/register -d '{"email":"…","password":"…","role":"admin"}'
+
+      returned a working platform-admin account with no credentials of any
+      kind: every school on the installation, readable, editable and
+      deletable. It also accepted a raw `branch_id`, so anyone could join any
+      branch uninvited. Register now creates a reader, from a branch's invite
+      link, and nothing else — `role` and `branch_id` are gone from the input
+      struct rather than ignored, so there is nothing left to half-use.
+
+      Staff accounts come from `/admin/*` and `/manager/*`, behind the console.
+      The first platform admin comes from `cmd/createadmin`.
+
+      Verified against a running server: the admin POST and the uninvited-
+      branch POST are both refused, and a POST carrying a *valid* token plus
+      `role:admin`, `branch_id:2`, `grade:11` created a student in the token's
+      branch and the token's class, which could not reach `/admin/school`.
+
+- [x] **Deployment prep.** Done 2026-10-26. `DEPLOY.md` is the guide;
+      `.env.example` in each half lists what to set. `CORS_ORIGINS` replaces
+      two hardcoded localhost origins, and `STATIC_DIR` lets the Go binary
+      serve the Vite build itself — one process, one origin, no CORS, which is
+      two of the three things that go wrong on a first deployment.
+
+      `VITE_API_ORIGIN` now reads set-but-empty as *same origin* (`??`, not
+      `||`). With `||` a deployed build with the variable set empty would have
+      fallen back to `http://localhost:8000` — the visitor's own machine.
+
+      `tools/demo_snapshot.sh` and `tools/demo_reset.sh` put a demo back
+      nightly, database and `uploads/` together, and the reset refuses to run
+      without `KUTUBHANE_DEMO=yes` and an existing snapshot.
+
+      The whole shape was checked end to end on port 8081: sign-in, API calls
+      and cover images all same-origin, deep links returning index.html while
+      `/api` and `/uploads` keep answering for themselves.
+
+- [ ] **No automated backups.** The demo snapshot is not one — it is a fixed
+      state to return to, not a history. A real school needs a nightly
+      `pg_dump` off the box, with `uploads/` beside it, and a restore somebody
+      has actually tried.
+
+- [ ] **Nothing rotates `JWT_SECRET`.** Changing it signs everyone out, which
+      is the correct behaviour and worth saying out loud somewhere a reader of
+      the deployment docs will see when they need it.
+
 - [x] **Push.** Done 2026-09-28. Only 2 commits were actually outstanding —
       15 of the "16" had already reached `origin` in the previous session, so
       fetch first before believing a count like this one

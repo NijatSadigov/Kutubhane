@@ -52,7 +52,34 @@ Backend :8000 (override with `PORT`), frontend :5180.
 
 Both are also in `.claude/launch.json` now (`school-library-backend` and
 `library-frontend`), so a Claude Code session starts them through its own
-preview tooling rather than backgrounding a shell.
+preview tooling rather than backgrounding a shell. A third entry,
+`deployed-shape`, runs the backend the way a deployment does — port 8081,
+`STATIC_DIR` pointing at `library-frontend/dist`, no CORS — for checking that
+the single-process shape still works after a change. It needs `npm run build`
+first.
+
+---
+
+## Deploying
+
+`DEPLOY.md` is the guide: one box, Postgres and the Go binary, with the Go
+binary serving the Vite build so nothing is cross-origin. `.env.example` in
+each half lists what to set.
+
+Two things to know before reading it:
+
+- **`JWT_SECRET` must be set.** The fallback is in this repository in plain
+  text, and with it anyone can mint a token for any account.
+- **There is no sign-up for staff.** `POST /api/register` creates readers from
+  a branch's invite link and nothing else. The first platform admin comes from
+  `go run ./cmd/createadmin -email you@school.az`.
+
+  Until 2026-10-26 that endpoint took `role` from the request body and believed
+  it, so an unauthenticated POST with `"role":"admin"` returned a working
+  platform-admin account — every school on the installation, readable,
+  editable and deletable. It also took a raw `branch_id`, so anyone could join
+  any branch uninvited. **If this was ever reachable from the internet, check
+  the `users` table for admins nobody created** and rotate `JWT_SECRET`.
 
 **Logins**, all password `Test1234`:
 

@@ -13,6 +13,18 @@
       "runtimeArgs": ["run", "."],
       "cwd": "school-library-system",
       "port": 8000
+    },
+    {
+      "name": "deployed-shape",
+      "runtimeExecutable": "go",
+      "runtimeArgs": ["run", "."],
+      "cwd": "school-library-system",
+      "env": {
+        "PORT": "8081",
+        "STATIC_DIR": "../library-frontend/dist",
+        "CORS_ORIGINS": ""
+      },
+      "port": 8081
     }
   ]
 }

@@ -6,7 +6,12 @@ import axios from 'axios';
 // Override with VITE_API_ORIGIN to point the UI at a second server running
 // against a scratch database, which is how the loan flows are exercised
 // without touching the real one. See HANDOFF.md.
-export const API_ORIGIN = import.meta.env.VITE_API_ORIGIN || 'http://localhost:8000';
+//
+// `??`, not `||`: VITE_API_ORIGIN= (set but empty) means *same origin*, which
+// is the deployment where the Go server hands out this bundle itself. `||`
+// would have read that as unset and sent a deployed browser to localhost:8000
+// — its own machine, where nothing is listening.
+export const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? 'http://localhost:8000';
 
 const api = axios.create({
     baseURL: API_ORIGIN + '/api',

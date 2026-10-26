@@ -25,3 +25,28 @@ var DatabaseDSN = getEnv(
 	"DATABASE_DSN",
 	"host=localhost user=postgres password=2334 dbname=school_library port=5432 sslmode=disable",
 )
+
+// CORSOrigins is the comma-separated list of browser origins allowed to call
+// the API, from CORS_ORIGINS. The default is the two local dev servers.
+//
+// It is deliberately not settable to "*": the API is called with credentials,
+// and a wildcard with credentials is both refused by browsers and wrong. A
+// deployment that serves the built UI from this same server (see StaticDir)
+// needs no entry here at all, because nothing is cross-origin.
+//
+// Unset in development is the normal case, so this one does not warn.
+var CORSOrigins = envOr("CORS_ORIGINS", "http://localhost:5180,http://localhost:5173")
+
+// StaticDir, when set, is a directory of built frontend files that this server
+// serves alongside the API — one process, one origin, no CORS. Unset means the
+// UI is hosted somewhere else and CORSOrigins has to name it.
+var StaticDir = os.Getenv("STATIC_DIR")
+
+// envOr is getEnv without the warning, for settings whose default is a fine
+// answer rather than an insecure one.
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}

@@ -3,6 +3,10 @@ package main
 import (
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
+
+	"school-library-system/config"
 	"school-library-system/database"
 	"school-library-system/models"
 	"school-library-system/routes"
@@ -124,8 +128,11 @@ func main() {
 		BodyLimit: 30 * 1024 * 1024, // 30 MB
 	})
 
+	// Who may call this API from a browser. Hardcoding the two dev servers
+	// meant the first deployment anywhere else failed at the first request,
+	// with a CORS message that says nothing about which origin to add.
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:5180,http://localhost:5173",
+		AllowOrigins:     config.CORSOrigins,
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
 		AllowCredentials: true,
 		AllowMethods:     "GET, POST, HEAD, PUT, DELETE, PATCH",
@@ -141,6 +148,33 @@ func main() {
 	app.Static("/uploads/covers", "./uploads/covers")
 
 	routes.Setup(app)
+
+	// 5. Optionally serve the built UI from this same process.
+	//
+	// The simplest deployment of this system is one box: Postgres, this
+	// binary, and the Vite build it hands out. Same origin means no CORS to
+	// configure and no second web server to keep alive, which is two of the
+	// three things that go wrong on a first deployment.
+	//
+	// The UI is a single-page app, so a request for /staff/school/branch is a
+	// request for index.html — the router sorts out the rest in the browser.
+	// The fallback is registered after routes.Setup, and declines anything
+	// under /api or /uploads, so a mistyped endpoint still answers 404 rather
+	// than handing a confused client a page of HTML.
+	if dir := config.StaticDir; dir != "" {
+		if _, err := os.Stat(filepath.Join(dir, "index.html")); err != nil {
+			log.Fatalf("[static] STATIC_DIR=%s has no index.html in it (%v). Build the frontend first, or unset STATIC_DIR.", dir, err)
+		}
+		app.Static("/", dir)
+		app.Use(func(c *fiber.Ctx) error {
+			p := c.Path()
+			if strings.HasPrefix(p, "/api") || strings.HasPrefix(p, "/uploads") {
+				return c.Next()
+			}
+			return c.SendFile(filepath.Join(dir, "index.html"))
+		})
+		log.Printf("[static] serving the UI from %s", dir)
+	}
 
 	// The port is configurable so a second instance can be run against a
 	// scratch database for testing without fighting the real one for :8000.
