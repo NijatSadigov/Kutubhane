@@ -134,8 +134,7 @@ func GetModerationReports(c *fiber.Ctx) error {
 // The review row is never deleted: a hidden review stays so that a teacher or
 // a parent can still see what was written.
 func ResolveModerationReport(c *fiber.Ctx) error {
-	schoolID, err := callerSchoolID(c)
-	if err != nil {
+	if _, err := callerSchoolID(c); err != nil {
 		if fe, ok := err.(*fiber.Error); ok {
 			return c.Status(fe.Code).JSON(fiber.Map{"error": fe.Message})
 		}
@@ -168,13 +167,7 @@ func ResolveModerationReport(c *fiber.Ctx) error {
 
 	// The report must belong to this school, checked through the review's
 	// author rather than taken from the request.
-	var inSchool int64
-	database.DB.Raw(`
-		SELECT count(*) FROM reviews r
-		JOIN students s ON s.user_id = r.user_id
-		JOIN branches b ON b.id = s.branch_id
-		WHERE r.id = ? AND b.school_id = ?`, rep.ReviewID, schoolID).Scan(&inSchool)
-	if inSchool == 0 {
+	if !reviewIsInCallersSchool(c, rep.ReviewID) {
 		return c.Status(403).JSON(fiber.Map{"error": "That report is not your school's"})
 	}
 
@@ -216,20 +209,32 @@ func ResolveModerationReport(c *fiber.Ctx) error {
 
 // UnhideReview puts a hidden review back. A moderator can be wrong, and
 // without this a mistake was permanent.
-func UnhideReview(c *fiber.Ctx) error {
+// reviewIsInCallersSchool reports whether a review was written by a reader at
+// the caller's school.
+//
+// Reviews are global: they hang off a Work, every partner school reads them,
+// and the landing page shows the newest from anywhere. So a review id alone
+// says nothing about whose child wrote it, and a moderator's reach has to be
+// checked rather than assumed. Shared so the two routes that moderate a review
+// — the queue here and DELETE /reviews/:id — cannot disagree about it.
+func reviewIsInCallersSchool(c *fiber.Ctx, reviewID uint) bool {
 	schoolID, err := callerSchoolID(c)
 	if err != nil {
-		return c.Status(403).JSON(fiber.Map{"error": "No school"})
+		return false
 	}
-	id, _ := strconv.Atoi(c.Params("id"))
-
-	var inSchool int64
+	var n int64
 	database.DB.Raw(`
 		SELECT count(*) FROM reviews r
 		JOIN students s ON s.user_id = r.user_id
 		JOIN branches b ON b.id = s.branch_id
-		WHERE r.id = ? AND b.school_id = ?`, id, schoolID).Scan(&inSchool)
-	if inSchool == 0 {
+		WHERE r.id = ? AND b.school_id = ?`, reviewID, schoolID).Scan(&n)
+	return n > 0
+}
+
+func UnhideReview(c *fiber.Ctx) error {
+	id, _ := strconv.Atoi(c.Params("id"))
+
+	if !reviewIsInCallersSchool(c, uint(id)) {
 		return c.Status(403).JSON(fiber.Map{"error": "That review is not your school's"})
 	}
 

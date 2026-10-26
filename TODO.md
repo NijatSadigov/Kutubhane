@@ -73,6 +73,53 @@ with the reasoning:
       `role:admin`, `branch_id:2`, `grade:11` created a student in the token's
       branch and the token's class, which could not reach `/admin/school`.
 
+- [x] **Two more authorization holes, from a deliberate pass.** 2026-10-26.
+      The register one was found by accident while writing DEPLOY.md, which is
+      not a way to find them, so the public surface and the role gates were
+      gone through on purpose.
+
+      **The four role gates never checked that the token was valid.** `IsAdmin`,
+      `IsManager`, `IsTeacher` and `IsLibrarian` each re-parsed the JWT and
+      discarded both the error and `token.Valid`:
+
+          token, _ := jwt.Parse(...)
+          if token == nil { 401 }
+          claims, _ := token.Claims.(jwt.MapClaims)
+          if claims["role"] != "admin" { 403 }
+
+      `jwt.Parse` returns a populated token *and* an error when a signature
+      does not verify, so that read the role out of a forged token and
+      admitted it. Nothing was exposed: every one of those routes is inside
+      the `api` group and `IsAuthenticated` rejects the token first — checked
+      with a hand-made `{"role":"admin"}` token and a garbage signature, which
+      got 401 from all of them. But only the registration site made that true,
+      and nothing in `middleware.go` said so; one route on `app` instead of
+      `api` would have made it live. They read the role from Locals now, which
+      only `IsAuthenticated` sets and only after validating.
+
+      **`DELETE /reviews/:id` let any school's staff delete any school's
+      reviews.** Its own doc comment said "staff can remove any review in
+      their own school"; the code checked the role and not the school. Reviews
+      are global — a work's reviews are read across every partner school, and
+      the landing page shows the newest from anywhere — so a review id says
+      nothing about whose child wrote it. `moderation.go` had the check and
+      `review.go` did not, which is two routes to one decision disagreeing.
+      Both share `reviewIsInCallersSchool()` now.
+
+      Checked afterwards with a matrix: five roles, a forged token and no
+      token at all against one route per gate. Every cell is what the design
+      says it should be.
+
+- [ ] **What that pass did not cover.** The public surface (ten routes) and
+      the role gates were gone through properly, and the student-reachable
+      id-taking routes were spot-checked — one reader cannot read another's
+      diary, library, loan log, notes, reservations or badges, and the e-book
+      handler checks ownership and refuses a path that climbs out of uploads/.
+      Not covered: the ~190 staff routes one by one for branch scoping, rate
+      limiting (there is none, so login is brute-forceable), and anything
+      about the frontend. A real review before a real school's data goes in
+      should start where this stopped.
+
 - [x] **Deployment prep.** Done 2026-10-26. `DEPLOY.md` is the guide;
       `.env.example` in each half lists what to set. `CORS_ORIGINS` replaces
       two hardcoded localhost origins, and `STATIC_DIR` lets the Go binary
@@ -239,6 +286,12 @@ with the reasoning:
       `resolveManagerSchoolID` the same fallback, or say in one place that
       `/manager/*` means "the caller's own school" and leave the admin to
       `/admin/*`
+
+      The same fact shows up a second time one scale down: `IsLibrarian`
+      admits an admin, but `getUserBranchID` cannot place them either, so
+      `GET /desk/summary` answers **401 for a platform admin** while answering
+      a librarian fine. An admin has no profile row — that is what makes them
+      one — and three different helpers each discover it separately.
 
 - [ ] **A school administrator's rail carries no counts.** The badges come
       from `GET /desk/summary`, which is `IsLibrarian`-guarded and branch-

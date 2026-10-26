@@ -405,6 +405,18 @@ func DeleteReview(c *fiber.Ctx) error {
 	if rev.UserID != uid && !isStaff {
 		return c.Status(403).JSON(fiber.Map{"error": "Not your review"})
 	}
+	// "In their own school" was in the comment above and nowhere in the code:
+	// reviews are global — a work's reviews are read across every partner
+	// school, and the landing page shows them — so a review fetched by id can
+	// belong to a child at any school on the installation. Without this, one
+	// school's librarian could delete another school's children's writing.
+	//
+	// The same check as handlers/moderation.go, because the two are the same
+	// decision reached by two routes, and a moderator's reach should not
+	// depend on which one they came through.
+	if rev.UserID != uid && !reviewIsInCallersSchool(c, rev.ID) {
+		return c.Status(403).JSON(fiber.Map{"error": "That review is not your school's"})
+	}
 
 	database.DB.Where("review_id = ?", id).Delete(&models.ReviewVote{})
 	database.DB.Where("review_id = ?", id).Delete(&models.ReviewReply{})
