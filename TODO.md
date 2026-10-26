@@ -115,10 +115,41 @@ with the reasoning:
       id-taking routes were spot-checked — one reader cannot read another's
       diary, library, loan log, notes, reservations or badges, and the e-book
       handler checks ownership and refuses a path that climbs out of uploads/.
-      Not covered: the ~190 staff routes one by one for branch scoping, rate
-      limiting (there is none, so login is brute-forceable), and anything
-      about the frontend. A real review before a real school's data goes in
-      should start where this stopped.
+      Not covered: the ~190 staff routes one by one for branch scoping, and
+      anything about the frontend. A real review before a real school's data
+      goes in should start where this stopped. (Rate limiting *was* on this
+      list; it is done — see below.)
+
+- [x] **The front door had no limits, and said too much.** Done 2026-10-26.
+      `POST /api/login` could be asked as often as anyone liked, and it
+      answered **404 "User not found"** for an address nobody has and **400
+      "Incorrect password"** for one somebody does — so you could ask the
+      server, one request each and no password needed, which of a list of
+      e-mail addresses belong to children here. The reply is one 401 with a
+      code now, and an unknown address is compared against a dummy hash so the
+      two take the same time rather than differing by bcrypt's ~1s.
+
+      Rate limits on the three routes that need no token: ten **failed**
+      sign-ins per five minutes keyed on address *and* e-mail, sixty a minute
+      on register and token validation. `SkipSuccessfulRequests` is what makes
+      the first one safe for a classroom — thirty children signing in
+      correctly from one NAT spend nothing. Verified: fifteen wrong passwords
+      gave ten 400s then 429s, other accounts from the same address were
+      untouched, and thirty correct sign-ins in a row all passed.
+
+      Two more while in there. `recover.New()` — a panic in any of 213 routes
+      was taking the process with it. And `TRUST_PROXY`, because behind the
+      Caddy in DEPLOY.md every request arrives from 127.0.0.1 and the limiter
+      would have seen the internet as one client.
+
+      Also: the English prose those endpoints returned went straight to the
+      screen, so an Azerbaijani login page said "Incorrect password" in
+      English. Codes now, with the words on the client where the other three
+      languages already are.
+
+- [ ] **The limiter's counts are in process memory.** A restart forgives
+      everyone, and two instances count separately. Right for one box; give
+      the limiter a shared `Storage` before there are two.
 
 - [x] **Deployment prep.** Done 2026-10-26. `DEPLOY.md` is the guide;
       `.env.example` in each half lists what to set. `CORS_ORIGINS` replaces

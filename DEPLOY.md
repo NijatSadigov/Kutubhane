@@ -67,6 +67,7 @@ DATABASE_DSN=host=localhost user=kutubhane password=... dbname=school_library po
 STATIC_DIR=/srv/kutubhane/dist           # the folder step 1 built
 CORS_ORIGINS=                            # nothing is cross-origin, so nothing to allow
 PORT=8000
+TRUST_PROXY=true                         # because step 4 puts Caddy in front
 ```
 
 `JWT_SECRET` is the one that matters. The development fallback is in this
@@ -139,6 +140,12 @@ nginx works as well; proxy everything to the one port, and raise
 `client_max_body_size` to at least 30 MB or e-book uploads fail at the proxy
 before they reach the body limit the app allows.
 
+Set `TRUST_PROXY=true` once something is in front. The login rate limiter keys
+on the caller's address, and behind a proxy without this every request looks
+like 127.0.0.1 — one bucket for the whole internet, and one mistyped password
+locking out the next person. Do not set it when nothing is in front: the
+address then comes from a header the client writes.
+
 ## 5. The first admin
 
 There is no sign-up for staff, and there must not be: `POST /api/register` is
@@ -179,6 +186,26 @@ images that are gone.
 `demo_reset.sh` refuses to run unless `KUTUBHANE_DEMO=yes` is set and a
 snapshot exists. It drops a schema; it should be hard to aim at a real school
 by accident.
+
+## Rate limits
+
+Three routes need no token to reach, so they are the three that are limited.
+
+| route | limit | keyed on |
+|---|---|---|
+| `POST /api/login` | 10 **failed** tries / 5 min | address + e-mail |
+| `POST /api/register` | 60 / min | address |
+| `GET /api/registration-tokens/validate/:token` | 60 / min | address |
+
+A sign-in that works does not count, so a class of thirty arriving at nine
+o'clock is not rationed — only wrong passwords are. The e-mail is in the login
+key so that one person mistyping cannot lock out everyone else behind the same
+school NAT, and so that a stranger cannot lock out a named teacher by failing
+on purpose.
+
+The counts live in this process's memory, so a restart forgives everyone and
+two instances count separately. For one box that is the right trade; for more
+than one, give the limiter a shared `Storage`.
 
 ## What is not done
 

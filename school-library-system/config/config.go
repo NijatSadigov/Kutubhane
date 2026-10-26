@@ -50,3 +50,20 @@ func envOr(key, fallback string) string {
 	}
 	return fallback
 }
+
+// ProxyHeader returns the header Fiber should read the client's address from,
+// or "" to use the connection's own address.
+//
+// Set TRUST_PROXY=true only when something you control — Caddy, nginx — is in
+// front and setting X-Forwarded-For. Behind one, every request otherwise
+// appears to come from 127.0.0.1 and the login rate limiter sees the whole
+// internet as one client. Without one, the header is whatever the client
+// typed, and trusting it hands every attacker an unlimited supply of
+// addresses. There is no safe default, so this is a decision rather than a
+// guess.
+func ProxyHeader() string {
+	if os.Getenv("TRUST_PROXY") == "true" {
+		return "X-Forwarded-For"
+	}
+	return ""
+}

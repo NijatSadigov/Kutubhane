@@ -25,7 +25,13 @@ function AuthLayout({ title, subtitle, children, footer }) {
 
   useEffect(() => {
     pub.get('/public/books', { params: { limit: 6 } })
-      .then((r) => setBooks(r.data || [])).catch(() => {});
+      // `r.data || []` is not enough: point VITE_API_ORIGIN at the wrong
+      // place and /api/* returns the SPA's own index.html with a 200, so this
+      // became a string, books.map threw, and the *sign-in page* rendered
+      // blank. A decorative strip of covers must not be able to do that —
+      // least of all on the one screen somebody uses to report the problem.
+      .then((r) => setBooks(Array.isArray(r.data) ? r.data : []))
+      .catch(() => {});
   }, []);
 
   return (
@@ -163,7 +169,12 @@ export function Login() {
     // so a failure has to be read off the result.
     const res = await login(email.trim(), password);
     if (!res?.success) {
-      setErr(res?.message || t('mrb.auth.errBadLogin'));
+      // Being rate limited is not the same as getting the password wrong, and
+      // telling a child the password is wrong when it is right sends them to
+      // change it. The server distinguishes the two; so does this.
+      setErr(res?.code === 'RATE_LIMITED'
+        ? t('mrb.auth.errTooMany')
+        : res?.message || t('mrb.auth.errBadLogin'));
       setBusy(false);
     }
     // On success the effect above redirects once the session commits.

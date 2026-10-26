@@ -1,18 +1,26 @@
 package routes
 
 import (
+	"strings"
+	"time"
+
 	"school-library-system/handlers"
 	"school-library-system/middleware"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 )
 
 func Setup(app *fiber.App) {
 
 	// ... (Public Routes) ...
-	app.Post("/api/register", handlers.Register)
-	app.Post("/api/login", handlers.Login)
-	app.Get("/api/registration-tokens/validate/:token", handlers.ValidateRegistrationToken)
+	//
+	// The three below are the front door: no token is needed to reach them, so
+	// they are the only places an outsider can spend the server's time or
+	// guess at something. They are the only routes that are rate limited.
+	app.Post("/api/register", guessLimiter(), handlers.Register)
+	app.Post("/api/login", loginLimiter(), handlers.Login)
+	app.Get("/api/registration-tokens/validate/:token", guessLimiter(), handlers.ValidateRegistrationToken)
 
 	// Public aggregate stats for the landing page (no auth, no PII)
 	app.Get("/api/public/stats", handlers.GetPublicStats)
@@ -408,4 +416,62 @@ func Setup(app *fiber.App) {
 	api.Put("/manager/tickets/:id", middleware.IsManager, handlers.UpdateQueueTicketStatus)
 	api.Post("/manager/tickets/:id/replies", middleware.IsManager, handlers.ReplyToQueueTicket)
 	api.Post("/manager/tickets/:id/seen", middleware.IsManager, handlers.MarkQueueTicketSeen)
+}
+
+/* ------------------------------------------------- the front door's limits */
+
+// loginLimiter slows password guessing without getting in a classroom's way.
+//
+// SkipSuccessfulRequests is what makes that possible: a sign-in that works
+// costs nothing, so thirty children arriving at nine o'clock are not rationed.
+// Only wrong passwords count, which is the thing worth counting.
+//
+// The key is the address *and* the e-mail. On the e-mail alone, a stranger
+// could lock a named teacher out by failing ten times on purpose. On the
+// address alone, a school behind one NAT would share a single budget and the
+// tenth person to mistype their password would lock out the eleventh. Together,
+// each person at each address gets their own.
+//
+// Ten tries per five minutes leaves a forgetful child room and leaves a
+// guesser two attempts a minute, which is no way to find a password.
+func loginLimiter() fiber.Handler {
+	return limiter.New(limiter.Config{
+		Max:                    10,
+		Expiration:             5 * time.Minute,
+		SkipSuccessfulRequests: true,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			var body struct {
+				Email string `json:"email"`
+			}
+			// A malformed body leaves the e-mail blank, which buckets all of
+			// them together per address — fine, since none of them can sign in.
+			_ = c.BodyParser(&body)
+			return c.IP() + "|" + strings.ToLower(strings.TrimSpace(body.Email))
+		},
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"error": "Too many attempts. Wait a few minutes and try again.",
+				"code":  "RATE_LIMITED",
+			})
+		},
+	})
+}
+
+// guessLimiter is the backstop on the other two public routes.
+//
+// Neither is really guessable — a registration token is 128 bits — so this is
+// about the cost of being asked, not about the odds of an answer. Sixty a
+// minute per address is far above a class signing up together in one room and
+// far below anything worth doing to a server.
+func guessLimiter() fiber.Handler {
+	return limiter.New(limiter.Config{
+		Max:        60,
+		Expiration: time.Minute,
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"error": "Too many requests. Wait a minute and try again.",
+				"code":  "RATE_LIMITED",
+			})
+		},
+	})
 }

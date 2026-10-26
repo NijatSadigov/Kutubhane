@@ -52,7 +52,15 @@ export const AuthProvider = ({ children }) => {
             return { success: true, role: userData.role };
         } catch (err) {
             console.error("Login error", err);
-            return { success: false, message: err.response?.data?.message || "Login failed" };
+            // No message of our own for a wrong e-mail or password: the server
+            // sends a code rather than prose now, and the login page has the
+            // sentence for it in all three languages. An English fallback here
+            // is how an Azerbaijani screen used to say "Incorrect password".
+            const code = err.response?.data?.code;
+            if (code === 'BAD_CREDENTIALS' || code === 'RATE_LIMITED') {
+                return { success: false, code };
+            }
+            return { success: false, message: err.response?.data?.message };
         }
     };
 

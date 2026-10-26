@@ -103,6 +103,28 @@ func Register(c *fiber.Ctx) error {
 	return c.JSON(user)
 }
 
+// dummyHash is a real bcrypt hash at the cost this system uses, compared
+// against when no such account exists so that both answers cost the same.
+// Of "not-a-password", which nobody will be typing.
+var dummyHash = []byte("$2a$14$iR93fi66VMb9wRPNSI.FueVUISrY7AJ.6j0Iz0jC8Ms8DkkBiFhLO")
+
+// badCredentials is the one answer to a sign-in that did not work.
+//
+// It used to be two: 404 "User not found" for an address nobody has, and 400
+// "Incorrect password" for one somebody does. That let anyone ask the server
+// whether a given person has an account here — one request per address, with
+// no password needed and nothing to brute force. For a system whose accounts
+// are children, that is worth not answering.
+//
+// No English prose either. The old messages were sent straight to the screen
+// by the login page, so an Azerbaijani UI said "Incorrect password" in
+// English. The code is what the client should key off; the words are its own.
+func badCredentials(c *fiber.Ctx) error {
+	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+		"code": "BAD_CREDENTIALS",
+	})
+}
+
 // --- LOGIN ---
 func Login(c *fiber.Ctx) error {
 	var data map[string]string
@@ -113,7 +135,12 @@ func Login(c *fiber.Ctx) error {
 	var user models.User
 
 	if err := database.DB.Where("email = ?", data["email"]).First(&user).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{"message": "User not found"})
+		// Spend the same time as a real comparison before answering. Without
+		// this, an unknown address returns immediately while a known one costs
+		// ~100ms of bcrypt, and the difference says which is which as clearly
+		// as the old 404 did.
+		bcrypt.CompareHashAndPassword(dummyHash, []byte(data["password"]))
+		return badCredentials(c)
 	}
 
 	switch user.Role {
@@ -128,7 +155,7 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	if err := bcrypt.CompareHashAndPassword(user.Password, []byte(data["password"])); err != nil {
-		return c.Status(400).JSON(fiber.Map{"message": "Incorrect password"})
+		return badCredentials(c)
 	}
 
 	claims := jwt.MapClaims{

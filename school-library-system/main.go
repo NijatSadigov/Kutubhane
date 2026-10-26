@@ -13,6 +13,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 )
 
 func main() {
@@ -126,7 +127,18 @@ func main() {
 	// 4. Setup App — larger body limit so book cover images and e-book PDFs fit.
 	app := fiber.New(fiber.Config{
 		BodyLimit: 30 * 1024 * 1024, // 30 MB
+		// Behind Caddy or nginx every request arrives from 127.0.0.1, so
+		// c.IP() — which the rate limiter keys on — would see one client.
+		// Reading X-Forwarded-For is only safe when something in front is
+		// actually setting it; otherwise any client can claim any address.
+		// Hence the switch rather than a default. See .env.example.
+		ProxyHeader: config.ProxyHeader(),
 	})
+
+	// A panic in one handler should cost that one request, not the process.
+	// Without this, a nil map or a bad index anywhere in 213 routes takes the
+	// library down for the whole school until somebody notices.
+	app.Use(recover.New())
 
 	// Who may call this API from a browser. Hardcoding the two dev servers
 	// meant the first deployment anywhere else failed at the first request,
