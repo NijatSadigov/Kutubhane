@@ -22,6 +22,9 @@ import Analytics from './pages/Analytics';
 import Moderation from './pages/Moderation';
 import ClassReading from './pages/ClassReading';
 import { SchoolBranches, SchoolStaff, SchoolList } from './pages/SchoolSettings';
+import {
+  BranchWorkspace, SchoolReaders, SchoolRequests, LibrarianTracking,
+} from './pages/SchoolOps';
 import MemberInvites from './pages/MemberInvites';
 import { SettingsLists, SettingsStatuses, SettingsLimits } from './pages/SettingsScreens';
 import { MyTickets, NewTicket, TicketInbox } from './pages/Support';
@@ -60,6 +63,16 @@ export default function StaffApp() {
           <Route index element={<ClassReading />} />
         </Route>
 
+
+        {/* Məktəb — the school administrator's view across every branch: the
+            last of what only the old /manager dashboard could do. */}
+        <Route path="school">
+          <Route index element={<Navigate to="/staff/school/branch" replace />} />
+          <Route path="branch" element={<BranchWorkspace />} />
+          <Route path="readers" element={<SchoolReaders />} />
+          <Route path="requests" element={<SchoolRequests />} />
+          <Route path="librarians" element={<LibrarianTracking />} />
+        </Route>
 
         {/* Kitabxana — the daily circulation work, plus the catalogue. */}
         <Route path="library">

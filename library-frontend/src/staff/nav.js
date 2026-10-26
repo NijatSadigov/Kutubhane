@@ -21,13 +21,22 @@ const WITH_TEACHERS = ['librarian', 'manager', 'admin', 'teacher'];
 // branch-scoped and guarded by IsLibrarian, which admits a librarian and a
 // platform admin but deliberately not a manager — a school administrator does
 // not run a branch's desk. Offering them those screens only produced a rail
-// full of 403s and em-dashes, so the rail no longer does. A read-only branch
-// workspace for managers is a feature in its own right; see TODO.md.
+// full of 403s and em-dashes, so the rail no longer does. What a manager gets
+// instead is the `school` domain below: the same circulation, read-only and
+// across every branch at once.
 const BRANCH_DESK = ['librarian', 'admin'];
 // The librarian side of Texniki dəstək needs a branch to raise a ticket from,
 // which only a librarian profile has. A manager or admin reads the queue.
 const BRANCH_ONLY = ['librarian'];
 const ADMIN_SIDE = ['manager', 'admin'];
+// Only a school administrator, not a platform admin. Every /manager/* endpoint
+// resolves its school through resolveManagerSchoolID(), which reads the
+// caller's *manager profile* — an admin passes the IsManager gate and then
+// 403s "Not a school manager" on all fifteen of them. The analytics endpoint
+// is the exception; it falls back to a school_id. Until the two agree, the rail
+// does not offer an admin screens that would only 403 (see TODO.md). Nothing
+// is lost: the old /admin dashboard never had these screens either.
+const SCHOOL_SIDE = ['manager'];
 // Who does which half of the dərslik system: a teacher asks, the library
 // supplies, and the school administration sets up the classes behind both.
 const TEACHER_SIDE = ['teacher'];
@@ -48,6 +57,26 @@ export const DOMAINS = [
     roles: ADMIN_SIDE,
     screens: [
       { path: '', labelKey: 'staff.nav.analytics', roles: ADMIN_SIDE },
+    ],
+  },
+  {
+    // Məktəb — the school administrator's operational view, and the last
+    // thing the old /manager dashboard did that the console could not. Sits
+    // beside Məktəb ayarları the way Kitabxana sits beside Kitabxana ayarları:
+    // the thing, then its settings.
+    //
+    // No `badge` on anything here, deliberately. The rail's counts come from
+    // GET /desk/summary, which is IsLibrarian-guarded and branch-scoped, so a
+    // manager gets nothing from it; a badge would be a permanent zero beside a
+    // queue with four things in it. See TODO.md.
+    key: 'school',
+    labelKey: 'staff.dom.school',
+    roles: SCHOOL_SIDE,
+    screens: [
+      { path: 'branch', labelKey: 'staff.nav.branchWorkspace', roles: SCHOOL_SIDE },
+      { path: 'readers', labelKey: 'staff.nav.schoolReaders', roles: SCHOOL_SIDE },
+      { path: 'requests', labelKey: 'staff.nav.schoolRequests', roles: SCHOOL_SIDE },
+      { path: 'librarians', labelKey: 'staff.nav.librarianTracking', roles: SCHOOL_SIDE },
     ],
   },
   {
