@@ -168,8 +168,11 @@ export const DOMAINS = [
     screens: [
       { path: 'branches', labelKey: 'staff.nav.branches', roles: ADMIN_SIDE },
       { path: 'staff', labelKey: 'staff.nav.staffUsers', roles: ADMIN_SIDE },
-      // Only a platform admin has more than one school to look at.
-      { path: 'schools', labelKey: 'staff.nav.schools', roles: ['admin'] },
+      // A platform admin gets every school and the form that creates one; a
+      // school administrator gets one row, their own, and the name and address
+      // on it. Editing a school was the old /manager dashboard's, and nothing
+      // in the console had it.
+      { path: 'schools', labelKey: 'staff.nav.schools', roles: ADMIN_SIDE },
     ],
   },
   {

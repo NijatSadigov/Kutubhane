@@ -29,13 +29,21 @@ function opsFor(isAdmin) {
     return {
       load: () => api.get('/admin/school').then((r) => r.data || []),
       createSchool: (body) => api.post('/admin/school', body),
+      updateSchool: (id, body) => api.put(`/admin/school/${id}`, body),
       createBranch: (body) => api.post('/admin/branch', body),
       renameBranch: (id, body) => api.put(`/admin/branch/${id}`, body),
       deleteBranch: (id) => api.delete(`/admin/branch/${id}`),
       addLibrarian: (body) => api.post('/admin/librarian', body),
+      updateLibrarian: (id, body) => api.put(`/admin/librarian/${id}`, body),
       removeLibrarian: (id) => api.delete(`/admin/librarian/${id}`),
       addManager: (body) => api.post('/admin/manager', body),
+      updateManager: (id, body) => api.put(`/admin/manager/${id}`, body),
       removeManager: (id) => api.delete(`/admin/manager/${id}`),
+      // DELETE /admin/school/:id has no guard of its own — it leans on the
+      // database's cascades, so one click on a populated school takes every
+      // branch, reader and loan with it. The screen only offers it on a school
+      // that is already empty; see the note under the table.
+      deleteSchool: (id) => api.delete(`/admin/school/${id}`),
     };
   }
   return {
@@ -43,15 +51,25 @@ function opsFor(isAdmin) {
     // does not care which role it is serving.
     load: () => api.get('/manager/school').then((r) => (r.data ? [r.data] : [])),
     createSchool: null,
+    // The caller's own school, which the server takes from their identity —
+    // hence no id in the path, and the one the screen holds is ignored.
+    updateSchool: (_id, body) => api.put('/manager/school', body),
     createBranch: (body) => api.post('/manager/branch', { name: body.name }),
     renameBranch: (id, body) => api.put(`/manager/branch/${id}`, body),
     deleteBranch: (id) => api.delete(`/manager/branch/${id}`),
     addLibrarian: (body) => api.post('/manager/librarian', {
       name: body.name, email: body.email, password: body.password, branch_id: body.branch_id,
     }),
+    updateLibrarian: (id, body) => api.put(`/manager/librarian/${id}`, {
+      name: body.name, branch_id: body.branch_id,
+    }),
     removeLibrarian: (id) => api.delete(`/manager/librarian/${id}`),
+    // A school administrator does not provision or edit other administrators;
+    // that is the platform admin's.
     addManager: null,
+    updateManager: null,
     removeManager: null,
+    deleteSchool: null,
   };
 }
 
@@ -95,7 +113,11 @@ function Screen({ tab }) {
 
   return (
     <>
-      <PageIntro>{t('staff.ss.intro.' + tab)}</PageIntro>
+      <PageIntro>
+        {/* A school administrator opens the same screen on one school: their
+            own. The list reads differently when it is a list of one. */}
+        {t(tab === 'schools' && !isAdmin ? 'staff.ss.intro.mySchool' : 'staff.ss.intro.' + tab)}
+      </PageIntro>
       {toast && <Alert tone="action">{toast}</Alert>}
 
       {tab === 'branches' && (
@@ -107,7 +129,7 @@ function Screen({ tab }) {
           isAdmin={isAdmin} ops={ops} act={act} busy={busy} t={t} />
       )}
       {tab === 'schools' && (
-        <Schools schools={schools} ops={ops} act={act} busy={busy} t={t} />
+        <Schools schools={schools} isAdmin={isAdmin} ops={ops} act={act} busy={busy} t={t} />
       )}
     </>
   );
@@ -215,6 +237,23 @@ function Staff({ schools, branches, librarians, managers, isAdmin, ops, act, bus
   const [kind, setKind] = useState('librarian');
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  // Who is being edited, and what they are being edited to. One piece of
+  // state for both tables: only one row is ever open.
+  const [edit, setEdit] = useState(null); // { kind, id, name, where }
+  const openEdit = (who, whoKind) => setEdit({
+    kind: whoKind, id: who.user_id, name: who.name,
+    where: String(whoKind === 'manager' ? who.school_id : who.branch_id),
+  });
+  const saveEdit = () => {
+    const name = edit.name.trim();
+    if (!name) return;
+    const body = edit.kind === 'manager'
+      ? { name, school_id: Number(edit.where) }
+      : { name, branch_id: Number(edit.where) };
+    const fn = edit.kind === 'manager' ? ops.updateManager : ops.updateLibrarian;
+    act(() => fn(edit.id, body).then(() => setEdit(null)), t('staff.ss.saved'));
+  };
+
   const ready = form.name.trim() && form.email.trim() && form.password.length >= 8
     && (kind === 'manager' ? true : (form.branch_id || branches[0]?.id));
 
@@ -279,49 +318,108 @@ function Staff({ schools, branches, librarians, managers, isAdmin, ops, act, bus
         </div>
         <Note>{t('staff.ss.passwordHint')}</Note>
       </div>
+      <Note>{t('staff.ss.emailNote')}</Note>
 
       <SectionTitle>{t('role.librarian')}</SectionTitle>
       <Table
-        columns="1.3fr 1.5fr 1fr .8fr"
+        columns={STAFF_COLS}
         head={[t('staff.ss.name'), t('staff.ss.email'), t('staff.ss.branch'), '']}
         empty={librarians.length === 0 ? t('staff.ss.noStaff') : null}
       >
-        {librarians.map((l) => (
-          <Row key={l.user_id} columns="1.3fr 1.5fr 1fr .8fr">
-            <span style={{ fontWeight: 600 }}>{l.name}</span>
-            <span style={{ color: ink.dim }}>{l.user?.email || '—'}</span>
-            <span>{l.branchName}</span>
-            <span style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <Btn kind="danger" style={{ padding: '5px 10px', fontSize: 12 }} disabled={busy}
-                onClick={() => act(() => ops.removeLibrarian(l.user_id), t('staff.ss.staffRemoved'))}>
-                {t('common.delete')}
-              </Btn>
-            </span>
-          </Row>
-        ))}
+        {librarians.map((l) => {
+          const on = edit?.kind === 'librarian' && edit.id === l.user_id;
+          return (
+            <Row key={l.user_id} columns={STAFF_COLS}>
+              <span style={{ fontWeight: 600 }}>
+                {on
+                  ? <Input value={edit.name} style={{ width: '100%' }}
+                    onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
+                  : l.name}
+              </span>
+              {/* The e-mail is the login, and nothing on the server changes
+                  one. Shown, never offered for editing. */}
+              <span style={{ color: ink.dim }}>{l.user?.email || '—'}</span>
+              <span>
+                {on
+                  ? (
+                    <select value={edit.where} style={selectStyle}
+                      onChange={(e) => setEdit({ ...edit, where: e.target.value })}>
+                      {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    </select>
+                  )
+                  : l.branchName}
+              </span>
+              <span style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                {on ? (
+                  <>
+                    <Btn disabled={busy || !edit.name.trim()} onClick={saveEdit}>{t('common.save')}</Btn>
+                    <Btn kind="secondary" onClick={() => setEdit(null)}>{t('common.cancel')}</Btn>
+                  </>
+                ) : (
+                  <>
+                    <Btn kind="secondary" style={{ padding: '5px 10px', fontSize: 12 }}
+                      onClick={() => openEdit(l, 'librarian')}>{t('common.edit')}</Btn>
+                    <Btn kind="danger" style={{ padding: '5px 10px', fontSize: 12 }} disabled={busy}
+                      onClick={() => act(() => ops.removeLibrarian(l.user_id), t('staff.ss.staffRemoved'))}>
+                      {t('common.delete')}
+                    </Btn>
+                  </>
+                )}
+              </span>
+            </Row>
+          );
+        })}
       </Table>
 
       {isAdmin && (
         <>
           <SectionTitle>{t('role.manager')}</SectionTitle>
           <Table
-            columns="1.3fr 1.5fr 1fr .8fr"
+            columns={STAFF_COLS}
             head={[t('staff.ss.name'), t('staff.ss.email'), t('staff.ss.school'), '']}
             empty={managers.length === 0 ? t('staff.ss.noStaff') : null}
           >
-            {managers.map((m) => (
-              <Row key={m.user_id} columns="1.3fr 1.5fr 1fr .8fr">
-                <span style={{ fontWeight: 600 }}>{m.name}</span>
-                <span style={{ color: ink.dim }}>{m.user?.email || '—'}</span>
-                <span>{m.schoolName}</span>
-                <span style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <Btn kind="danger" style={{ padding: '5px 10px', fontSize: 12 }} disabled={busy}
-                    onClick={() => act(() => ops.removeManager(m.user_id), t('staff.ss.staffRemoved'))}>
-                    {t('common.delete')}
-                  </Btn>
-                </span>
-              </Row>
-            ))}
+            {managers.map((m) => {
+              const on = edit?.kind === 'manager' && edit.id === m.user_id;
+              return (
+                <Row key={m.user_id} columns={STAFF_COLS}>
+                  <span style={{ fontWeight: 600 }}>
+                    {on
+                      ? <Input value={edit.name} style={{ width: '100%' }}
+                        onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
+                      : m.name}
+                  </span>
+                  <span style={{ color: ink.dim }}>{m.user?.email || '—'}</span>
+                  <span>
+                    {on && schools.length > 1
+                      ? (
+                        <select value={edit.where} style={selectStyle}
+                          onChange={(e) => setEdit({ ...edit, where: e.target.value })}>
+                          {schools.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                      )
+                      : m.schoolName}
+                  </span>
+                  <span style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                    {on ? (
+                      <>
+                        <Btn disabled={busy || !edit.name.trim()} onClick={saveEdit}>{t('common.save')}</Btn>
+                        <Btn kind="secondary" onClick={() => setEdit(null)}>{t('common.cancel')}</Btn>
+                      </>
+                    ) : (
+                      <>
+                        <Btn kind="secondary" style={{ padding: '5px 10px', fontSize: 12 }}
+                          onClick={() => openEdit(m, 'manager')}>{t('common.edit')}</Btn>
+                        <Btn kind="danger" style={{ padding: '5px 10px', fontSize: 12 }} disabled={busy}
+                          onClick={() => act(() => ops.removeManager(m.user_id), t('staff.ss.staffRemoved'))}>
+                          {t('common.delete')}
+                        </Btn>
+                      </>
+                    )}
+                  </span>
+                </Row>
+              );
+            })}
           </Table>
         </>
       )}
@@ -331,47 +429,98 @@ function Staff({ schools, branches, librarians, managers, isAdmin, ops, act, bus
 
 /* -------------------------------------------------------------- schools */
 
-function Schools({ schools, ops, act, busy, t }) {
+function Schools({ schools, isAdmin, ops, act, busy, t }) {
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
+  const [edit, setEdit] = useState(null); // { id, name, address }
+
+  const save = () => {
+    if (!edit.name.trim()) return;
+    act(
+      () => ops.updateSchool(edit.id, { name: edit.name.trim(), address: edit.address.trim() })
+        .then(() => setEdit(null)),
+      t('staff.ss.saved'),
+    );
+  };
 
   return (
     <>
-      <div style={{
-        background: '#fff', border: '1px solid ' + shell.border, borderRadius: radius.card,
-        padding: 16, display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap',
-      }}>
-        <div style={{ flex: '1 1 220px' }}>
-          <Label>{t('staff.ss.schoolName')}</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} />
+      {/* Only a platform admin creates a school. A school administrator is
+          here for one row — their own — and the one thing they can do to it. */}
+      {isAdmin && (
+        <div style={{
+          background: '#fff', border: '1px solid ' + shell.border, borderRadius: radius.card,
+          padding: 16, display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap',
+        }}>
+          <div style={{ flex: '1 1 220px' }}>
+            <Label>{t('staff.ss.schoolName')}</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div style={{ flex: '1 1 220px' }}>
+            <Label>{t('staff.ss.address')}</Label>
+            <Input value={address} onChange={(e) => setAddress(e.target.value)} />
+          </div>
+          <Btn disabled={busy || !name.trim()}
+            onClick={() => act(
+              () => ops.createSchool({ name: name.trim(), address: address.trim() })
+                .then(() => { setName(''); setAddress(''); }),
+              t('staff.ss.schoolAdded'),
+            )}>{t('common.add')}</Btn>
         </div>
-        <div style={{ flex: '1 1 220px' }}>
-          <Label>{t('staff.ss.address')}</Label>
-          <Input value={address} onChange={(e) => setAddress(e.target.value)} />
-        </div>
-        <Btn disabled={busy || !name.trim()}
-          onClick={() => act(
-            () => ops.createSchool({ name: name.trim(), address: address.trim() })
-              .then(() => { setName(''); setAddress(''); }),
-            t('staff.ss.schoolAdded'),
-          )}>{t('common.add')}</Btn>
-      </div>
+      )}
 
       <Table
-        columns="1.4fr 1.4fr .7fr .7fr .7fr"
+        columns={SCHOOL_COLS}
         head={[t('staff.ss.schoolName'), t('staff.ss.address'), t('staff.ss.branches'),
-          t('staff.ss.readers'), t('role.manager')]}
+          t('staff.ss.readers'), t('role.manager'), '']}
         empty={schools.length === 0 ? t('staff.ss.noSchools') : null}
       >
-        {schools.map((s) => (
-          <Row key={s.id} columns="1.4fr 1.4fr .7fr .7fr .7fr">
-            <span style={{ fontWeight: 600 }}>{s.name}</span>
-            <span style={{ color: ink.dim }}>{s.address || '—'}</span>
-            <span>{(s.branches || []).length}</span>
-            <span>{(s.branches || []).reduce((n, b) => n + (b.student_count || 0), 0)}</span>
-            <span>{(s.managers || []).length}</span>
-          </Row>
-        ))}
+        {schools.map((s) => {
+          const on = edit?.id === s.id;
+          return (
+            <Row key={s.id} columns={SCHOOL_COLS}>
+              <span style={{ fontWeight: 600 }}>
+                {on
+                  ? <Input value={edit.name} style={{ width: '100%' }}
+                    onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
+                  : s.name}
+              </span>
+              <span style={{ color: ink.dim }}>
+                {on
+                  ? <Input value={edit.address} style={{ width: '100%' }}
+                    onChange={(e) => setEdit({ ...edit, address: e.target.value })} />
+                  : s.address || '—'}
+              </span>
+              <span>{(s.branches || []).length}</span>
+              <span>{(s.branches || []).reduce((n, b) => n + (b.student_count || 0), 0)}</span>
+              <span>{(s.managers || []).length}</span>
+              <span style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                {on ? (
+                  <>
+                    <Btn disabled={busy || !edit.name.trim()} onClick={save}>{t('common.save')}</Btn>
+                    <Btn kind="secondary" onClick={() => setEdit(null)}>{t('common.cancel')}</Btn>
+                  </>
+                ) : (
+                  <>
+                    <Btn kind="secondary" style={{ padding: '5px 10px', fontSize: 12 }}
+                      onClick={() => setEdit({ id: s.id, name: s.name, address: s.address || '' })}>
+                      {t('common.edit')}
+                    </Btn>
+                    {/* Only once it is empty, the same rule a branch is held
+                        to one scale down. A school with anything in it is not
+                        a row to remove by accident. */}
+                    {isAdmin && (s.branches || []).length === 0 && (s.managers || []).length === 0 && (
+                      <Btn kind="danger" style={{ padding: '5px 10px', fontSize: 12 }} disabled={busy}
+                        onClick={() => act(() => ops.deleteSchool(s.id), t('staff.ss.schoolRemoved'))}>
+                        {t('common.delete')}
+                      </Btn>
+                    )}
+                  </>
+                )}
+              </span>
+            </Row>
+          );
+        })}
       </Table>
       {/* Deleting a school would take every branch, reader and loan under it.
           That is not a button this screen should offer casually. */}
@@ -381,6 +530,12 @@ function Schools({ schools, ops, act, busy, t }) {
 }
 
 /* --------------------------------------------------------------- pieces */
+
+// A row of either staff table, and a row of the school table. Named because
+// the head and the rows have to agree, and they did not when the widths were
+// repeated at both ends of a 40-line component.
+const STAFF_COLS = '1.3fr 1.5fr 1fr 1.3fr';
+const SCHOOL_COLS = '1.4fr 1.4fr .6fr .6fr .6fr 1.1fr';
 
 const selectStyle = {
   width: '100%', padding: '7px 10px', borderRadius: 8,

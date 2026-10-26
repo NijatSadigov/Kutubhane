@@ -106,6 +106,13 @@ func GetMySchool(c *fiber.Ctx) error {
 		Preload("Branches").
 		Preload("Branches.Librarians").
 		Preload("Branches.Librarians.User").
+		// Managers too, or the payload carries an empty list that the school
+		// settings screen counts and reports as "0 administrators" for a
+		// school that plainly has one — the caller. A field that is always
+		// empty reads as a fact rather than as a gap, the same way
+		// branch.student_count did.
+		Preload("Managers").
+		Preload("Managers.User").
 		First(&school, schoolID).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "School not found"})
 	}
