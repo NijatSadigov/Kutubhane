@@ -42,8 +42,9 @@ unconditional, so two runs against different data still agree. If it disagrees
 with this number, something changed; it is not drift.
 
 **Where things live.** `library-frontend/src/mrb/` is the new myredbookshelf UI
-(`/` landing, `/app/*` reader app). The old role dashboards are still at
-`/student`, `/librarian`, `/manager`, `/admin` and still work.
+(`/` landing, `/app/*` reader app). Of the old role dashboards only
+`/student` is left; `/librarian`, `/manager` and `/admin` are redirects to the
+staff console at `/staff`.
 
 ---
 
@@ -152,16 +153,52 @@ with the reasoning:
       permission and constrains nothing. Either link it to `Subject` or drop the
       column
 
-- [ ] **A read-only branch workspace for a manager.** Half done: the rail no
-      longer offers them the branch desk, members or library settings, because
-      those are `IsLibrarian`-guarded and a school administrator does not run a
-      branch's desk. What is left is the deliberate feature — letting a manager
-      *look* at a branch's circulation without acting on it. The foundation is
-      in: `getUserBranchID` resolves a manager to one branch at a time, from
-      `?branch_id=` within their school. What is missing is read access on the
-      `IsLibrarian` routes, which is a permissions decision rather than a bug.
-      A manager still lands on `/manager`; `homePathFor()` in `src/home.js` is
-      the one place that decides
+- [x] **A read-only branch workspace for a manager.** Done 2026-10-26 at
+      `/staff/school/branch`. Not read access on the `IsLibrarian` routes in
+      the end — the `/manager/branch/:id/*` endpoints already existed and are
+      scoped to the caller's own school, so the permissions decision never had
+      to be taken. A branch's catalogue, its loans and its reservations, with
+      a chip per branch carrying its reader count. The note at the foot says
+      the screen only shows, so a missing button does not read as a bug.
+
+- [x] **Retire the manager and admin dashboards.** Done 2026-10-26.
+      `AdminDashboard.jsx`, `ManagerDashboard.jsx`, `ManagerBranchWorkspace.jsx`
+      and `ReaderStatsModal.jsx` are deleted — 1,099 lines. `/manager`,
+      `/admin` and `/librarian` are redirects to `/staff`, `homePathFor()`
+      sends every staff role there, and the "Köhnə panel" way back is gone
+      from the shell.
+
+      What had to land first, and did: the read-only branch workspace, the
+      school-wide book-request queue, librarian tracking and the school's
+      reader list (all under the new `school` domain), plus editing an
+      existing librarian, administrator and school on `/staff/school-settings`.
+
+      Two things the old dashboards did that the console deliberately does
+      differently. Deleting a school is offered only on an empty one — the
+      endpoint has no guard and leans on the database's cascades, so the old
+      `window.confirm` was all that stood between a click and every branch,
+      reader and loan under it. And a librarian's e-mail is not editable,
+      because nothing on the server changes a login; the screen says so rather
+      than showing a field that silently does nothing, which is what the old
+      edit dialog did.
+
+- [ ] **`/manager/*` is manager-only, and `/analytics/school` is not.**
+      `resolveManagerSchoolID()` reads the caller's manager profile and 403s
+      "Not a school manager" for a platform admin — all fifteen `/manager/*`
+      endpoints. `analyticsScope()` answers the same question and falls back to
+      `?school_id=` or `callerSchoolID()`, so the analytics screen works for an
+      admin and the rest do not. The `school` domain in `staff/nav.js` is
+      `['manager']` for exactly this reason. Either teach
+      `resolveManagerSchoolID` the same fallback, or say in one place that
+      `/manager/*` means "the caller's own school" and leave the admin to
+      `/admin/*`
+
+- [ ] **A school administrator's rail carries no counts.** The badges come
+      from `GET /desk/summary`, which is `IsLibrarian`-guarded and branch-
+      scoped, so a manager gets nothing from it. The school-wide request queue
+      and the support inbox can both sit unattended with no sign of it in the
+      rail. The screens carry their own counts instead, which only helps once
+      you are already on them. A school-scoped summary endpoint would fix both
 
 - [ ] **Escalating a student's book request into a ticket.** A librarian
       looking at `Kitab sorğuları` has no way to pass one up to the
@@ -195,19 +232,6 @@ with the reasoning:
       A branch can only be deleted once it has no readers and no librarian,
       and deleting a school is not offered at all: either would take a whole
       catalogue and its circulation history with it.
-
-- [ ] **Retire the manager and admin dashboards** — the provisioning half is
-      now covered by `/staff/school-settings`, so what is left is the
-      *manager's* remaining screens: the read-only branch workspace, the
-      school-wide book-request queue (`/manager/book-requests`, distinct from
-      the librarian's), and librarian tracking. Editing an existing librarian
-      or school administrator is also not in the console yet — only creating
-      and removing. Do not delete either dashboard before those land
-      S7–S9. The librarian's is gone: `/librarian` redirects to `/staff`, and
-      `LibrarianDashboard`, `BulkUploadModal` and `RegistrationTokensModal` are
-      deleted — 1,728 lines. `SettingsPanel` stays, because the console's
-      Kitabxana ayarları is built on it. A manager and an admin keep the
-      "Köhnə panel" link; a librarian no longer has one
 
 - [ ] **The teacher screens still missing.** The moderation queue and the
       class dashboard are done. What is left is the "teacher" line under an
@@ -249,14 +273,15 @@ with the reasoning:
   - [x] CSV bulk upload of books — on Catalogue & inventory
   - [x] E-book upload and "open e-book" — on the title's edit dialog
   - [x] Branch student invite links — on Members
-  - [ ] Manager tier: librarian tracking + read-only branch workspace
+  - [x] Manager tier: librarian tracking + read-only branch workspace — the
+        `Məktəb` domain, `/staff/school/*`
   - [x] Loan editing — the "Hamısı" filter on Verilən kitablar
   - [x] Borrow-limit settings UI — per student on the Members side panel, and
         the branch-wide default on Kitabxana ayarları → Borc qaydaları
   - [ ] Platform admin above the school admin
 - [ ] **Public screens**: Join stepper with parent consent, Book clubs,
       Libraries & bookstores, Reader home
-- [ ] Replace the old dashboards and delete them once covered
+- [x] Replace the old dashboards and delete them once covered — done 2026-10-26
 
 ## Later
 
@@ -351,12 +376,10 @@ with the reasoning:
       Readers with no class appear as their own row rather than being hidden —
       they sit outside every class standing until someone fixes them.
 
-      **Both old dashboards now link to it.** `homePathFor()` still sends a
-      manager to `/manager` and an admin to `/admin`, and neither of those
-      screens linked to `/staff` at all, so the screen would have existed and
-      nobody would have found it — the mistake `ManagerDashboard.jsx`'s own
-      comment describes. Retiring those dashboards is still open; until then
-      the link is the wiring.
+      **Reached from the rail now.** The link from the old dashboards was
+      the wiring while they lasted; `homePathFor()` sends a manager and an
+      admin to `/staff` since 2026-10-26, and analytics is the first domain
+      either of them can reach, so it is where they land.
 
 - [x] **`role.admin` was Azerbaijani in the English block**, so the English
       console read "İdarəçi mode". A scan for Azerbaijani or Turkish letters in

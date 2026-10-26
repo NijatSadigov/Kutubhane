@@ -6,8 +6,6 @@ import PublicShell from './mrb/PublicShell';
 import MrbCatalogue from './mrb/pages/Catalogue';
 import MrbBookDetail from './mrb/pages/BookDetail';
 import { Login, Register } from './mrb/pages/AuthPages';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import ManagerDashboard from './pages/manager/ManagerDashboard';
 import StudentDashboard from './pages/student/StudentDashboard';
 import MrbApp from './mrb/MrbApp';
 import Home from './mrb/Home';
@@ -27,33 +25,18 @@ function App() {
               reviews without an account. Every action asks you to sign in. */}
           <Route path="/catalogue" element={<PublicShell><MrbCatalogue /></PublicShell>} />
           <Route path="/book/:editionId" element={<PublicShell><MrbBookDetail /></PublicShell>} />
-          {/* --- ADMIN ONLY --- */}
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <AdminDashboard />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* --- MANAGER ONLY --- */}
-          <Route
-            path="/manager"
-            element={
-              <ProtectedRoute allowedRoles={['manager']}>
-                <ManagerDashboard />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* --- LIBRARIAN ONLY ---
-              The old dashboard is gone: the console at /staff now covers
-              everything it did — the desk, holds, all loans, the catalogue with
-              its copies and a typed-in new title, members with invite codes,
-              requests and settings. The path stays as a redirect so a bookmark
-              or a link in somebody's notes still lands somewhere useful. */}
+          {/* --- THE OLD ROLE DASHBOARDS ---
+              All three are gone. The console at /staff covers what each of
+              them did: the desk, holds, all loans, the catalogue with its
+              copies and a typed-in new title, members with invite codes,
+              requests and settings for a librarian; analytics, a read-only
+              branch workspace, the school's readers, the school-wide request
+              queue, librarian tracking, and branches, staff and schools for
+              the administration. The paths stay as redirects so a bookmark or
+              a link in somebody's notes still lands somewhere useful. */}
           <Route path="/librarian" element={<Navigate to="/staff" replace />} />
+          <Route path="/manager" element={<Navigate to="/staff" replace />} />
+          <Route path="/admin" element={<Navigate to="/staff" replace />} />
 
           {/* --- STUDENT ONLY --- */}
           <Route

@@ -9,7 +9,6 @@ export const LANGUAGES = [
 
 export const translations = {
     tr: {
-        'staff.classicDashboard': 'Klasik panel',
         'mrb.ch.allBranches': '{n} şubenin tamamı',
         'mrb.shelf.gradeN': '{n} sınıf',
         'mrb.shelf.readingLevel': 'Okuma seviyesi {level}',
@@ -1601,7 +1600,6 @@ export const translations = {
     },
 
     az: {
-        'staff.classicDashboard': 'Köhnə panel',
         'mrb.ch.allBranches': 'bütün {n} filial',
         'mrb.shelf.gradeN': '{n} sinif',
         'mrb.shelf.readingLevel': 'Oxu səviyyəsi {level}',
@@ -3170,7 +3168,6 @@ export const translations = {
     },
 
     en: {
-        'staff.classicDashboard': 'Classic dashboard',
         'mrb.ch.allBranches': 'all {n} {n|branch|branches}',
         'mrb.shelf.gradeN': 'Grade {n}',
         'mrb.shelf.readingLevel': 'Reading level {level}',

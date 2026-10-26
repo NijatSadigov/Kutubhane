@@ -60,6 +60,12 @@ The one public surface is an anonymous landing page showing aggregate counts.
 The UI is concentrated in a handful of very large page files — this matters for
 any redesign, because there are almost no reusable primitives to theme:
 
+> This table and the component list under it are the snapshot the staff-console
+> redesign was argued from, kept as the before picture. All four role
+> dashboards below except the student's are gone now, and the console at
+> `/staff` is built from the primitives in `staff/components/StaffShell.jsx`.
+> See TODO.md for where things stand.
+
 | File | Lines |
 |---|---|
 | `pages/librarian/LibrarianDashboard.jsx` | 1,411 |

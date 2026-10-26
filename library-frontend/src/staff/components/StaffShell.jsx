@@ -189,14 +189,9 @@ export default function StaffShell({ children }) {
                 with no way to change their own password. */}
             <SideLink onClick={() => setProfileOpen(true)}>{t('nav.profile')}</SideLink>
             <SideLink onClick={() => nav('/app')}>{t('staff.backToReader')}</SideLink>
-            {/* A manager and a platform admin still have consoles of their own
-                — the design's S7–S9 are not built here yet — so they keep the
-                way back. A librarian's old dashboard is gone. */}
-            {(role === 'manager' || role === 'admin') && (
-              <SideLink onClick={() => nav('/' + role)}>
-                {t('staff.classicDashboard')}
-              </SideLink>
-            )}
+            {/* There is no way back any more: the manager's and the admin's
+                dashboards are gone the way the librarian's went, and /manager
+                and /admin redirect here. */}
             <SideLink onClick={async () => { await logout(); nav('/', { replace: true }); }}>
               {t('mrb.acct.logout')}
             </SideLink>
