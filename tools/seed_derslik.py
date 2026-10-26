@@ -132,16 +132,35 @@ LAST = ["Quliyev", "Məmmədov", "Həsənli", "Rzayev", "Abbasov",
         "Nəbiyev", "Cəfərov", "Salmanlı", "Vəliyev", "Zeynallı"]
 
 
+def invite_link(grade, letter):
+    """Mint a registration token for one class, as a librarian would.
+
+    /register takes a token and nothing else now — it used to accept a raw
+    branch_id, which meant anyone could join any branch uninvited, and a `role`
+    it believed, which meant anyone could make themselves a platform admin.
+    So this tool asks for a link the same way a librarian does.
+    """
+    st, tok = call("POST", "/registration-tokens", lib, {
+        "label": "seed %d-%s" % (grade, letter), "days": 1,
+        "grade": grade, "class_group": letter,
+    })
+    assert st == 200, (st, tok)
+    return tok["token"]
+
+
 def ensure_students(room, firsts, grade, tag):
     ids = []
+    token = invite_link(grade, room["letter"])
     for i, first in enumerate(firsts):
         last = LAST[i]
         # Azerbaijani surnames take -a for a woman; the demo keeps it simple
         # and uses the masculine form throughout rather than guessing gender.
         email = "%s%d@stu.com" % (tag, i + 1)
+        # The grade and class come from the token, not from here — the server
+        # overrides anything the client sends, which is the point of the link.
         st, out = call("POST", "/register", body={
             "name": "%s %s" % (first, last), "email": email, "password": PW,
-            "branch_id": branch_id, "grade": grade, "classGroup": room["letter"],
+            "token": token,
         })
         if st in (200, 201):
             uid = out.get("id") if isinstance(out, dict) else None

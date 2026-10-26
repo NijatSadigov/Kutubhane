@@ -15,49 +15,56 @@ import (
 var SecretKey = config.JWTSecret
 
 // --- REGISTER ---
+//
+// What a reader may say about themselves when joining. Deliberately missing:
+// `role` and `branch_id`. Both used to be here and both were taken at face
+// value, which meant an unauthenticated POST of
+//
+//	{"email":"...","password":"...","role":"admin"}
+//
+// returned a working platform-admin account — every school on the
+// installation, readable, editable and deletable, including deleting one
+// outright. There is no sign-up for staff: a librarian or an administrator is
+// created by someone who already is one, through /admin/* or /manager/*.
+//
+// The branch is the invite link's, never the client's, for the same reason the
+// class is: the link is the thing the school controls.
 type RegisterInput struct {
 	Email      string `json:"email"`
 	Password   string `json:"password"`
 	Name       string `json:"name"`
-	Role       string `json:"role"`
-	BranchID   uint   `json:"branch_id"`
-	Token      string `json:"token"` // registration token; resolves the branch for students
+	Token      string `json:"token"` // registration token; resolves the branch
 	Grade      int    `json:"grade"`
 	ClassGroup string `json:"classGroup"`
 	BirthDate  string `json:"birthDate"`
 }
 
-// --- REGISTER ---
+// Register creates a reader, and only a reader, from a branch's invite link.
 func Register(c *fiber.Ctx) error {
 	var input RegisterInput
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid Input"})
 	}
 
-	if input.Role == "" {
-		input.Role = "student"
+	// No token, no account. A branch id in the body used to be accepted as an
+	// alternative, which let anybody join any branch of any school without an
+	// invitation — the link is what makes a reader somebody the school asked
+	// for.
+	tok, err := resolveRegistrationToken(input.Token)
+	if err != nil {
+		if fe, ok := err.(*fiber.Error); ok {
+			return c.Status(fe.Code).JSON(fiber.Map{"error": fe.Message})
+		}
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid registration token"})
 	}
 
-	// Students register via a token (invite link), which resolves their branch.
-	if input.Role == "student" && input.Token != "" {
-		tok, err := resolveRegistrationToken(input.Token)
-		if err != nil {
-			if fe, ok := err.(*fiber.Error); ok {
-				return c.Status(fe.Code).JSON(fiber.Map{"error": fe.Message})
-			}
-			return c.Status(400).JSON(fiber.Map{"error": "Invalid registration token"})
-		}
-		input.BranchID = tok.BranchID
-		// The class comes from the link, overriding anything the client sent.
-		// A child cannot put themselves in another class by editing the
-		// request, and thirty children cannot spell one class three ways.
-		// A link with no class leaves the pair empty for staff to set.
-		if tok.Grade > 0 {
-			input.Grade = tok.Grade
-			input.ClassGroup = tok.ClassGroup
-		}
-	} else if input.Role == "student" && input.BranchID == 0 {
-		return c.Status(400).JSON(fiber.Map{"error": "A registration link or token is required"})
+	// The class comes from the link, overriding anything the client sent.
+	// A child cannot put themselves in another class by editing the request,
+	// and thirty children cannot spell one class three ways. A link with no
+	// class leaves the pair as the child typed it, for staff to correct.
+	grade, classGroup := input.Grade, input.ClassGroup
+	if tok.Grade > 0 {
+		grade, classGroup = tok.Grade, tok.ClassGroup
 	}
 
 	hashedPwd, _ := bcrypt.GenerateFromPassword([]byte(input.Password), 14)
@@ -66,7 +73,7 @@ func Register(c *fiber.Ctx) error {
 	user := models.User{
 		Email:    input.Email,
 		Password: hashedPwd,
-		Role:     input.Role,
+		Role:     "student",
 	}
 
 	if err := tx.Create(&user).Error; err != nil {
@@ -74,29 +81,22 @@ func Register(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Email exists"})
 	}
 
-	switch input.Role {
-	case "student":
-		bdate, _ := time.Parse("2006-01-02", input.BirthDate)
+	bdate, _ := time.Parse("2006-01-02", input.BirthDate)
+	if bdate.IsZero() {
+		bdate = time.Now()
+	}
 
-		if bdate.IsZero() {
-			bdate = time.Now()
-		}
-
-		student := models.Student{
-			UserID:     user.ID,
-			Name:       input.Name,
-			BranchID:   input.BranchID,
-			Grade:      input.Grade,
-			ClassGroup: input.ClassGroup,
-			BirthDate:  bdate,
-		}
-		if err := tx.Create(&student).Error; err != nil {
-			tx.Rollback()
-			return c.Status(500).JSON(fiber.Map{"error": "Could not create student profile"})
-		}
-	case "librarian":
-		lib := models.Librarian{UserID: user.ID, Name: input.Name, BranchID: input.BranchID}
-		tx.Create(&lib)
+	student := models.Student{
+		UserID:     user.ID,
+		Name:       input.Name,
+		BranchID:   tok.BranchID,
+		Grade:      grade,
+		ClassGroup: classGroup,
+		BirthDate:  bdate,
+	}
+	if err := tx.Create(&student).Error; err != nil {
+		tx.Rollback()
+		return c.Status(500).JSON(fiber.Map{"error": "Could not create student profile"})
 	}
 
 	tx.Commit()
