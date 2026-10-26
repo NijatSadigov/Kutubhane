@@ -81,6 +81,12 @@ Two things to know before reading it:
   any branch uninvited. **If this was ever reachable from the internet, check
   the `users` table for admins nobody created** and rotate `JWT_SECRET`.
 
+`tools/check_role_gates.sh` is the matrix that proves the role gates still
+admit and refuse exactly who they should — five roles, a forged token and no
+token, against one route per gate. Run it after touching `middleware/` or the
+route table; the expected grid is in the script's own header, including the two
+cells that look wrong and are not.
+
 **Logins**, all password `Test1234`:
 
 | Who | Email |
