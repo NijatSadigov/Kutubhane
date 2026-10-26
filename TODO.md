@@ -170,7 +170,39 @@ with the reasoning:
       administration), but a "raise this with the school" button on a request
       row would join them
 
-- [ ] **Retire the manager and admin dashboards** once the console grows
+- [x] **Provisioning moved into the console.** Done 2026-10-26,
+      `/staff/school-settings` — branches, staff and (for a platform admin)
+      schools. This was the thing blocking retirement: `/admin` was the only
+      place a school, branch, librarian or school administrator could be
+      created, so deleting it would have left a platform admin unable to set
+      anything up.
+
+      **One screen, two API surfaces.** A platform admin and a school
+      administrator do the same things through different endpoints —
+      `/admin/*` spans every school and takes a `school_id`, `/manager/*` is
+      pinned to the caller's own school and does not. What comes back has the
+      same shape, so the difference is confined to one `ops` adapter rather
+      than spread through the markup. Verified by driving a create and a
+      delete through the UI as a manager and watching it call `/manager/*`,
+      then reading the branch out of Postgres to confirm it had really gone.
+
+      Found on the way: `branch.student_count` is a computed column that only
+      the hand-written selects in `school.go` fill, so **every branch in the
+      admin and manager payloads reported 0 readers** — a field that is always
+      zero reads as a fact. `fillBranchStudentCounts()` fills it in one grouped
+      query, counting ACTIVE readers the same way `school.go` does.
+
+      A branch can only be deleted once it has no readers and no librarian,
+      and deleting a school is not offered at all: either would take a whole
+      catalogue and its circulation history with it.
+
+- [ ] **Retire the manager and admin dashboards** — the provisioning half is
+      now covered by `/staff/school-settings`, so what is left is the
+      *manager's* remaining screens: the read-only branch workspace, the
+      school-wide book-request queue (`/manager/book-requests`, distinct from
+      the librarian's), and librarian tracking. Editing an existing librarian
+      or school administrator is also not in the console yet — only creating
+      and removing. Do not delete either dashboard before those land
       S7–S9. The librarian's is gone: `/librarian` redirects to `/staff`, and
       `LibrarianDashboard`, `BulkUploadModal` and `RegistrationTokensModal` are
       deleted — 1,728 lines. `SettingsPanel` stays, because the console's
@@ -191,7 +223,8 @@ with the reasoning:
         `POST /challenges`, `/challenges/:id/questions`)
   - [x] Teacher — Moderation queue. Done 2026-09-30 at `/staff/moderation`
   - [x] Admin — Analytics. Done 2026-09-30 at `/staff/analytics`
-  - [ ] Admin — Branches & users: role tabs, search, suspend, invite, CSV import
+  - [x] Admin — Branches & users. Done 2026-10-26 at `/staff/school-settings`
+        (branches, staff, schools). Suspend and CSV import are not built
   - [ ] Admin — Alliances & data sharing (blocked on Phase 3 tenancy)
 
 ## Next
@@ -206,7 +239,7 @@ with the reasoning:
   - [ ] Teacher — Challenge builder (backend already exists)
   - [x] Teacher — Moderation queue — done
   - [x] Admin — Analytics — done
-  - [ ] Admin — Branches & users: role tabs, suspend, invite, CSV import
+  - [x] Admin — Branches & users — done
   - [ ] Admin — Alliances & data sharing (needs Phase 3 tenancy)
 - [ ] **Carry the parity gaps into the Staff Console** (see the table in `ROADMAP.md`)
   - [x] Settings: dynamic categories and statuses CRUD — carried into

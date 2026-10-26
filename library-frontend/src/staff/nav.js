@@ -130,6 +130,20 @@ export const DOMAINS = [
     ],
   },
   {
+    // Branches, staff and schools — what only the old /admin and /manager
+    // dashboards could do. A librarian is not here: they do not provision
+    // branches or create colleagues.
+    key: 'school-settings',
+    labelKey: 'staff.dom.schoolSettings',
+    roles: ADMIN_SIDE,
+    screens: [
+      { path: 'branches', labelKey: 'staff.nav.branches', roles: ADMIN_SIDE },
+      { path: 'staff', labelKey: 'staff.nav.staffUsers', roles: ADMIN_SIDE },
+      // Only a platform admin has more than one school to look at.
+      { path: 'schools', labelKey: 'staff.nav.schools', roles: ['admin'] },
+    ],
+  },
+  {
     key: 'textbook-settings',
     labelKey: 'staff.dom.textbookSettings',
     roles: ALL_STAFF,

@@ -55,6 +55,46 @@ func branchInSchool(branchID uint, schoolID uint) bool {
 
 // GetMySchool returns the manager's own school with its branches and librarians,
 // matching the shape of a single element of the admin GetAllSchools response.
+// fillBranchStudentCounts fills Branch.StudentCount, which a Preload leaves at
+// zero.
+//
+// It is a computed column (`gorm:"->;-:migration"`), so only the hand-written
+// selects in school.go ever populate it. Everything that loaded branches with
+// Preload — the admin and manager school payloads, and so the console screen
+// built on them — advertised `student_count` in its JSON and always said 0.
+// A field that is always zero is worse than an absent one: it reads as a fact.
+//
+// One grouped query, not one per branch.
+func fillBranchStudentCounts(branches []*models.Branch) {
+	if len(branches) == 0 {
+		return
+	}
+	ids := make([]uint, 0, len(branches))
+	for _, b := range branches {
+		ids = append(ids, b.ID)
+	}
+
+	type row struct {
+		BranchID uint
+		N        int
+	}
+	var rows []row
+	database.DB.Model(&models.Student{}).
+		Select("branch_id, count(*) as n").
+		// ACTIVE only, matching how school.go counts a branch's readers, so
+		// the two cannot report different sizes for the same branch.
+		Where("branch_id IN ? AND status = 'ACTIVE'", ids).
+		Group("branch_id").Scan(&rows)
+
+	byID := make(map[uint]int, len(rows))
+	for _, r := range rows {
+		byID[r.BranchID] = r.N
+	}
+	for _, b := range branches {
+		b.StudentCount = byID[b.ID]
+	}
+}
+
 func GetMySchool(c *fiber.Ctx) error {
 	schoolID, err := resolveManagerSchoolID(c)
 	if err != nil {
@@ -69,6 +109,11 @@ func GetMySchool(c *fiber.Ctx) error {
 		First(&school, schoolID).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "School not found"})
 	}
+	refs := make([]*models.Branch, 0, len(school.Branches))
+	for i := range school.Branches {
+		refs = append(refs, &school.Branches[i])
+	}
+	fillBranchStudentCounts(refs)
 	return c.JSON(school)
 }
 

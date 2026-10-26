@@ -310,6 +310,16 @@ func GetAllSchools(c *fiber.Ctx) error {
 		return c.Status(500).SendString("Database Error")
 	}
 
+	// Preload leaves the computed student_count at zero — see
+	// fillBranchStudentCounts in manager.go.
+	refs := []*models.Branch{}
+	for i := range schools {
+		for j := range schools[i].Branches {
+			refs = append(refs, &schools[i].Branches[j])
+		}
+	}
+	fillBranchStudentCounts(refs)
+
 	return c.JSON(schools)
 }
 

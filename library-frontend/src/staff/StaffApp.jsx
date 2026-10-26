@@ -21,6 +21,7 @@ import Members from './pages/Members';
 import Analytics from './pages/Analytics';
 import Moderation from './pages/Moderation';
 import ClassReading from './pages/ClassReading';
+import { SchoolBranches, SchoolStaff, SchoolList } from './pages/SchoolSettings';
 import MemberInvites from './pages/MemberInvites';
 import { SettingsLists, SettingsStatuses, SettingsLimits } from './pages/SettingsScreens';
 import { MyTickets, NewTicket, TicketInbox } from './pages/Support';
@@ -110,6 +111,15 @@ export default function StaffApp() {
           <Route index element={<Projects />} />
           <Route path="new" element={<NewProject />} />
         </Route>
+        {/* Məktəb ayarları — branches, staff and schools: what only the old
+            dashboards could do. */}
+        <Route path="school-settings">
+          <Route index element={<Navigate to="/staff/school-settings/branches" replace />} />
+          <Route path="branches" element={<SchoolBranches />} />
+          <Route path="staff" element={<SchoolStaff />} />
+          <Route path="schools" element={<SchoolList />} />
+        </Route>
+
         {/* Dərslik sistemi ayarları — the school's own structure. */}
         <Route path="textbook-settings">
           <Route index element={<Navigate to="/staff/textbook-settings/classrooms" replace />} />
