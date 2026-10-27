@@ -81,6 +81,11 @@ Two things to know before reading it:
   any branch uninvited. **If this was ever reachable from the internet, check
   the `users` table for admins nobody created** and rotate `JWT_SECRET`.
 
+`tools/check_branch_scope.sh` asks the other question: whether one branch's
+librarian can reach another branch's books, readers and loans by id. Run it
+after touching anything that looks a holding up by id. Three lines carried a
+`!` on 2026-10-27 and do not now.
+
 `tools/check_role_gates.sh` is the matrix that proves the role gates still
 admit and refuse exactly who they should — five roles, a forged token and no
 token, against one route per gate. Run it after touching `middleware/` or the

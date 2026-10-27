@@ -115,10 +115,49 @@ with the reasoning:
       id-taking routes were spot-checked — one reader cannot read another's
       diary, library, loan log, notes, reservations or badges, and the e-book
       handler checks ownership and refuses a path that climbs out of uploads/.
-      Not covered: the ~190 staff routes one by one for branch scoping, and
-      anything about the frontend. A real review before a real school's data
-      goes in should start where this stopped. (Rate limiting *was* on this
-      list; it is done — see below.)
+      Not covered: anything about the frontend. A real review before a real
+      school's data goes in should start where this stopped. (Rate limiting
+      and the branch boundary *were* on this list; both are done — see below.)
+
+- [x] **One branch could edit another's shelves.** Done 2026-10-27. A copy
+      carries no `branch_id` of its own — it belongs to a Book, and the Book
+      belongs to a branch — and two handlers never made that join:
+
+      - `PUT /copy/:id` looked the copy up by primary key and saved whatever
+        the body said: tracking number, condition, **status**. Any librarian,
+        any branch, any school. Setting a status out from under a live loan
+        is the worst of it.
+      - `DELETE /copy/:id` the same, minus a LOANED check. It also discarded
+        the error from `First`, so a copy that does not exist left a
+        zero-valued struct and the handler answered "Copy deleted" for a
+        delete GORM had refused to run.
+
+      And the ids were not hidden: `GET /books/:id` handed any signed-in user
+      — a child included — another branch's copy ids and tracking numbers.
+      Nothing in the UI calls it, so it is scoped now rather than trimmed.
+
+      Reproduced before fixing: Gəncə's librarian renamed one of Nəsimi's
+      copies through the API, and the new name was read back out of Postgres.
+      Put back by hand. All three answer 404 across the boundary now, and
+      `PUT /api/copy/3 → 200` still comes out of the real inventory screen for
+      the branch that owns it.
+
+      `tools/check_branch_scope.sh` is the probe, kept. Each line says what it
+      expects, so the two 200s that are *correct* — an empty desk summary, an
+      e-book info that gives only a title the public catalogue already shows —
+      do not read as findings every run.
+
+      Everything else held: a reader, a loan, a diary, a class list and every
+      branch-wide list were all refused or empty across the boundary, and
+      `canAccessStudent` is right for all four roles.
+
+- [x] **Reports outlived the reviews they were about.** Found while checking
+      the demo was unharmed: `review_reports` said five open, the moderation
+      screen said one, and both were right. `DeleteReview` cleaned up votes
+      and replies but not reports, so a deleted review left its reports behind
+      — unresolvable, because resolving one edits the review, and invisible,
+      because the queue reaches the school through the review's author. It
+      deletes them now; the four that had collected are cleared.
 
 - [x] **The front door had no limits, and said too much.** Done 2026-10-26.
       `POST /api/login` could be asked as often as anyone liked, and it

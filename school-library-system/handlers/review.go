@@ -420,6 +420,12 @@ func DeleteReview(c *fiber.Ctx) error {
 
 	database.DB.Where("review_id = ?", id).Delete(&models.ReviewVote{})
 	database.DB.Where("review_id = ?", id).Delete(&models.ReviewReply{})
+	// Reports too. Without this they outlived the review they were about:
+	// unresolvable, because resolving one edits the review, and invisible,
+	// because the queue reaches the school through the review's author. Four
+	// had collected in the demo — the table said five reports were open while
+	// the screen said one, and both were right by their own definition.
+	database.DB.Where("review_id = ?", id).Delete(&models.ReviewReport{})
 	database.DB.Delete(&models.Review{}, id)
 	return c.JSON(fiber.Map{"deleted": true})
 }

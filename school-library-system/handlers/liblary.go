@@ -466,7 +466,21 @@ func GetBooks(c *fiber.Ctx) error {
 	return c.JSON(books)
 }
 
+// GetBookDetails returns one holding with its copies, for the branch that owns
+// it.
+//
+// It used to answer for any id to anyone signed in, which handed out other
+// branches' copy ids and tracking numbers — to a child as readily as to a
+// librarian, and those ids are what UpdateCopy and DeleteCopy take. Nothing in
+// the UI calls this (the catalogue uses /catalog/editions/:id and the
+// inventory screen has its own list), so the scope costs nothing and the leak
+// was paying for nothing.
 func GetBookDetails(c *fiber.Ctx) error {
+	branchID, err := getUserBranchID(c)
+	if err != nil {
+		return c.Status(401).JSON(fiber.Map{"error": err.Error()})
+	}
+
 	id := c.Params("id")
 	var book models.Book
 	if err := database.DB.
@@ -478,7 +492,8 @@ func GetBookDetails(c *fiber.Ctx) error {
 		Preload("Copies").
 		Preload("Copies.Condition").
 		Preload("Copies.Status").
-		First(&book, id).Error; err != nil {
+		Where("id = ? AND branch_id = ?", id, branchID).
+		First(&book).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Book not found"})
 	}
 	return c.JSON(book)
@@ -622,6 +637,11 @@ func AddCopy(c *fiber.Ctx) error {
 }
 
 func UpdateCopy(c *fiber.Ctx) error {
+	branchID, err := getUserBranchID(c)
+	if err != nil {
+		return c.Status(401).JSON(fiber.Map{"error": err.Error()})
+	}
+
 	id := c.Params("id")
 
 	type UpdateReq struct {
@@ -635,9 +655,16 @@ func UpdateCopy(c *fiber.Ctx) error {
 		return c.SendStatus(400)
 	}
 
+	// Through the book, because a copy carries no branch of its own.
+	//
+	// This was a plain First(&copy, id): any librarian could rename, recondition
+	// or re-status any copy in any branch of any school. The ids are not even
+	// hidden — GET /books/:id hands another branch's copies and their tracking
+	// numbers to anyone signed in. Verified against the running server before
+	// this check existed: Gəncə's librarian renamed one of Nəsimi's.
 	var copy models.BookCopy
-	if err := database.DB.First(&copy, id).Error; err != nil {
-		return c.SendStatus(404)
+	if err := copyInBranch(id, branchID).First(&copy).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Copy not found or access denied"})
 	}
 
 	if req.TrackingNumber != "" {
@@ -655,9 +682,21 @@ func UpdateCopy(c *fiber.Ctx) error {
 }
 
 func DeleteCopy(c *fiber.Ctx) error {
+	branchID, err := getUserBranchID(c)
+	if err != nil {
+		return c.Status(401).JSON(fiber.Map{"error": err.Error()})
+	}
+
 	id := c.Params("id")
+
+	// Same hole as UpdateCopy had, and the same fix. The error from First was
+	// also discarded, so a copy that does not exist left `copy` zero-valued,
+	// its status code empty, and the handler answered "Copy deleted" for a
+	// delete GORM had refused to run.
 	var copy models.BookCopy
-	database.DB.Preload("Status").First(&copy, id)
+	if err := copyInBranch(id, branchID).Preload("Status").First(&copy).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Copy not found or access denied"})
+	}
 
 	if copy.Status.Code == "LOANED" {
 		return c.Status(400).JSON(fiber.Map{"error": "Cannot delete a loaned book"})
@@ -665,6 +704,15 @@ func DeleteCopy(c *fiber.Ctx) error {
 
 	database.DB.Delete(&copy)
 	return c.JSON(fiber.Map{"message": "Copy deleted"})
+}
+
+// copyInBranch narrows a copy lookup to one branch's shelves. A BookCopy has
+// no branch_id of its own — it belongs to a Book, and the Book belongs to a
+// branch — so every copy handler has to join to say which library it is in.
+func copyInBranch(copyID any, branchID uint) *gorm.DB {
+	return database.DB.Model(&models.BookCopy{}).
+		Joins("JOIN books ON books.id = book_copies.book_id").
+		Where("book_copies.id = ? AND books.branch_id = ?", copyID, branchID)
 }
 
 // --- LOAN SYSTEM ---
