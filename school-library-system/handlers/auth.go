@@ -100,6 +100,13 @@ func Register(c *fiber.Ctx) error {
 	}
 
 	tx.Commit()
+
+	// If the branch runs a dərslik classroom for the class this link names,
+	// the new reader joins its roster. Before this they were in the class for
+	// every reading feature and on nobody's textbook list — which nobody would
+	// notice until the books were handed out and one child had none.
+	attachClassroom(&student)
+
 	return c.JSON(user)
 }
 

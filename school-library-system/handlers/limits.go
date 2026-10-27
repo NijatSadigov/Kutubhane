@@ -4,7 +4,6 @@ import (
 	"school-library-system/database"
 	"school-library-system/models"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -468,16 +467,15 @@ func SetStudentClass(c *fiber.Ctx) error {
 	if req.Grade < 0 || req.Grade > 12 {
 		return c.Status(400).JSON(fiber.Map{"error": "Grade must be between 0 and 12"})
 	}
-	// Upper-cased and trimmed on the way in, so "a", " A" and "A" are one
-	// class rather than three in the standings.
-	group := strings.ToUpper(strings.TrimSpace(req.ClassGroup))
-	if req.Grade == 0 {
-		group = ""
-	}
+	// Normalising and the dərslik roster that comes with the pair are both in
+	// handlers/studentclass.go, which is the one place that keeps a reader's
+	// two records of their class in step. Moving a child into 5-A here puts
+	// them on 5-A's textbook roster if the branch runs one, and takes them off
+	// their old one either way.
+	grade, group, roomID := applyClassPair(database.DB, &stu, req.Grade, req.ClassGroup)
 
-	if err := database.DB.Model(&models.Student{}).Where("user_id = ?", sid).
-		Updates(map[string]any{"grade": req.Grade, "class_group": group}).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Could not update the class"})
-	}
-	return c.JSON(fiber.Map{"user_id": stu.UserID, "grade": req.Grade, "class_group": group})
+	return c.JSON(fiber.Map{
+		"user_id": stu.UserID, "grade": grade, "class_group": group,
+		"classroom_id": roomID,
+	})
 }

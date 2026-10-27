@@ -398,15 +398,26 @@ func SetClassroomStudents(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid Input"})
 	}
 	if req.Replace {
+		// Taken off the roster, but left in the class for reading: coming off
+		// 5-A's textbook list does not mean a child has left 5-A. Only being
+		// put on another room's list moves them, below.
 		database.DB.Model(&models.Student{}).Where("classroom_id = ?", room.ID).
 			Update("classroom_id", nil)
 	}
 	branches := branchesOf(schoolID)
 	n := 0
 	for _, id := range req.StudentIDs {
+		// The room's grade and letter travel with the roster. Without this an
+		// administrator could put a child on 5-A's list while every reading
+		// screen went on counting them in 4-A — one fact in two columns,
+		// disagreeing. See handlers/studentclass.go.
 		res := database.DB.Model(&models.Student{}).
 			Where("user_id = ? AND branch_id IN ?", id, branches).
-			Update("classroom_id", room.ID)
+			Updates(map[string]any{
+				"classroom_id": room.ID,
+				"grade":        room.Grade,
+				"class_group":  strings.ToUpper(strings.TrimSpace(room.Letter)),
+			})
 		n += int(res.RowsAffected)
 	}
 	return c.JSON(fiber.Map{"assigned": n})

@@ -606,21 +606,42 @@ with the reasoning:
       the total, structurally: `max − min ≤ max`, and the denominator is at
       least one.
 
-- [ ] **A reader's class is recorded twice, and the two drift.**
-      `students.grade` + `class_group` is the free-text pair every *reading*
-      feature groups on — the standings, Üzvlər's class cards, the class beside
-      a name on the desk, and now the class dashboard. `students.classroom_id`
-      is the **dərslik** roster, set by the administration through
-      `SetClassroomStudents`. They already disagree: **11 demo readers have a
-      grade and a letter but no `classroom_id`**, including one in 4-A.
+- [x] **A reader's class is recorded twice.** Done 2026-10-27, and the first
+      thing to say is that the old note here overstated it. `students.grade` +
+      `class_group` and `students.classroom_id` never *contradicted* each
+      other in the demo — checked with a join, zero rows disagree. One was a
+      subset of the other.
 
-      The invite link sets the pair, not the classroom, so a self-registered
-      reader is in the class standings but not on the textbook roster. That is
-      arguably right — a classroom roster is a deliberate administrative act —
-      but nothing anywhere says so, and the next person to build a class screen
-      has a coin to flip. Either reconcile them at sign-up (a link naming a
-      class that already exists as a `Classroom` could set both) or write down
-      which is authoritative for what
+      The real fault was narrower and worse: **Aslan Polat was in 4-A for
+      every reading feature and not on 4-A's textbook roster.** Nobody would
+      have noticed until the books were handed out and one child had none.
+      The other ten unrostered readers are in classes the dərslik system has
+      no `Classroom` for at all, which is correct — a school sets the textbook
+      system up class by class.
+
+      The rule, now written down in `handlers/studentclass.go` and enforced
+      from all three write paths rather than left to the next person to guess:
+
+      - On a roster, the room wins; grade/class_group mirror its grade/letter.
+        An administrator putting a child in 5-A has said which class they are
+        in more deliberately than a sign-up link did.
+      - Not on a roster, the pair stands alone.
+      - Setting a pair that matches a room in the reader's branch puts them on
+        it; setting one that does not takes them off the room they were on.
+      - Coming *off* a roster (`replace`) leaves the pair: a child dropped
+        from 5-A's textbook list has not left 5-A.
+
+      `cmd/classfix` does the readers written before the rule — report by
+      default, `-apply` to attach. Run on the demo: one reader, and it names
+      the ten it deliberately leaves alone so the number is not mistaken for
+      work outstanding.
+
+      Verified by moving one reader through all three paths and reading both
+      columns out of Postgres each time: 4-A → 5-A (room followed, letter
+      upper-cased) → 7-A (came off the roster, no room exists) → back onto
+      classroom 1 through the administration's roster (the pair followed the
+      room). Two sign-ups through real invite links: the 4-A joiner landed on
+      the roster, the 7-B joiner did not, because there is no 7-B classroom.
 
 ## Known issues
 
