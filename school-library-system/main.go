@@ -190,9 +190,23 @@ func main() {
 
 	// The port is configurable so a second instance can be run against a
 	// scratch database for testing without fighting the real one for :8000.
+	//
+	// It is also what Passenger sets. cPanel's Application Manager picks a
+	// port, puts it here, and listens for the app on it — which is why a
+	// deployment there must *not* set PORT itself.
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8000"
 	}
-	log.Fatal(app.Listen(":" + port))
+
+	// Which interface. Empty means all of them, which is right on a machine
+	// that is yours and convenient in development — the dev server is
+	// reachable from a phone on the same network.
+	//
+	// On shared hosting it is not: every other account on the box can reach a
+	// port bound to 0.0.0.0, and the only thing that should be connecting is
+	// the proxy in front, over loopback. BIND_ADDRESS=127.0.0.1 there.
+	addr := config.BindAddress + ":" + port
+	log.Printf("[http] listening on %s", addr)
+	log.Fatal(app.Listen(addr))
 }

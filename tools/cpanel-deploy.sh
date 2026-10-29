@@ -88,20 +88,49 @@ mkdir -p "$APP_DIR/uploads/covers" "$APP_DIR/uploads/ebooks"
 
 # ------------------------------------------------------------------ restart it
 
-# keepalive.sh starts it again within the minute if it is not running, so
-# stopping it *is* the restart. Nothing here assumes systemd: a shared cPanel
-# account has no such thing.
-if pgrep -u "$(id -u)" -f "$APP_DIR/kutubhane" >/dev/null 2>&1; then
-  say "stopping the running server"
-  pkill -u "$(id -u)" -f "$APP_DIR/kutubhane" || true
-  sleep 2
+# Two ways a cPanel account runs a long-lived program, and they want opposite
+# things from a deploy script.
+#
+#   Application Manager (Phusion Passenger) owns the process. You do not start
+#   or stop it — you touch tmp/restart.txt and it retires the old one after
+#   the request in flight. Killing it yourself fights the supervisor.
+#
+#   cron + keepalive.sh is for accounts with no Application Manager. There,
+#   stopping it *is* the restart: the next minute starts it again.
+#
+# Which one is in use is not worth a setting: a Passenger app has a tmp/
+# directory beside the binary and a keepalive account has keepalive.sh. Set
+# KUTUBHANE_RESTART=passenger|keepalive to override the guess.
+restart_mode="${KUTUBHANE_RESTART:-}"
+if [ -z "$restart_mode" ]; then
+  if [ -d "$APP_DIR/tmp" ]; then restart_mode=passenger
+  elif [ -x "$APP_DIR/keepalive.sh" ]; then restart_mode=keepalive
+  else restart_mode=none
+  fi
 fi
-if [ -x "$APP_DIR/keepalive.sh" ]; then
-  say "starting"
-  "$APP_DIR/keepalive.sh"
-else
-  echo "! $APP_DIR/keepalive.sh is missing — start the server yourself." >&2
-  echo "  DEPLOY-CPANEL.md has it." >&2
-fi
+
+case "$restart_mode" in
+  passenger)
+    mkdir -p "$APP_DIR/tmp"
+    touch "$APP_DIR/tmp/restart.txt"
+    say "asked Passenger to restart (tmp/restart.txt)"
+    ;;
+  keepalive)
+    if pgrep -u "$(id -u)" -f "$APP_DIR/kutubhane" >/dev/null 2>&1; then
+      say "stopping the running server"
+      pkill -u "$(id -u)" -f "$APP_DIR/kutubhane" || true
+      sleep 2
+    fi
+    say "starting"
+    "$APP_DIR/keepalive.sh"
+    ;;
+  *)
+    echo "! Nothing here restarts the server: no $APP_DIR/tmp (Application" >&2
+    echo "  Manager) and no $APP_DIR/keepalive.sh (cron). The new files are in" >&2
+    echo "  place but the old server is still the one running." >&2
+    echo "  DEPLOY-CPANEL.md covers both." >&2
+    exit 1
+    ;;
+esac
 
 say "deployed${TAG:+ $TAG}"

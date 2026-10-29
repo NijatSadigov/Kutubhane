@@ -42,6 +42,13 @@ var CORSOrigins = envOr("CORS_ORIGINS", "http://localhost:5180,http://localhost:
 // UI is hosted somewhere else and CORSOrigins has to name it.
 var StaticDir = os.Getenv("STATIC_DIR")
 
+// BindAddress is the interface to listen on, from BIND_ADDRESS. Empty is all
+// of them, which is the development default and wrong on shared hosting:
+// there, every other account on the machine can reach a port bound that
+// widely, and the only thing that should connect is the proxy in front.
+// Set it to 127.0.0.1 behind Passenger, nginx or Caddy.
+var BindAddress = os.Getenv("BIND_ADDRESS")
+
 // envOr is getEnv without the warning, for settings whose default is a fine
 // answer rather than an insecure one.
 func envOr(key, fallback string) string {

@@ -67,6 +67,7 @@ DATABASE_DSN=host=localhost user=kutubhane password=... dbname=school_library po
 STATIC_DIR=/srv/kutubhane/dist           # the folder step 1 built
 CORS_ORIGINS=                            # nothing is cross-origin, so nothing to allow
 PORT=8000
+BIND_ADDRESS=127.0.0.1                   # only the proxy should reach it
 TRUST_PROXY=true                         # because step 4 puts Caddy in front
 ```
 
