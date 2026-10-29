@@ -1,0 +1,102 @@
+# Builds everything the server needs, from a push, so deploying is a download
+# rather than a build on the host. cPanel hosts rarely have Go, and the ones
+# that do rarely have it at the version this needs.
+#
+# The result is one tarball: the server binary, the two commands, and the
+# built UI. Nothing in it is secret — the repository is public, and every
+# secret this system has is an environment variable the server reads at
+# startup, never something compiled in.
+#
+# It does not deploy. What picks the tarball up is `.cpanel.yml` on the host
+# (see DEPLOY-CPANEL.md), so a failed build cannot take the live site with it.
+
+name: build
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write # only used by the release step, and only on a tag
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          # From go.mod, so this cannot drift from what the code says it needs.
+          go-version-file: school-library-system/go.mod
+          cache-dependency-path: school-library-system/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: library-frontend/package-lock.json
+
+      - name: Go vet and tests
+        working-directory: school-library-system
+        run: |
+          go vet ./...
+          go test ./...
+
+      - name: Build the UI
+        working-directory: library-frontend
+        env:
+          # Set, and empty, on purpose: *same origin as the page*. The Go
+          # server hands out this bundle itself (STATIC_DIR), so there is no
+          # second host and no CORS. Leaving the variable out entirely would
+          # bake in http://localhost:8000 — the visitor's own machine.
+          VITE_API_ORIGIN: ''
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build the server and its commands
+        working-directory: school-library-system
+        env:
+          # A static binary: no glibc version to match, no cgo, runs on
+          # whatever Linux the host happens to be. On shared hosting you
+          # cannot install a missing library, so not needing one matters.
+          CGO_ENABLED: '0'
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          go build -trimpath -ldflags="-s -w" -o ../out/kutubhane .
+          go build -trimpath -ldflags="-s -w" -o ../out/createadmin ./cmd/createadmin
+          go build -trimpath -ldflags="-s -w" -o ../out/classfix ./cmd/classfix
+
+      - name: Package
+        run: |
+          cp -r library-frontend/dist out/dist
+          cp school-library-system/.env.example out/
+          cp DEPLOY.md DEPLOY-CPANEL.md out/ 2>/dev/null || true
+          # uploads/ is deliberately absent: it is the school's own covers and
+          # e-books, it lives on the server, and an unpacking must never
+          # replace it. See DEPLOY-CPANEL.md.
+          tar -C out -czf kutubhane-linux-amd64.tar.gz .
+          echo "--- in the tarball ---"
+          tar -tzf kutubhane-linux-amd64.tar.gz | head -20
+          ls -lh kutubhane-linux-amd64.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kutubhane-linux-amd64
+          path: kutubhane-linux-amd64.tar.gz
+          retention-days: 30
+
+      # A tag is what the server downloads from, because "latest build of a
+      # branch" is not a thing you can roll back to.
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: kutubhane-linux-amd64.tar.gz
+          generate_release_notes: true

@@ -1,0 +1,17 @@
+---
+# cPanel's Git Version Control runs this when you click Deploy.
+#
+# It is one line on purpose. cPanel clones the repository and executes these
+# tasks as your account; everything they do lives in tools/cpanel-deploy.sh,
+# where it can carry comments and be read on its own.
+#
+# What the deploy does NOT do: build. There is no Go on a cPanel host and
+# `npm run build` on shared hosting is a good way to be asked to leave, so
+# GitHub Actions builds the tarball and this fetches it. Push a v* tag before
+# clicking Deploy, or you will deploy the previous release again.
+#
+# See DEPLOY-CPANEL.md.
+deployment:
+  tasks:
+    - export DEPLOYPATH=$HOME/kutubhane
+    - /bin/bash tools/cpanel-deploy.sh
