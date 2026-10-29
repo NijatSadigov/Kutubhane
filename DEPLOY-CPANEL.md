@@ -52,27 +52,35 @@ tag re-deploys the previous release.
 
 ## 2. Setting it up, once
 
-### 2.1 Copy what already works
+### 2.1 Borrow one fact from the Go app already on this account
 
-Your other app is the best documentation on this host for how Go and Passenger
-were made to agree, and that wiring is host-specific. Before anything else, in
-Terminal:
+There is another Go project on this cPanel account. It is a **different
+project** — unrelated code, its own subdomain, its own database — and nothing
+here touches it. §2.6 lists what keeps the two apart.
+
+What is worth two minutes is one fact it can tell you that nothing else can.
+Passenger officially runs Node, Python and Ruby; it does **not** advertise Go.
+Something on this account makes it work anyway, and whatever that is, this app
+needs the same. That is a property of the host, not of either project.
+
+In Terminal:
 
 ```bash
-ls -la ~/<your-other-app>/
-cat ~/<your-other-app>/Passengerfile.json 2>/dev/null
-cat ~/<your-other-app>/.htaccess 2>/dev/null
+ls -la ~/<the-other-go-app>/
+cat ~/<the-other-go-app>/Passengerfile.json 2>/dev/null
+cat ~/<the-other-go-app>/.htaccess 2>/dev/null
 ```
 
-If either file is there, Kutubxana needs the same, with the binary name
-changed. A `Passengerfile.json` usually looks like:
+If a `Passengerfile.json` is there, copy its shape with the binary name
+changed — usually:
 
 ```json
 { "app_type": "generic", "startup_file": "kutubhane" }
 ```
 
-If neither exists, the host configured it for you per-application and the
-Application Manager form in §2.3 is all there is to do.
+If instead the `.htaccess` carries `PassengerAppType` / `PassengerStartupFile`
+lines, copy those. If neither exists, the host configured it per-application
+and the Application Manager form in §2.3 is the whole of it.
 
 ### 2.2 The database
 
@@ -139,6 +147,27 @@ the hash is kept. Then sign in and build the school at
 administrator. Readers join through an invite link a librarian makes on
 `/staff/members/invites`, which is also what puts each of them in the right
 class.
+
+### 2.6 What keeps this apart from the other Go app
+
+Nothing in §2 is shared with the project already on this account. Two apps on
+one cPanel account are ordinary; these are the seams, so you can check each
+one rather than hope:
+
+| | this app | shared with the other? |
+|---|---|---|
+| Subdomain | its own | no |
+| Directory | `~/kutubhane` | no |
+| Application Manager entry | its own registration | no |
+| Environment variables | set per application | no — each app has its own list |
+| PostgreSQL database and user | its own | no |
+| Port | Passenger assigns one per app | no, and you set neither |
+| Git repository | `~/repos/kutubhane` | no |
+
+The one thing they do share is the account's limits — memory, processes, CPU.
+Two Go servers and two Passenger supervisors on a shared plan is more than one
+of each, so if the other app starts behaving oddly after this goes up, that is
+the first place to look rather than a coincidence.
 
 ---
 
