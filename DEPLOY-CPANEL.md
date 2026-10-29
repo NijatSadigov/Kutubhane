@@ -1,24 +1,35 @@
 # Deploying to cPanel, from GitHub
 
-You already run a Go program against PostgreSQL on this host, started through
-cPanel's **Application Manager**. That settles the only question that was
-genuinely in doubt — most shared cPanel plans will not run a Go binary at all
-— so this guide is written for the setup you have, and the alternatives are at
-the bottom in case you ever move.
+cPanel has buttons for PHP, Node, Python and Ruby. It has none for Go, and it
+never will. That does not rule it out — the binary is static and needs nothing
+installed — but it does mean the first question is not *how* to set this up,
+it is **whether the host will run a program at all**. On the account this was
+written for, measured rather than assumed:
 
-**Application Manager is Phusion Passenger.** Three things follow, and they
-are the whole shape of this document:
+```
+uname -m     x86_64          the binary built by CI will run
+ulimit -u    unlimited       no cap on processes
+ulimit -v    4194304         4 GB of address space per process
+background process, after logging out and back in → SURVIVED
+```
 
-1. **Passenger starts and stops the app, not you.** There is no cron, no
-   `nohup`, no process to kill. A deploy puts new files in place and touches
-   `tmp/restart.txt`; Passenger retires the old process after the request it
-   is in the middle of.
-2. **Passenger chooses the port.** It sets `PORT` in the environment and
-   expects the app to listen on it. This one already does. **Do not set
-   `PORT` yourself** — see the warning in §2.3, it is the mistake that costs
-   an afternoon.
-3. **Passenger does the routing.** That is why yours is "just alive" with no
-   proxy to configure: Apache hands the domain to Passenger directly.
+So: a long-lived Go process is fine here, and **cron keeps it alive while an
+`.htaccess` proxies the subdomain to it** — §2. That path needs nobody's
+permission and is what the rest of this document sets up.
+
+What this account does **not** have is Go under Passenger. The Node app on it
+(`hadaf-payments`) is `PassengerAppType node` on CloudLinux + LiteSpeed, whose
+Passenger supports Node, Python and Ruby — not Go. If the host will enable
+`PassengerAppType generic`, Appendix A is the tidier arrangement and worth a
+support ticket; until then it is not available, and nothing below depends on
+it.
+
+> **A guest on someone else's account.** This host belongs to the school, and
+> their live payments system shares its memory and its LVE. A Go server beside
+> the Node one is not free, and whoever tuned `MALLOC_ARENA_MAX` and
+> `TOKIO_WORKER_THREADS` down to 2 in that app's config was already working to
+> fit. If it starts misbehaving after this goes up, look at cPanel → Resource
+> Usage before assuming coincidence.
 
 ---
 
@@ -40,7 +51,7 @@ What does what:
 |---|---|
 | `.github/workflows/build.yml` | builds the UI and a **static** linux/amd64 binary, runs vet and tests, attaches `kutubhane-linux-amd64.tar.gz` to the release on a `v*` tag |
 | `.cpanel.yml` | what cPanel runs on Deploy — one line, calling the script below |
-| `tools/cpanel-deploy.sh` | downloads the tagged build, swaps it in, touches `tmp/restart.txt` |
+| `tools/cpanel-deploy.sh` | downloads the tagged build, swaps it in, restarts the server whichever way this account runs it |
 
 cPanel's Git Version Control **clones and copies; it cannot build**. There is
 no Go toolchain on the host and `npm run build` on shared hosting is a good way
@@ -52,87 +63,106 @@ tag re-deploys the previous release.
 
 ## 2. Setting it up, once
 
-### 2.1 Borrow one fact from the Go app already on this account
+### 2.1 The subdomain and the database
 
-There is another Go project on this cPanel account. It is a **different
-project** — unrelated code, its own subdomain, its own database — and nothing
-here touches it. §2.6 lists what keeps the two apart.
+cPanel → **Subdomains**: create `kitabxana.hedefliseyi.edu.az` (or whatever it
+is to be called). Note the document root it makes — usually a directory of the
+same name in your home. That directory stays almost empty; the app lives
+elsewhere and the docroot only holds the `.htaccess` that points at it, which
+is exactly how the payments app on this account is arranged.
 
-What is worth two minutes is one fact it can tell you that nothing else can.
-Passenger officially runs Node, Python and Ruby; it does **not** advertise Go.
-Something on this account makes it work anyway, and whatever that is, this app
-needs the same. That is a property of the host, not of either project.
+cPanel → **PostgreSQL Databases**: create a database and a user, and add the
+user to the database with all privileges. cPanel prefixes both with the
+account name, so `kutubhane` becomes `targetium_kutubhane`. There is nothing
+to import — the app creates its own tables on first start.
 
-In Terminal:
+### 2.2 The application directory
 
 ```bash
-ls -la ~/<the-other-go-app>/
-cat ~/<the-other-go-app>/Passengerfile.json 2>/dev/null
-cat ~/<the-other-go-app>/.htaccess 2>/dev/null
+mkdir -p ~/kutubhane
+cp ~/repos/kutubhane/tools/keepalive.sh ~/kutubhane/
+chmod +x ~/kutubhane/keepalive.sh
 ```
 
-If a `Passengerfile.json` is there, copy its shape with the binary name
-changed — usually:
+Then `~/kutubhane/.env`, which `keepalive.sh` reads and exports before
+starting the server:
 
-```json
-{ "app_type": "generic", "startup_file": "kutubhane" }
+```bash
+JWT_SECRET=...                 # openssl rand -base64 48
+DATABASE_DSN=host=/var/run/postgresql user=targetium_kutubhane password=... dbname=targetium_kutubhane port=5432 sslmode=disable
+STATIC_DIR=/home/targetium/kutubhane/dist
+PORT=8421
+BIND_ADDRESS=127.0.0.1
+TRUST_PROXY=true
+CORS_ORIGINS=
 ```
 
-If instead the `.htaccess` carries `PassengerAppType` / `PassengerStartupFile`
-lines, copy those. If neither exists, the host configured it per-application
-and the Application Manager form in §2.3 is the whole of it.
+```bash
+chmod 600 ~/kutubhane/.env
+```
 
-### 2.2 The database
+Line by line, since three of these are easy to get wrong:
 
-cPanel → **PostgreSQL Databases**. Create a database and a user, add the user
-to the database with all privileges. cPanel prefixes both with your account, so
-`kutubhane` becomes something like `myacct_kutubhane`. The app creates its own
-tables on first start — there is nothing to import.
+- **`JWT_SECRET`** is the one that matters. Its fallback is published in this
+  repository in plain text; with it anyone can mint a token for any account,
+  including a platform admin.
+- **`PORT`** must be one nothing else on the account is using. Passenger
+  assigns its own ports to the Node app, so pick something out of the way and
+  check with `ss -ltnp 2>/dev/null | grep 8421` before committing to it.
+- **`BIND_ADDRESS=127.0.0.1`** keeps the port off every other interface. This
+  is a shared machine; the only thing that should reach it is the proxy.
+- **`CORS_ORIGINS` empty** is correct, because `STATIC_DIR` means the UI and
+  the API are the same origin. Nothing is cross-origin, so there is nothing
+  to allow.
 
-### 2.3 Register the application
+### 2.3 Join the subdomain to the port
 
-cPanel → **Application Manager** → Register Application:
+In the subdomain's document root — `~/kitabxana.hedefliseyi.edu.az/.htaccess`:
 
-| Field | Value |
-|---|---|
-| Deployment Domain | your new subdomain, e.g. `kitabxana.example.az` |
-| Base Application URL | `/` |
-| Deployment Path | `kutubhane` |
-| Deployment Environment | Production |
+```apache
+RewriteEngine On
+# AutoSSL proves the domain by fetching a file from disk here. Proxy that
+# away and the certificate silently fails to renew — in ninety days, not
+# today, which is the worst way for a thing to break.
+RewriteCond %{REQUEST_URI} !^/\.well-known/
+RewriteRule ^(.*)$ http://127.0.0.1:8421/$1 [P,L]
+```
 
-Then its environment variables:
+`[P]` is a proxy rewrite. LiteSpeed supports it; if the subdomain starts
+returning 500 instead of the app, that is the host having disabled it for user
+`.htaccess`, and Appendix A or B is where to go next.
 
-| Name | Value |
-|---|---|
-| `JWT_SECRET` | 48 random characters — `openssl rand -base64 48` |
-| `DATABASE_DSN` | `host=localhost user=myacct_kutubhane password=... dbname=myacct_kutubhane port=5432 sslmode=disable` |
-| `STATIC_DIR` | `/home/YOURUSER/kutubhane/dist` — absolute, not relative |
-| `TRUST_PROXY` | `true` |
-| `BIND_ADDRESS` | `127.0.0.1` — so only Passenger can reach it, not the rest of the machine |
-| `CORS_ORIGINS` | leave empty |
+### 2.4 Keep it running, and point cPanel at the repository
 
-> **Do not add `PORT`.** Passenger sets it and listens for the app on that
-> port. Setting your own overrides Passenger's, the app listens somewhere
-> Passenger is not looking, and every request times out with nothing useful
-> in any log. If the app will not come up, this is the first thing to check.
+cPanel → **Cron Jobs**, every minute:
 
-`JWT_SECRET` is the one that matters most. Its fallback is published in this
-repository in plain text, and with it anyone can mint a token for any account,
-including a platform admin. `CORS_ORIGINS` stays empty because `STATIC_DIR`
-means the UI and the API are the same origin — nothing is cross-origin, so
-there is nothing to allow.
+```
+* * * * * /home/targetium/kutubhane/keepalive.sh >/dev/null 2>&1
+```
 
-### 2.4 Point cPanel at the repository
+That is the whole supervisor. It starts the server if it is not running, which
+covers a host reboot, a process reaped under load, and a deploy stopping it on
+purpose — one minute of downtime each time. `setsid` inside it keeps the
+server out of the cron job's process group, so it is not killed when the cron
+run ends.
 
 cPanel → **Git™ Version Control** → Create:
 
 - Clone URL: `https://github.com/NijatSadigov/Kutubhane.git`
-- Repository Path: `/home/YOURUSER/repos/kutubhane`
+- Repository Path: `/home/targetium/repos/kutubhane`
 - Branch: whichever you deploy from
 
 Push a `v*` tag so there is a build to fetch, then click **Deploy HEAD
-Commit**. The script creates `~/kutubhane`, unpacks into it, and touches
-`tmp/restart.txt`.
+Commit**. The script unpacks into `~/kutubhane`, and because `keepalive.sh` is
+there and no `tmp/` directory is, it restarts by stopping the server and
+letting the next minute's cron start it again.
+
+Check it came up:
+
+```bash
+tail ~/kutubhane/kutubhane.log
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8421/api/public/stats
+```
 
 ### 2.5 The first admin
 
@@ -148,26 +178,28 @@ administrator. Readers join through an invite link a librarian makes on
 `/staff/members/invites`, which is also what puts each of them in the right
 class.
 
-### 2.6 What keeps this apart from the other Go app
+### 2.6 What keeps this apart from the payments app
 
-Nothing in §2 is shared with the project already on this account. Two apps on
-one cPanel account are ordinary; these are the seams, so you can check each
-one rather than hope:
+Nothing in §2 is shared with the Node application already on this account —
+different project, different runtime, different everything. Two apps on one
+cPanel account are ordinary; these are the seams, so you can check each one
+rather than hope:
 
 | | this app | shared with the other? |
 |---|---|---|
 | Subdomain | its own | no |
 | Directory | `~/kutubhane` | no |
-| Application Manager entry | its own registration | no |
-| Environment variables | set per application | no — each app has its own list |
+| How it is supervised | cron + `keepalive.sh` | no — the other is Passenger |
+| Environment variables | `~/kutubhane/.env`, mode 600 | no — the other's are `SetEnv` in its `.htaccess` |
 | PostgreSQL database and user | its own | no |
-| Port | Passenger assigns one per app | no, and you set neither |
+| Port | `8421`, yours to pick | no — Passenger assigns the other's |
 | Git repository | `~/repos/kutubhane` | no |
 
-The one thing they do share is the account's limits — memory, processes, CPU.
-Two Go servers and two Passenger supervisors on a shared plan is more than one
-of each, so if the other app starts behaving oddly after this goes up, that is
-the first place to look rather than a coincidence.
+The one thing they do share is the account's limits — memory, CPU, and the
+LVE the whole account runs inside. A Go server beside a Node one is more than
+a Node one alone, so if the payments app starts behaving oddly after this goes
+up, cPanel → Resource Usage is the first place to look rather than a
+coincidence.
 
 ---
 
@@ -178,8 +210,8 @@ than a failed deploy:
 
 - **`uploads/`** — the school's own covers and e-books. Not in the tarball,
   not removed.
-- **`.env`** — if you keep one. On Application Manager the variables live in
-  cPanel's form instead, which is the better place for them.
+- **`.env`** — the secrets, written once by hand in §2.2. The deploy script
+  has no way to put them back, so it does not touch them.
 
 The UI is swapped whole rather than copied over, so a file deleted upstream
 does not linger. The binary is moved aside rather than overwritten — you
@@ -196,31 +228,35 @@ Or, if a deploy will not start at all and you want the last binary back
 immediately:
 
 ```bash
-cd ~/kutubhane && mv kutubhane.old kutubhane && touch tmp/restart.txt
+cd ~/kutubhane && mv kutubhane.old kutubhane && pkill -f ~/kutubhane/kutubhane
+# the cron starts the old one again within the minute
 ```
 
 ---
 
 ## 4. When something is wrong
 
-Passenger logs where the host put them; `~/logs/` and the Application Manager
-screen are the usual places. In the app's own output look for:
+`~/kutubhane/kutubhane.log` is where the server's own output goes — the first
+place to look, not cPanel's error logs. In it:
 
-- `[config] WARNING` — a variable from §2.3 is not reaching the process.
-- Nothing at all, and requests time out — almost always `PORT` set by hand.
+- `[http] listening on 127.0.0.1:8421` — it started. If that is the last line
+  and the subdomain still does not work, the problem is the proxy, not the app.
+- `[config] WARNING` — a variable from 2.2 is not reaching the process.
+  Usually a typo in `.env`, or `keepalive.sh` reading a different one.
 - `Connected to Database!` — the DSN is right. If you never see it, it is not.
+- Nothing at all — the cron is not running it. Check the cron line uses an
+  absolute path and that `keepalive.sh` is executable.
 
-A quick check from Terminal, which bypasses Passenger and the domain entirely:
+Three checks, each cutting the problem in half:
 
 ```bash
-cd ~/kutubhane && PORT=9999 STATIC_DIR=$PWD/dist \
-  DATABASE_DSN="host=localhost user=... dbname=... sslmode=disable" ./kutubhane
-# then, in a second terminal:
-curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:9999/api/public/stats
+pgrep -af kutubhane                       # 1. is it running?
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8421/api/public/stats
+curl -s -o /dev/null -w '%{http_code}\n' https://kitabxana.hedefliseyi.edu.az/api/public/stats
 ```
 
-`200` means the binary and the database are fine and the problem is in
-Passenger's wiring. Anything else and it is the app or the DSN.
+200 on the second and not the third is the `.htaccess`. Nothing on the second
+is the app or the DSN, and the log says which.
 
 ---
 
@@ -229,35 +265,37 @@ Passenger's wiring. Anything else and it is the app or the DSN.
 - **Backups.** None of this sets any up. cPanel's own backup covers PostgreSQL
   on most plans — check that it does on yours, and check it by restoring one
   somewhere, not by reading a settings page.
-- **Log rotation.** If you run without Application Manager, `kutubhane.log`
-  grows forever.
+- **Log rotation.** `kutubhane.log` grows forever and nothing trims it. A
+  monthly cron is enough: `: > ~/kutubhane/kutubhane.log`
 
 ---
 
-## Appendix A — a host with no Application Manager
+## Appendix A — if the host enables `PassengerAppType generic`
 
-If you move somewhere that will run a process but has no Passenger, there is
-`tools/keepalive.sh`: a cron line every minute that starts the server if it is
-not running.
+Worth a support ticket, because it is tidier than §2 in three ways: Passenger
+supervises the process so there is no cron and no minute of downtime, it
+assigns the port so there is none to pick or collide, and it routes the
+subdomain so there is no proxy rewrite to be refused.
 
-```
-* * * * * /home/YOURUSER/kutubhane/keepalive.sh >/dev/null 2>&1
-```
-
-`cpanel-deploy.sh` notices which of the two you are on — a `tmp/` directory
-means Passenger, a `keepalive.sh` means cron — and restarts the right way.
-`KUTUBHANE_RESTART=passenger|keepalive` overrides the guess.
-
-You will also need the domain joined to the port yourself, which Passenger was
-doing for you. In `public_html/.htaccess`:
+If they say yes, the subdomain's `.htaccess` becomes the same shape as the
+payments app's, with the Go binary as the startup file:
 
 ```apache
-RewriteEngine On
-RewriteRule ^(.*)$ http://127.0.0.1:8000/$1 [P,L]
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN
+PassengerAppRoot "/home/targetium/kutubhane"
+PassengerBaseURI "/"
+PassengerAppType generic
+PassengerStartupFile kutubhane
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END
 ```
 
-`[P]` needs `mod_proxy` enabled for user `.htaccess`, and many shared hosts
-disable it.
+Then **remove `PORT` from `.env`**: Passenger picks the port, puts it in the
+environment and listens for the app on it. Setting your own means the app
+listens where Passenger is not looking, and every request times out with
+nothing useful in any log. Drop the cron line too, and `mkdir ~/kutubhane/tmp`
+— `cpanel-deploy.sh` reads that directory as "this is a Passenger app" and
+restarts by touching `tmp/restart.txt` instead of killing anything.
+`KUTUBHANE_RESTART=passenger|keepalive` overrides the guess.
 
 ## Appendix B — UI on cPanel, API elsewhere
 
