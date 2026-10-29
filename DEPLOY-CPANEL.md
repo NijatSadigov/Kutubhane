@@ -17,19 +17,19 @@ So: a long-lived Go process is fine here, and **cron keeps it alive while an
 `.htaccess` proxies the subdomain to it** — §2. That path needs nobody's
 permission and is what the rest of this document sets up.
 
-What this account does **not** have is Go under Passenger. The Node app on it
-(`hadaf-payments`) is `PassengerAppType node` on CloudLinux + LiteSpeed, whose
+What this account does **not** have is Go under Passenger. The application
+already on it is `PassengerAppType node` on CloudLinux + LiteSpeed, whose
 Passenger supports Node, Python and Ruby — not Go. If the host will enable
 `PassengerAppType generic`, Appendix A is the tidier arrangement and worth a
 support ticket; until then it is not available, and nothing below depends on
 it.
 
-> **A guest on someone else's account.** This host belongs to the school, and
-> their live payments system shares its memory and its LVE. A Go server beside
-> the Node one is not free, and whoever tuned `MALLOC_ARENA_MAX` and
-> `TOKIO_WORKER_THREADS` down to 2 in that app's config was already working to
-> fit. If it starts misbehaving after this goes up, look at cPanel → Resource
-> Usage before assuming coincidence.
+> **A guest on someone else's account.** This host belongs to the school and
+> already runs a live application of theirs, which shares its memory and its
+> LVE. A Go server beside the existing one is not free, and that application's
+> configuration shows signs of having been tuned to fit already. If it starts
+> misbehaving after this goes up, look at cPanel → Resource Usage before
+> assuming coincidence.
 
 ---
 
@@ -69,7 +69,7 @@ cPanel → **Subdomains**: create `kitabxana.hedefliseyi.edu.az` (or whatever it
 is to be called). Note the document root it makes — usually a directory of the
 same name in your home. That directory stays almost empty; the app lives
 elsewhere and the docroot only holds the `.htaccess` that points at it, which
-is exactly how the payments app on this account is arranged.
+is how the application already on this account is arranged.
 
 cPanel → **PostgreSQL Databases**: create a database and a user, and add the
 user to the database with all privileges. cPanel prefixes both with the
@@ -178,7 +178,7 @@ administrator. Readers join through an invite link a librarian makes on
 `/staff/members/invites`, which is also what puts each of them in the right
 class.
 
-### 2.6 What keeps this apart from the payments app
+### 2.6 What keeps this apart from the application already here
 
 Nothing in §2 is shared with the Node application already on this account —
 different project, different runtime, different everything. Two apps on one
@@ -197,7 +197,7 @@ rather than hope:
 
 The one thing they do share is the account's limits — memory, CPU, and the
 LVE the whole account runs inside. A Go server beside a Node one is more than
-a Node one alone, so if the payments app starts behaving oddly after this goes
+a Node one alone, so if the existing application starts behaving oddly after this goes
 up, cPanel → Resource Usage is the first place to look rather than a
 coincidence.
 
@@ -278,7 +278,7 @@ assigns the port so there is none to pick or collide, and it routes the
 subdomain so there is no proxy rewrite to be refused.
 
 If they say yes, the subdomain's `.htaccess` becomes the same shape as the
-payments app's, with the Go binary as the startup file:
+existing application's, with the Go binary as the startup file:
 
 ```apache
 # DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN
