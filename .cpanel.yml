@@ -1,26 +1,27 @@
 ---
 # cPanel's Git Version Control runs this when you click Deploy.
 #
-# It is two lines on purpose. cPanel clones the repository and executes these
-# tasks as your account; everything they do lives in tools/cpanel-deploy.sh,
-# where it can carry comments and be read on its own.
+# One task, deliberately. cPanel does not promise that separate tasks share a
+# shell, so a line like `export FOO=bar` on its own may or may not reach the
+# next line — and a setting that silently does not apply is how this file
+# already went wrong once (it used to export DEPLOYPATH, which neither script
+# reads). The variable is set inline on the command it belongs to, where it
+# cannot fail to arrive.
 #
-# KUTUBHANE_APP_DIR is where the app is installed — change it here and the
-# deploy follows, because this is the name both scripts actually read. (It
-# used to say DEPLOYPATH, which is cPanel's own convention and which neither
-# script reads: editing that would have moved nothing while reporting
-# success.) tools/keepalive.sh reads the same variable, so if you change it
-# here, export it in the cron line too:
+# KUTUBHANE_APP_DIR is where the app is installed. tools/keepalive.sh reads the
+# same variable, so the cron line must set it too:
 #
 #   * * * * * KUTUBHANE_APP_DIR=$HOME/kitabxana $HOME/kitabxana/keepalive.sh >/dev/null 2>&1
 #
-# What the deploy does NOT do: build. There is no Go on a cPanel host and
-# `npm run build` on shared hosting is a good way to be asked to leave, so
+# This file must exist on the branch cPanel has checked out. It is not on
+# `main` unless the work has been merged there — if Deploy says "a valid
+# .cpanel.yml file exists" is unmet, that is the first thing to check.
+#
+# What the deploy does NOT do: build. There is no Go on a cPanel host, so
 # GitHub Actions builds the tarball and this fetches it. Push a v* tag before
 # clicking Deploy, or you will deploy the previous release again.
 #
 # See DEPLOY-CPANEL.md.
 deployment:
   tasks:
-    - export KUTUBHANE_APP_DIR=$HOME/kitabxana
-    - /bin/bash tools/cpanel-deploy.sh
+    - KUTUBHANE_APP_DIR="$HOME/kitabxana" /bin/bash tools/cpanel-deploy.sh
