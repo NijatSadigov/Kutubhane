@@ -90,7 +90,7 @@ starting the server:
 
 ```bash
 JWT_SECRET=...                 # openssl rand -base64 48
-DATABASE_DSN=host=/var/run/postgresql user=targetium_kitabxana password=... dbname=targetium_KitabxanaNS port=5432 sslmode=disable
+DATABASE_DSN=host=localhost user=targetium_kitabxana password=... dbname=targetium_KitabxanaNS port=5432 sslmode=disable
 STATIC_DIR=/home/targetium/kitabxana/dist
 PORT=8421
 BIND_ADDRESS=127.0.0.1
@@ -104,6 +104,12 @@ chmod 600 ~/kitabxana/.env
 
 Line by line, since three of these are easy to get wrong:
 
+- **`host=localhost`**, not the socket. On this server PostgreSQL answers on
+  TCP and does password authentication there — proved by an early test that
+  got as far as `password authentication failed`, which is a connection that
+  reached the auth stage. The local socket refused a shell user outright
+  (`no pg_hba.conf entry for host "[local]"`), so TCP is the path known to
+  work. If a socket is ever needed instead, it is `host=/var/run/postgresql`.
 - **`JWT_SECRET`** is the one that matters. Its fallback is published in this
   repository in plain text; with it anyone can mint a token for any account,
   including a platform admin.
