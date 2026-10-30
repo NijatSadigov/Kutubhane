@@ -73,24 +73,25 @@ is how the application already on this account is arranged.
 
 cPanel → **PostgreSQL Databases**: create a database and a user, and add the
 user to the database with all privileges. cPanel prefixes both with the
-account name, so `kutubhane` becomes `targetium_kutubhane`. There is nothing
+account name, so a database called `KitabxanaNS` becomes
+`targetium_KitabxanaNS`. There is nothing
 to import — the app creates its own tables on first start.
 
 ### 2.2 The application directory
 
 ```bash
-mkdir -p ~/kutubhane
-cp ~/repos/kutubhane/tools/keepalive.sh ~/kutubhane/
-chmod +x ~/kutubhane/keepalive.sh
+mkdir -p ~/kitabxana
+cp ~/repos/kitabxana/tools/keepalive.sh ~/kitabxana/
+chmod +x ~/kitabxana/keepalive.sh
 ```
 
-Then `~/kutubhane/.env`, which `keepalive.sh` reads and exports before
+Then `~/kitabxana/.env`, which `keepalive.sh` reads and exports before
 starting the server:
 
 ```bash
 JWT_SECRET=...                 # openssl rand -base64 48
-DATABASE_DSN=host=/var/run/postgresql user=targetium_kutubhane password=... dbname=targetium_kutubhane port=5432 sslmode=disable
-STATIC_DIR=/home/targetium/kutubhane/dist
+DATABASE_DSN=host=/var/run/postgresql user=targetium_kitabxana password=... dbname=targetium_KitabxanaNS port=5432 sslmode=disable
+STATIC_DIR=/home/targetium/kitabxana/dist
 PORT=8421
 BIND_ADDRESS=127.0.0.1
 TRUST_PROXY=true
@@ -98,7 +99,7 @@ CORS_ORIGINS=
 ```
 
 ```bash
-chmod 600 ~/kutubhane/.env
+chmod 600 ~/kitabxana/.env
 ```
 
 Line by line, since three of these are easy to get wrong:
@@ -137,7 +138,7 @@ returning 500 instead of the app, that is the host having disabled it for user
 cPanel → **Cron Jobs**, every minute:
 
 ```
-* * * * * /home/targetium/kutubhane/keepalive.sh >/dev/null 2>&1
+* * * * * KUTUBHANE_APP_DIR=$HOME/kitabxana /home/targetium/kitabxana/keepalive.sh >/dev/null 2>&1
 ```
 
 That is the whole supervisor. It starts the server if it is not running, which
@@ -149,25 +150,25 @@ run ends.
 cPanel → **Git™ Version Control** → Create:
 
 - Clone URL: `https://github.com/NijatSadigov/Kutubhane.git`
-- Repository Path: `/home/targetium/repos/kutubhane`
+- Repository Path: `/home/targetium/repos/kitabxana`
 - Branch: whichever you deploy from
 
 Push a `v*` tag so there is a build to fetch, then click **Deploy HEAD
-Commit**. The script unpacks into `~/kutubhane`, and because `keepalive.sh` is
+Commit**. The script unpacks into `~/kitabxana`, and because `keepalive.sh` is
 there and no `tmp/` directory is, it restarts by stopping the server and
 letting the next minute's cron start it again.
 
 Check it came up:
 
 ```bash
-tail ~/kutubhane/kutubhane.log
+tail ~/kitabxana/kutubhane.log
 curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8421/api/public/stats
 ```
 
 ### 2.5 The first admin
 
 ```bash
-cd ~/kutubhane
+cd ~/kitabxana
 ./createadmin -email you@school.az
 ```
 
@@ -188,12 +189,12 @@ rather than hope:
 | | this app | shared with the other? |
 |---|---|---|
 | Subdomain | its own | no |
-| Directory | `~/kutubhane` | no |
+| Directory | `~/kitabxana` | no |
 | How it is supervised | cron + `keepalive.sh` | no — the other is Passenger |
-| Environment variables | `~/kutubhane/.env`, mode 600 | no — the other's are `SetEnv` in its `.htaccess` |
+| Environment variables | `~/kitabxana/.env`, mode 600 | no — the other's are `SetEnv` in its `.htaccess` |
 | PostgreSQL database and user | its own | no |
 | Port | `8421`, yours to pick | no — Passenger assigns the other's |
-| Git repository | `~/repos/kutubhane` | no |
+| Git repository | `~/repos/kitabxana` | no |
 
 The one thing they do share is the account's limits — memory, CPU, and the
 LVE the whole account runs inside. A Go server beside a Node one is more than
@@ -221,14 +222,14 @@ cannot write to a running one — and the previous one stays as
 Rolling back:
 
 ```bash
-~/repos/kutubhane/tools/cpanel-deploy.sh v1.0.0
+~/repos/kitabxana/tools/cpanel-deploy.sh v1.0.0
 ```
 
 Or, if a deploy will not start at all and you want the last binary back
 immediately:
 
 ```bash
-cd ~/kutubhane && mv kutubhane.old kutubhane && pkill -f ~/kutubhane/kutubhane
+cd ~/kitabxana && mv kutubhane.old kutubhane && pkill -f ~/kitabxana/kutubhane
 # the cron starts the old one again within the minute
 ```
 
@@ -236,7 +237,7 @@ cd ~/kutubhane && mv kutubhane.old kutubhane && pkill -f ~/kutubhane/kutubhane
 
 ## 4. When something is wrong
 
-`~/kutubhane/kutubhane.log` is where the server's own output goes — the first
+`~/kitabxana/kutubhane.log` is where the server's own output goes — the first
 place to look, not cPanel's error logs. In it:
 
 - `[http] listening on 127.0.0.1:8421` — it started. If that is the last line
@@ -266,7 +267,7 @@ is the app or the DSN, and the log says which.
   on most plans — check that it does on yours, and check it by restoring one
   somewhere, not by reading a settings page.
 - **Log rotation.** `kutubhane.log` grows forever and nothing trims it. A
-  monthly cron is enough: `: > ~/kutubhane/kutubhane.log`
+  monthly cron is enough: `: > ~/kitabxana/kutubhane.log`
 
 ---
 
@@ -282,7 +283,7 @@ existing application's, with the Go binary as the startup file:
 
 ```apache
 # DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN
-PassengerAppRoot "/home/targetium/kutubhane"
+PassengerAppRoot "/home/targetium/kitabxana"
 PassengerBaseURI "/"
 PassengerAppType generic
 PassengerStartupFile kutubhane
@@ -292,7 +293,7 @@ PassengerStartupFile kutubhane
 Then **remove `PORT` from `.env`**: Passenger picks the port, puts it in the
 environment and listens for the app on it. Setting your own means the app
 listens where Passenger is not looking, and every request times out with
-nothing useful in any log. Drop the cron line too, and `mkdir ~/kutubhane/tmp`
+nothing useful in any log. Drop the cron line too, and `mkdir ~/kitabxana/tmp`
 — `cpanel-deploy.sh` reads that directory as "this is a Passenger app" and
 restarts by touching `tmp/restart.txt` instead of killing anything.
 `KUTUBHANE_RESTART=passenger|keepalive` overrides the guess.

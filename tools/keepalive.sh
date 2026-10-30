@@ -9,7 +9,11 @@
 # reaper kills it, or a deploy stops it on purpose — with the same minute of
 # downtime each time.
 #
-# Copy it next to the binary: $HOME/kutubhane/keepalive.sh
+# Copy it next to the binary. The directory is whatever KUTUBHANE_APP_DIR says
+# in .cpanel.yml — $HOME/kitabxana as shipped — and the cron line has to export
+# the same value, because cron starts with almost no environment:
+#
+#   * * * * * KUTUBHANE_APP_DIR=$HOME/kitabxana $HOME/kitabxana/keepalive.sh >/dev/null 2>&1
 #
 # It is not a supervisor. If the binary crashes on startup every time, this
 # restarts it every minute and the log fills up; read kutubhane.log before

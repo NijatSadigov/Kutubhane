@@ -1,9 +1,18 @@
 ---
 # cPanel's Git Version Control runs this when you click Deploy.
 #
-# It is one line on purpose. cPanel clones the repository and executes these
+# It is two lines on purpose. cPanel clones the repository and executes these
 # tasks as your account; everything they do lives in tools/cpanel-deploy.sh,
 # where it can carry comments and be read on its own.
+#
+# KUTUBHANE_APP_DIR is where the app is installed — change it here and the
+# deploy follows, because this is the name both scripts actually read. (It
+# used to say DEPLOYPATH, which is cPanel's own convention and which neither
+# script reads: editing that would have moved nothing while reporting
+# success.) tools/keepalive.sh reads the same variable, so if you change it
+# here, export it in the cron line too:
+#
+#   * * * * * KUTUBHANE_APP_DIR=$HOME/kitabxana $HOME/kitabxana/keepalive.sh >/dev/null 2>&1
 #
 # What the deploy does NOT do: build. There is no Go on a cPanel host and
 # `npm run build` on shared hosting is a good way to be asked to leave, so
@@ -13,5 +22,5 @@
 # See DEPLOY-CPANEL.md.
 deployment:
   tasks:
-    - export DEPLOYPATH=$HOME/kutubhane
+    - export KUTUBHANE_APP_DIR=$HOME/kitabxana
     - /bin/bash tools/cpanel-deploy.sh
