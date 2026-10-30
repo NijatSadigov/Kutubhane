@@ -90,7 +90,7 @@ starting the server:
 
 ```bash
 JWT_SECRET=...                 # openssl rand -base64 48
-DATABASE_DSN=host=localhost user=targetium_kitabxana password=... dbname=targetium_KitabxanaNS port=5432 sslmode=disable
+DATABASE_DSN='host=localhost user=targetium_NijatSadigov password=... dbname=targetium_KitabxanaNS port=5432 sslmode=disable'
 STATIC_DIR=/home/targetium/kitabxana/dist
 PORT=8421
 BIND_ADDRESS=127.0.0.1
@@ -104,6 +104,14 @@ chmod 600 ~/kitabxana/.env
 
 Line by line, since three of these are easy to get wrong:
 
+- **The quotes around `DATABASE_DSN` are not decoration.** `keepalive.sh`
+  reads this file with `set -a; . ./.env`, which is the shell parsing it. The
+  value contains spaces, so unquoted it sets `DATABASE_DSN=host=localhost` and
+  then `user`, `password` and `dbname` as three separate variables the app
+  never sees. The app then connects as the OS account to a database named
+  after it and fails with `no pg_hba.conf entry for host "[local]"` — the same
+  message `psql -l` gives for an unrelated reason, which makes it a genuinely
+  nasty hour. Single quotes, not double, so a `$` in the password stays a `$`.
 - **`host=localhost`**, not the socket. On this server PostgreSQL answers on
   TCP and does password authentication there — proved by an early test that
   got as far as `password authentication failed`, which is a connection that

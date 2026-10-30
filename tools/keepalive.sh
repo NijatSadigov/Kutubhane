@@ -38,6 +38,22 @@ if [ -f "$APP_DIR/.env" ]; then
   # shellcheck disable=SC1091
   . "$APP_DIR/.env"
   set +a
+
+  # Sourcing is the shell parsing the file, so a value with spaces in it must
+  # be quoted there. Unquoted, `DATABASE_DSN=host=localhost user=... dbname=...`
+  # sets DATABASE_DSN to `host=localhost` and makes `user` and `dbname` into
+  # separate variables nothing reads — and the app then fails against the OS
+  # account with `no pg_hba.conf entry`, which looks like a database
+  # permissions problem and is a quoting problem. Worth one line to catch.
+  case "${DATABASE_DSN:-}" in
+    *' '*|'') ;;                       # quoted (has spaces) or deliberately unset
+    *=*)
+      if [ -n "${user:-}${dbname:-}${password:-}" ]; then
+        echo "$(date -Is) WARNING: DATABASE_DSN looks truncated to '${DATABASE_DSN}'." \
+             "Quote it in .env — see DEPLOY-CPANEL.md." >> "$APP_DIR/kutubhane.log"
+      fi
+      ;;
+  esac
 else
   echo "$(date -Is) no .env beside the binary — starting on insecure defaults" >> "$APP_DIR/kutubhane.log"
 fi
