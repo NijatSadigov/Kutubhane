@@ -4,6 +4,12 @@ Written for the first deployment: one school, one box, a demo somebody else is
 going to open in a browser. Everything here has been run against the code in
 this repository, not sketched from memory.
 
+> **Deploying to a server that already runs other projects? Read
+> `DEPLOY-VPS.md` instead.** It covers the same ground with every step scoped
+> to its own user, directory, database and port, so a mistake stays inside
+> this app — and it says which single move would take the other sites down.
+> `DEPLOY-CPANEL.md` is the shared-hosting variant, kept for reference.
+
 ## What it is made of
 
 Three things, and the third is optional.

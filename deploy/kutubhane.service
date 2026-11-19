@@ -1,0 +1,74 @@
+# systemd unit for a server that is not only running this.
+#
+#   sudo cp deploy/kutubhane.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now kutubhane
+#
+# Everything here is about staying in its own lane. On a box with other
+# projects, the failure that costs a weekend is not this app crashing — it is
+# this app writing somewhere another project reads, or holding a port another
+# project wanted, or being the reason a reboot brings up the wrong thing.
+
+[Unit]
+Description=Hədəf Kütübxanə — school library
+Documentation=https://github.com/NijatSadigov/Kutubhane
+# Wants, not Requires: if Postgres is briefly down this should keep retrying
+# rather than give up and stay dead until someone notices.
+Wants=postgresql.service
+After=network-online.target postgresql.service
+# Five failures in a minute means it is not coming back on its own: stop
+# hammering Postgres and leave the unit failed where `systemctl status` shows
+# it, rather than looping quietly forever. These belong in [Unit] — systemd
+# has ignored them in [Service] since v229, which would have made the restart
+# limit a comment rather than a limit.
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+[Service]
+Type=simple
+User=kutubhane
+Group=kutubhane
+WorkingDirectory=/srv/kutubhane
+# uploads/ is resolved relative to the working directory, so that line matters.
+
+EnvironmentFile=/srv/kutubhane/.env
+ExecStart=/srv/kutubhane/kutubhane
+
+Restart=always
+RestartSec=3
+
+# --- keeping out of the other projects' way -------------------------------
+# The whole filesystem read-only except what is listed below. Without this a
+# bug with a bad path could write into another project's directory; with it,
+# the kernel refuses.
+ProtectSystem=strict
+ReadWritePaths=/srv/kutubhane/uploads
+PrivateTmp=true
+ProtectHome=true
+NoNewPrivileges=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+# It only ever needs TCP. No raw sockets, no anything else.
+RestrictAddressFamilies=AF_INET AF_INET6
+# It listens on loopback and talks to Postgres on loopback, and makes no
+# outbound calls at all — no SMTP, no webhooks, no catalogue lookups; checked,
+# the only outbound HTTP in the repository is in cmd/apiaudit, a dev tool.
+# So it needs nothing beyond localhost. Widen this if Postgres ever moves to
+# another host, or the app will fail to reach it with a confusing timeout.
+IPAddressAllow=localhost
+IPAddressDeny=any
+
+# --- limits, so one runaway cannot take the box with it -------------------
+MemoryMax=512M
+TasksMax=256
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=kutubhane
+
+[Install]
+WantedBy=multi-user.target
