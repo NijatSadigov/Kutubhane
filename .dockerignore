@@ -1,0 +1,27 @@
+# What never belongs in the build context.
+#
+# node_modules alone is hundreds of megabytes of the wrong platform's binaries
+# — the image builds its own with `npm ci`. Sending it makes every build slow
+# and can poison it with host-built native modules.
+
+.git
+.github
+.claude
+
+**/node_modules
+library-frontend/dist
+school-library-system/uploads
+school-library-system/school-library-system
+school-library-system/school-library-system.exe
+
+# Secrets never go into an image layer. compose passes .env at run time.
+.env
+*.env
+!.env.example
+
+# Docs, tooling and scratch — none of it is needed to build.
+*.md
+tools/
+deploy/
+demo-snapshot/
+"Hedef Kutuphane clickable prototype (1)"

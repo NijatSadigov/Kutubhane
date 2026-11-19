@@ -1,0 +1,76 @@
+# Kutubxana on the portfolio server, in the shape the other five apps use.
+#
+#   docker compose up -d --build
+#
+# Caddy finds this app by the network alias below, not by a published port.
+# Nothing here is reachable from outside the Docker network: no `ports:`, only
+# `expose:`. The only way in is through Caddy, which is the point.
+
+services:
+  app:
+    build: .
+    image: kutubhane:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # These belong to the deployment rather than to the secrets file, so
+      # they live here where they can be read without opening .env.
+      PORT: "8421"
+      STATIC_DIR: /app/dist
+      TRUST_PROXY: "true"
+      CORS_ORIGINS: ""
+      TZ: Asia/Baku
+      # Postgres is the `db` service below, on this compose's own network.
+      # sslmode=disable is right for a link that never leaves the host.
+      DATABASE_DSN: "host=db port=5432 dbname=kutubhane user=kutubhane password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env} sslmode=disable"
+    expose:
+      - "8421"
+    volumes:
+      # The school's covers and e-books. A named volume, so `docker compose
+      # down` and a rebuild do not take them with it.
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    # The box has ~3.8 GB and no swap, with five other apps on it. A Go server
+    # this size sits well under 256 MB; the cap is here so that if it ever
+    # does not, it is this app that suffers rather than the whole machine.
+    mem_limit: 320m
+    networks:
+      default:
+      portfolio:
+        aliases: [kitabxana]
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kutubhane
+      POSTGRES_USER: kutubhane
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      TZ: Asia/Baku
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # The app's first act is AutoMigrate, so starting before Postgres is
+      # ready means a crash loop rather than a wait.
+      test: ["CMD-SHELL", "pg_isready -U kutubhane -d kutubhane"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    mem_limit: 512m
+    # Deliberately NOT on the portfolio network: the database is this app's
+    # alone, reachable only by the service above. Nothing else on the server
+    # has a route to it.
+    networks:
+      default:
+
+volumes:
+  uploads:
+  pgdata:
+
+networks:
+  default:
+  portfolio:
+    name: portfolio_default
+    external: true
